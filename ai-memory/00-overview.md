@@ -34,6 +34,9 @@ API docs: http://127.0.0.1:8000/docs (or your uvicorn port)/docs · UI: http://l
 - AI output that contains SQL is always validated (`validate_readonly`) and never auto-executed by the SQL-assistant endpoint.
 - Explanations/confidence/"why" are deterministic (rule-based), not LLM-generated — keeps answers auditable.
 
+## Git workflow (standing instruction from the user, 2026-10-07)
+Work ONLY on branch `Dashtor_First`. After finishing each task: run the checks, commit and push to `origin Dashtor_First` without asking. Never push another branch, never open a PR unless asked, never commit keys/secrets (`.env`, `backend/OrcaleFiles/`).
+
 ## Code structure & reuse rules (standing instruction from the user — follow them)
 Goal: **do more with less code.** Reuse before writing; keep files small and focused.
 1. **Reuse first.** Before writing UI or logic, look in `hooks/`, `components/common/`, `components/ui/` (shadcn), `components/reui/`, `features/*`, `lib/`. Compose or extend what exists. When a pattern would appear a second time, extract it instead of copying.
