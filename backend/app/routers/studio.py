@@ -16,6 +16,7 @@ from ..services import audit
 from ..services import ai as ai_svc
 from ..services.http_proxy import ProxyError, check_url, fetch_pages, send
 from ..services.ingest import ingest_source
+from ..core import tenant
 
 router = APIRouter(prefix="/api/studio", tags=["studio"])
 
@@ -53,7 +54,7 @@ def records_to_dataset(body: RecordsIn):
         raise HTTPException(400, "no records to import")
     rows = [flatten(r, body.separator) for r in body.records]
     stem = re.sub(r"[^A-Za-z0-9_-]+", "_", body.name.strip()).strip("_") or "records"
-    dest = Path(settings.upload_dir) / f"{stem}_{uuid.uuid4().hex[:6]}.json"
+    dest = tenant.upload_dir() / f"{stem}_{uuid.uuid4().hex[:6]}.json"
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_text(json.dumps(rows), encoding="utf-8")
     src = store.insert("datasources", {"name": dest.name, "type": "file", "config": {"path": str(dest)}})

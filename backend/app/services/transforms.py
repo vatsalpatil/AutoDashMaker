@@ -19,6 +19,7 @@ from typing import Any
 
 import polars as pl
 
+from ..core.config import settings
 from ..core.security import validate_readonly
 from .engine import engine
 
@@ -70,6 +71,8 @@ def _strip_allowed_imports(code: str) -> str:
 
 def run_python(code: str, df: pl.DataFrame, timeout_rows: int = 50_000) -> pl.DataFrame:
     """Execute user Python against a Polars DataFrame; must assign `result`."""
+    if settings.auth_enabled and not settings.allow_user_python:
+        raise SandboxError("Python transforms are disabled on this server. Use a SQL transform instead.")
     _check_code(code)
     code = _strip_allowed_imports(code)
     namespace: dict[str, Any] = {"df": df, "pl": pl, "math": math, "result": None}

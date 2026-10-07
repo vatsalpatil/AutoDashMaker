@@ -15,12 +15,13 @@ from typing import Any
 
 import duckdb
 
+from . import tenant
 from .config import settings
 
 from .schema import MIGRATIONS, SCHEMA
 
 DEFAULT_ORG = "org_local"
-DEFAULT_WS = "ws_default"
+DEFAULT_WS = tenant.DEFAULT_WS
 DEFAULT_USER = "user_local"
 
 
@@ -30,6 +31,7 @@ class Store:
     def __init__(self, path: str):
         self._path = path
         self._lock = threading.Lock()
+        self._versions: dict[str, int] = {}  # table -> write counter, so caches built from a table can tell it changed
         self._init()
 
     def _conn(self) -> duckdb.DuckDBPyConnection:
@@ -44,9 +46,17 @@ class Store:
                 except Exception:
                     pass  # column already exists
 
+    def version(self, table: str) -> int:
+        return self._versions.get(table, 0)
+
+    def _bump(self, table: str) -> None:
+        self._versions[table] = self._versions.get(table, 0) + 1
+
     # -- generic helpers -------------------------------------------------
     def insert(self, table: str, row: dict[str, Any]) -> dict[str, Any]:
         row.setdefault("id", uuid.uuid4().hex[:12])
+        if tenant.is_scoped():
+            row["workspace_id"] = tenant.current()  # always the caller's own workspace, whatever the router passed
         now = datetime.now(timezone.utc)
         for col in ("created_at", "updated_at"):
             try:
@@ -67,23 +77,26 @@ class Store:
                 ph = ", ".join(["?"] * len(row))
                 vals = [self._ser(v) for v in row.values()]
                 con.execute(f"INSERT INTO {table} ({cols}) VALUES ({ph})", vals)
+        self._bump(table)
         return row
 
     def list(self, table: str, where: str = "", params: list | None = None,
              order: str = "created_at DESC") -> list[dict[str, Any]]:
+        where, params = self._scoped(where, params or [])
         sql = f"SELECT * FROM {table}"
         if where:
             sql += f" WHERE {where}"
         if order:
             sql += f" ORDER BY {order}"
         with self._lock, self._conn() as con:
-            rows = con.execute(sql, params or []).fetchall()
+            rows = con.execute(sql, params).fetchall()
             cols = [d[0] for d in con.description]
         return [self._row(dict(zip(cols, r))) for r in rows]
 
     def get(self, table: str, row_id: str) -> dict[str, Any] | None:
         with self._lock, self._conn() as con:
-            res = con.execute(f"SELECT * FROM {table} WHERE id = ?", [row_id]).fetchall()
+            where, params = self._scoped("id = ?", [row_id])
+            res = con.execute(f"SELECT * FROM {table} WHERE {where}", params).fetchall()
             if not res:
                 return None
             cols = [d[0] for d in con.description]
@@ -93,13 +106,25 @@ class Store:
         if not patch:
             return
         sets = ", ".join(f"{k} = ?" for k in patch)
-        vals = [self._ser(v) for v in patch.values()] + [row_id]
+        where, params = self._scoped("id = ?", [row_id])
+        vals = [self._ser(v) for v in patch.values()] + params
         with self._lock, self._conn() as con:
-            con.execute(f"UPDATE {table} SET {sets} WHERE id = ?", vals)
+            con.execute(f"UPDATE {table} SET {sets} WHERE {where}", vals)
+        self._bump(table)
 
     def delete(self, table: str, row_id: str) -> None:
+        where, params = self._scoped("id = ?", [row_id])
         with self._lock, self._conn() as con:
-            con.execute(f"DELETE FROM {table} WHERE id = ?", [row_id])
+            con.execute(f"DELETE FROM {table} WHERE {where}", params)
+        self._bump(table)
+
+    @staticmethod
+    def _scoped(where: str, params: list) -> tuple[str, list]:
+        """AND the caller's workspace onto a WHERE clause (no-op for system code under all_workspaces())."""
+        ws = tenant.current()
+        if ws == tenant.ALL:
+            return where, list(params)
+        return (f"({where}) AND workspace_id = ?" if where else "workspace_id = ?"), [*params, ws]
 
     def execute(self, sql: str, params: list | None = None) -> list[dict[str, Any]]:
         with self._lock, self._conn() as con:

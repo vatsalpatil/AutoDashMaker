@@ -14,11 +14,12 @@ from typing import Any
 from ..core.store import store
 from .brief import dashboard_brief
 from .refresh import age_minutes, is_overdue
+from ..core import tenant
 
 SEVERITY_ORDER = {"high": 0, "medium": 1, "low": 2}
 MAX_DASHBOARDS = 10      # bound the deep scan (each widget re-runs its query; cached by the engine)
 REPORT_TTL_S = 60
-_cache: dict[bool, tuple[float, dict[str, Any]]] = {}
+_cache: dict[tuple[str, bool], tuple[float, dict[str, Any]]] = {}  # (workspace, deep) -> (time, report)
 _compute_lock = threading.Lock()  # single-flight: one scan at a time
 
 
@@ -61,8 +62,9 @@ def _quality_items() -> list[dict[str, Any]]:
     rows = store.execute("""
         SELECT q.*, d.name AS dataset_name FROM quality_runs q
         JOIN datasets d ON d.id = q.dataset_id
+        WHERE d.workspace_id = ?
         QUALIFY row_number() OVER (PARTITION BY q.dataset_id ORDER BY q.created_at DESC) = 1
-    """)
+    """, [tenant.current()])
     items = []
     for q in rows:
         comp, dup = q.get("completeness") or 100, q.get("duplicate_pct") or 0
@@ -90,11 +92,12 @@ def _dashboard_items() -> list[dict[str, Any]]:
 
 
 def attention_report(deep: bool = True) -> dict[str, Any]:
-    cached = _cache.get(deep)
+    key = (tenant.current(), deep)
+    cached = _cache.get(key)
     if cached and time.monotonic() - cached[0] < REPORT_TTL_S:
         return cached[1]
     with _compute_lock:
-        cached = _cache.get(deep)  # another request may have finished while we waited
+        cached = _cache.get(key)  # another request may have finished while we waited
         if cached and time.monotonic() - cached[0] < REPORT_TTL_S:
             return cached[1]
         return _build_report(deep)
@@ -113,5 +116,5 @@ def _build_report(deep: bool) -> dict[str, Any]:
         "items": items,
         "scope": "deep (incl. dashboard anomalies)" if deep else "fast (alerts, freshness, quality)",
     }
-    _cache[deep] = (time.monotonic(), report)
+    _cache[(tenant.current(), deep)] = (time.monotonic(), report)
     return report

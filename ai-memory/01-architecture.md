@@ -16,6 +16,8 @@ alerts scheduler (`services/alerts.py::scheduler_loop`, started in `main.py` lif
 - `config.py` (43) — `settings` (paths, row limit 10k, timeout, CORS origins, default AI provider gemini-2.0-flash).
 - `store.py` (252) — metadata DuckDB: `SCHEMA`, `MIGRATIONS`, generic CRUD `store`, `DEFAULT_WS`.
 - `security.py` (47) — `validate_readonly(sql, limit)`: sqlglot parse, single SELECT/WITH only, forbids DDL/DML/ATTACH/COPY/PRAGMA, injects LIMIT.
+  With AUTH_ENABLED it also rejects file/network/introspection functions and non-identifier table names.
+- `tenant.py` — per-user workspace (ContextVar), `use/run_as/all_workspaces/bind`, per-user DuckDB + upload paths. `netguard.py` — public-host check, `safe_client`, `confine_path`. `auth.py` — Supabase JWT check (async dep, pins the workspace); `routers/auth.py` `/api/auth/config|me`. `disk.py`(services) — refuse uploads above DISK_USAGE_LIMIT_PCT.
 ### connectors/ (each: test / discover / ingest; `registry.py` maps type → class, `base.py` interface)
 - `files.py` CSV/Excel/Parquet/JSON · `postgres.py` · `mysql.py` · `sqlite.py` (DuckDB read-only attach) · `rest.py` (record_path + flatten) · `web.py` (Google Sheets share link, direct URL).
 ### services/ (business logic)

@@ -9,8 +9,10 @@ from functools import lru_cache
 
 import jwt
 from fastapi import Header, HTTPException
+from fastapi.concurrency import run_in_threadpool
 from jwt import PyJWKClient
 
+from app.core import tenant
 from app.core.config import settings
 
 LOCAL_USER = {"id": "local", "email": "local@localhost", "role": "owner"}
@@ -38,9 +40,18 @@ def verify_token(token: str) -> dict:
     return {"id": claims["sub"], "email": claims.get("email", ""), "role": claims.get("role", "authenticated")}
 
 
-def require_user(authorization: str | None = Header(default=None)) -> dict:
+async def require_user(authorization: str | None = Header(default=None)) -> dict:
+    """Authenticate the request and pin it to the user's own workspace.
+
+    Must be `async`: a sync dependency runs in a worker thread, and its ContextVar change would be lost
+    before the endpoint runs.
+    """
     if not settings.auth_enabled:
-        return LOCAL_USER
-    if not authorization or not authorization.lower().startswith("bearer "):
-        raise HTTPException(401, "Not signed in")
-    return verify_token(authorization[7:].strip())
+        user = dict(LOCAL_USER, workspace_id=tenant.DEFAULT_WS)  # local mode: the legacy single workspace
+    else:
+        if not authorization or not authorization.lower().startswith("bearer "):
+            raise HTTPException(401, "Not signed in")
+        user = await run_in_threadpool(verify_token, authorization[7:].strip())  # JWKS fetch may block
+        user["workspace_id"] = tenant.workspace_for_user(user["id"])
+    tenant.set_workspace(user["workspace_id"])
+    return user

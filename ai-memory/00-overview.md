@@ -3,7 +3,7 @@
 **AutoDashMaker** (user-facing brand: **Dashtor**, set in `frontend/src/lib/brand.ts`): AI-native data analytics platform (rebuilt from "SmartDashBoardMaker").
 Pipeline: **Source → Dataset → Query → Chart → Dashboard**, with data-quality scoring, lineage,
 a semantic layer (metrics/definitions), natural-language "Ask", alerts, and a pluggable AI provider layer
-(Gemini free tier default). Single-user local mode; auth/RBAC deliberately deferred (schema already has
+(Gemini free tier default). Local mode = single user, no login (`ws_default`); hosted = Supabase login + one isolated workspace per user (D23) (schema already has
 `organization_id`/`workspace_id`/`created_by` for later multi-tenancy).
 
 Spec: `Plan/smart-data-platform-requirements.md` (huge; `§N` refs). Feature checklist vs spec: `PROGRESS.md`.
@@ -22,6 +22,7 @@ cd backend
 cd frontend
 npm run dev
 ```
+Local screen on the LIVE server's data (sign in with your account): `cd frontend && npm run dev:online` (API_TARGET in `frontend/.env.online`).
 API docs: http://127.0.0.1:8000/docs (or your uvicorn port)/docs · UI: http://localhost:5174
 `python backend/main.py` uses port 8000 (reload=True) = the proxy default; uvicorn examples use 8001, so set `API_TARGET` when using them.
 

@@ -13,6 +13,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 from ..core.security import redact_secrets
 from ..core.store import store, DEFAULT_WS, DEFAULT_USER
+from ..core import tenant
 
 log = logging.getLogger("audit")
 
@@ -24,8 +25,9 @@ _writer = ThreadPoolExecutor(max_workers=1, thread_name_prefix="audit")
 
 def record(action: str, *, entity_type: str | None = None, entity_id: str | None = None,
            detail: str | None = None, status: str = "ok", duration_ms: float | None = None) -> None:
+    ws = tenant.current()  # captured here: the writer thread has its own (default) context
     row = {
-        "workspace_id": DEFAULT_WS, "actor": DEFAULT_USER, "action": action,
+        "workspace_id": ws if ws != tenant.ALL else DEFAULT_WS, "actor": DEFAULT_USER, "action": action,
         "entity_type": entity_type, "entity_id": entity_id,
         "detail": redact_secrets(detail or "")[:500], "status": status, "duration_ms": duration_ms,
     }
@@ -42,7 +44,8 @@ def flush() -> None:
 
 def _write(row: dict) -> None:
     try:
-        store.insert("audit_log", row)
+        with tenant.all_workspaces():  # keep the workspace captured in record() instead of re-stamping it
+            store.insert("audit_log", row)
         if next(_counter) % _PRUNE_EVERY == 0:  # keep the table bounded
             store.execute(
                 "DELETE FROM audit_log WHERE id IN (SELECT id FROM audit_log "

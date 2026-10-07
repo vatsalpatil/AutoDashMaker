@@ -10,9 +10,10 @@ from fastapi import APIRouter, HTTPException, UploadFile
 from pydantic import BaseModel
 
 from ..connectors import get_connector, ConnectorError
-from ..connectors.tls import CERT_DIR, CERT_EXTENSIONS, MAX_CERT_BYTES
+from ..connectors.tls import CERT_EXTENSIONS, MAX_CERT_BYTES, cert_dir
 from ..core.store import store
 from ..services import audit
+from ..core import tenant
 
 router = APIRouter(prefix="/api/sources", tags=["sources"])
 
@@ -46,9 +47,8 @@ async def upload_cert(file: UploadFile):
     data = await file.read(MAX_CERT_BYTES + 1)
     if not data or len(data) > MAX_CERT_BYTES:
         raise HTTPException(400, "certificate file is empty or larger than 64 KB")
-    CERT_DIR.mkdir(parents=True, exist_ok=True)
     safe = "".join(ch if ch.isalnum() or ch in "._-" else "_" for ch in name)
-    dest = CERT_DIR / f"{uuid.uuid4().hex[:8]}_{safe}"
+    dest = cert_dir() / f"{uuid.uuid4().hex[:8]}_{safe}"
     dest.write_bytes(data)
     audit.record("source.cert", detail=f"uploaded {name}")
     return {"path": str(dest), "name": name}
@@ -72,7 +72,8 @@ def sources_health(check: bool = True):
     results: dict[str, dict[str, Any]] = {}
     if check and sources:
         pool = ThreadPoolExecutor(max_workers=4)
-        futures = {s["id"]: pool.submit(probe, s) for s in sources}
+        run_probe = tenant.bind(probe)  # worker threads don't inherit the caller's workspace
+        futures = {s["id"]: pool.submit(run_probe, s) for s in sources}
         for sid, fut in futures.items():
             try:
                 results[sid] = fut.result(timeout=10)

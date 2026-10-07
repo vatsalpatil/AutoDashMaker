@@ -12,6 +12,7 @@ from ..services import audit, disk, refresh_jobs
 from ..services.engine import engine
 from ..services.ingest import ingest_source, refresh_dataset
 from ..services.refresh import age_minutes, is_overdue
+from ..core import tenant
 
 router = APIRouter(prefix="/api/datasets", tags=["datasets"])
 
@@ -38,7 +39,7 @@ async def upload(file: UploadFile):
         disk.ensure_room(file.size or 0)
     except ConnectorError as e:
         raise HTTPException(507, str(e))
-    dest = Path(settings.upload_dir) / filename
+    dest = tenant.upload_dir() / filename
     with dest.open("wb") as f:
         shutil.copyfileobj(file.file, f)
     src = store.insert("datasources", {

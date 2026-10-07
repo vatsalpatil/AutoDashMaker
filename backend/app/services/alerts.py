@@ -13,6 +13,7 @@ from typing import Any
 
 from ..core.store import store, DEFAULT_WS
 from .engine import engine
+from ..core import tenant
 
 log = logging.getLogger("alerts")
 
@@ -76,7 +77,9 @@ async def scheduler_loop(poll_seconds: int = 60) -> None:
     while True:
         try:
             now = datetime.now(timezone.utc)
-            for alert in store.list("alerts", where="active = TRUE", order=None):
+            with tenant.all_workspaces():  # every user's alerts; each is then evaluated inside its owner's workspace
+                alerts = store.list("alerts", where="active = TRUE", order=None)
+            for alert in alerts:
                 last = alert.get("last_run_at")
                 due = last is None
                 if last is not None:
@@ -87,7 +90,7 @@ async def scheduler_loop(poll_seconds: int = 60) -> None:
                     due = (now - last).total_seconds() >= alert["schedule_minutes"] * 60
                 if due:
                     try:
-                        await asyncio.to_thread(evaluate_alert, alert)
+                        await asyncio.to_thread(tenant.run_as, alert["workspace_id"], evaluate_alert, alert)
                     except Exception as e:
                         log.warning("alert %s failed: %s", alert["id"], e)
         except Exception as e:

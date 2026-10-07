@@ -5,11 +5,16 @@ from typing import Any
 
 from .base import DataConnector, ConnectorError
 from .tls import mysql_ssl, sql_escape
+from ..core.netguard import NetworkBlocked, ensure_public_host
 
 
 class MySQLConnector(DataConnector):
     def _attach(self, con, alias: str = "mysql_src") -> str:
         c = self.config
+        try:
+            ensure_public_host(str(c.get("host", "")))
+        except NetworkBlocked as e:
+            raise ConnectorError(str(e)) from e
         con.execute("INSTALL mysql; LOAD mysql;")
         dsn = (
             f"host={sql_escape(c['host'])} port={c.get('port', 3306)} "

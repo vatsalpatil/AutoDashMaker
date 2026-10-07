@@ -51,3 +51,10 @@
 
 ## Nixpacks + Caddy
 Never add `caddy` to `nixPkgs` when the app has a Caddyfile: Nixpacks adds it itself and the duplicate fails with 'Unable to build profile. There is a conflict ... caddy-api.service'.
+
+## Multi-user (tenant) rules
+- System code (schedulers, threads) has no request, so no workspace: read rows under `tenant.all_workspaces()`, then run each in its owner's workspace with `tenant.run_as(row['workspace_id'], fn, ...)`. `engine` under all_workspaces() raises on purpose. `asyncio.to_thread` keeps the context; plain `Thread`/`ThreadPoolExecutor` do NOT: wrap with `tenant.bind(fn)`.
+- Any module-level cache must be keyed by `tenant.current()` (attention, names already are) or one user's data leaks to another.
+- New table = add `workspace_id TEXT DEFAULT 'ws_default'` (SCHEMA or MIGRATIONS). Raw `store.execute` is NOT scoped: add `WHERE workspace_id = ?` yourself.
+- Never open files by a user-supplied path: use `netguard.confine_path`; never fetch a user-supplied URL with plain httpx: use `netguard.safe_client`.
+- Test: `python tests/test_tenant.py` (two users, must stay green). `test_refresh` needs real data, `test_remote` needs DuckDB extension downloads (both fail in the sandbox, not bugs).

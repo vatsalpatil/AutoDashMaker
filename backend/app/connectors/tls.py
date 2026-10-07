@@ -11,8 +11,17 @@ from typing import Any
 
 from ..core.config import settings
 from .base import ConnectorError
+from ..core import tenant
 
-CERT_DIR = Path(settings.upload_dir) / "certs"
+
+
+def cert_dir() -> Path:
+    """Uploaded TLS files live inside the uploading user's own folder."""
+    d = tenant.upload_dir() / "certs"
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
 CERT_EXTENSIONS = {".pem", ".crt", ".cer", ".key", ".ca", ".p12"}
 MAX_CERT_BYTES = 64 * 1024
 
@@ -27,7 +36,7 @@ def cert_path(value: Any) -> str | None:
     if not value:
         return None
     p = Path(str(value)).resolve()
-    if CERT_DIR.resolve() not in p.parents:
+    if cert_dir().resolve() not in p.parents:
         raise ConnectorError("certificate files must be uploaded through the source form")
     if not p.is_file():
         raise ConnectorError(f"certificate file is missing on the server: {p.name} (upload it again)")

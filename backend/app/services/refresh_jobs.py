@@ -9,6 +9,7 @@ import time
 from typing import Any
 
 from .ingest import refresh_dataset
+from ..core import tenant
 
 _lock = threading.Lock()
 _jobs: dict[str, dict[str, Any]] = {}
@@ -31,7 +32,7 @@ def start(dataset_id: str) -> dict[str, Any]:
         if not (job and job["status"] == "running"):
             job = {"status": "running", "started": time.time()}
             _jobs[dataset_id] = job
-            threading.Thread(target=_run, args=(dataset_id, job), daemon=True, name=f"refresh-{dataset_id}").start()
+            threading.Thread(target=tenant.bind(_run), args=(dataset_id, job), daemon=True, name=f"refresh-{dataset_id}").start()
     return status(dataset_id)
 
 

@@ -15,6 +15,7 @@ import httpx
 from ..core.config import settings
 from ..core.store import DEFAULT_WS, store
 from .engine import engine
+from ..core import tenant
 
 log = logging.getLogger("reports")
 KEEP_RUNS = 10
@@ -22,7 +23,7 @@ MAX_ROWS = 100_000
 
 
 def reports_dir() -> Path:
-    d = Path(settings.upload_dir) / "reports"
+    d = tenant.upload_dir() / "reports"
     d.mkdir(parents=True, exist_ok=True)
     return d
 
@@ -70,14 +71,16 @@ async def reports_loop(poll_seconds: int = 60) -> None:
     while True:
         try:
             now = datetime.now(timezone.utc)
-            for rep in store.list("reports", where="active = TRUE", order=None):
+            with tenant.all_workspaces():
+                reports = store.list("reports", where="active = TRUE", order=None)
+            for rep in reports:
                 last = rep.get("last_run_at")
                 if isinstance(last, str):
                     last = datetime.fromisoformat(last)
                 if last is not None and last.tzinfo is None:
                     last = last.replace(tzinfo=timezone.utc)
                 if last is None or (now - last).total_seconds() >= rep["schedule_minutes"] * 60:
-                    await asyncio.to_thread(run_report, rep)
+                    await asyncio.to_thread(tenant.run_as, rep["workspace_id"], run_report, rep)
         except Exception as e:
             log.warning("reports iteration failed: %s", e)
         await asyncio.sleep(poll_seconds)

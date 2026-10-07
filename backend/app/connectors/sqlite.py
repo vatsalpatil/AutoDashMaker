@@ -5,11 +5,15 @@ from pathlib import Path
 from typing import Any
 
 from .base import DataConnector, ConnectorError
+from ..core.netguard import NetworkBlocked, confine_path
 
 
 class SQLiteConnector(DataConnector):
     def _attach(self, con, alias: str = "sqlite_src") -> str:
-        path = self.config["path"]
+        try:
+            path = confine_path(self.config["path"]).as_posix()
+        except NetworkBlocked as e:
+            raise ConnectorError(str(e)) from e
         if not Path(path).exists():
             raise ConnectorError(f"file missing: {path}")
         con.execute("INSTALL sqlite; LOAD sqlite;")

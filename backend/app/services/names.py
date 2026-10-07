@@ -9,19 +9,22 @@ import re
 import threading
 import time
 
+from ..core import tenant
 from ..core.store import store
 
 _TTL = 5.0
 _lock = threading.Lock()
-_cache: tuple[float, dict[str, str]] | None = None
+_cache: dict[str, tuple[float, int, dict[str, str]]] = {}  # workspace -> (time, datasets version, mapping)
 
 
 def _map() -> dict[str, str]:
     """friendly name (lower-case) -> physical table, for unambiguous names only."""
-    global _cache
+    ws = tenant.current()
     with _lock:
-        if _cache and time.monotonic() - _cache[0] < _TTL:
-            return _cache[1]
+        version = store.version("datasets")  # any dataset insert/rename/delete invalidates immediately
+        hit = _cache.get(ws)
+        if hit and hit[1] == version and time.monotonic() - hit[0] < _TTL:
+            return hit[2]
         rows = store.list("datasets", order=None)
         physical = {(r.get("physical_name") or "").lower() for r in rows}
         counts: dict[str, int] = {}
@@ -29,14 +32,13 @@ def _map() -> dict[str, str]:
             counts[r["name"].lower()] = counts.get(r["name"].lower(), 0) + 1
         out = {r["name"].lower(): r["physical_name"] for r in rows
                if r.get("physical_name") and counts[r["name"].lower()] == 1 and r["name"].lower() not in physical}
-        _cache = (time.monotonic(), out)
+        _cache[ws] = (time.monotonic(), version, out)
         return out
 
 
 def invalidate() -> None:
-    global _cache
     with _lock:
-        _cache = None
+        _cache.clear()
 
 
 def resolve(sql: str) -> str:

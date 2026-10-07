@@ -16,6 +16,7 @@ from typing import Any
 from ..core.security import redact_secrets
 from ..core.store import store
 from .ingest import refresh_dataset
+from ..core import tenant
 
 log = logging.getLogger("refresh")
 
@@ -72,8 +73,10 @@ def refresh_one(ds: dict[str, Any]) -> bool:
 async def refresh_loop(poll_seconds: int = 300) -> None:
     while True:
         try:
-            for ds in due_datasets():
-                await asyncio.to_thread(refresh_one, ds)  # one at a time: keeps memory flat
+            with tenant.all_workspaces():  # every user's datasets; each refresh runs inside its owner's workspace
+                due = due_datasets()
+            for ds in due:
+                await asyncio.to_thread(tenant.run_as, ds["workspace_id"], refresh_one, ds)  # one at a time: keeps memory flat
         except Exception as e:
             log.warning("refresh iteration failed: %s", redact_secrets(str(e)))
         await asyncio.sleep(poll_seconds)

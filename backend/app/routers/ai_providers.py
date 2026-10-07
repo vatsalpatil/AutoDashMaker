@@ -1,6 +1,7 @@
 """AI provider management: catalog, connect/test, model listing and switching."""
 import time
 
+from ..core import tenant
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
@@ -33,7 +34,7 @@ class ModelIn(BaseModel):
 
 
 def _make_default(provider_id: str) -> None:
-    store.execute("UPDATE ai_providers SET is_default = FALSE")
+    store.execute("UPDATE ai_providers SET is_default = FALSE WHERE workspace_id = ?", [tenant.current()])
     store.update("ai_providers", provider_id, {"is_default": True})
 
 
@@ -60,7 +61,7 @@ def list_providers():
 @router.post("/providers")
 def add_provider(body: ProviderIn):
     if body.is_default:
-        store.execute("UPDATE ai_providers SET is_default = FALSE")
+        store.execute("UPDATE ai_providers SET is_default = FALSE WHERE workspace_id = ?", [tenant.current()])
     return store.insert("ai_providers", body.model_dump())
 
 

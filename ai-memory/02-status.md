@@ -26,16 +26,19 @@ Visual Query Builder at `/builder` (plan §102) with AI: describe-to-build, edit
 Pending list (updated 2026-10-03, evening). DONE since the last list: AI dashboards (create + chat edit), KPI exact-value hover + percentage option, API Studio (REST/GraphQL/WebSocket/JSON lab, curl import, environments, history, save as dataset/source), GraphQL source type, CodeMirror editor component, agent-style Workbench AI assistant (`/ai/agent`, features/workbench/agent), instant SQL lint checks for Optimize/Explain, JSON Compare tab (`diffJson`), starred (saved) requests, All-pages pagination (`/studio/pages`), SSE panel (`/studio/stream`), JSON Schema tab (`lib/jsonSchema.ts`), AI Explain (`/studio/explain`), scheduled Reports page (`/reports`), in the studio history, Workbench SQL cells on CodeMirror (completion from `GET /api/datasets/columns`).
 STILL TO DO:
 1. API Studio extras left: Socket.IO/MQTT only.
-2. NL→SQL eval: `backend/tests/eval_nl2sql.py` written (20 cases, run on demand vs a live server); first run 1/6, CLARIFY-echo bug fixed, re-run blocked by the OpenRouter free daily limit. Warehouse connectors (BigQuery/Snowflake/ClickHouse) not built: need credentials + heavy deps; Postgres-compatible warehouses (Redshift, Supabase, CockroachDB) already work via the postgres connector. Auth/RBAC deferred by the user.
+2. NL→SQL eval: `backend/tests/eval_nl2sql.py` written (20 cases, run on demand vs a live server); first run 1/6, CLARIFY-echo bug fixed, re-run blocked by the OpenRouter free daily limit. Warehouse connectors (BigQuery/Snowflake/ClickHouse) not built: need credentials + heavy deps; Postgres-compatible warehouses (Redshift, Supabase, CockroachDB) already work via the postgres connector. Auth + per-user isolation done (D23); roles/quotas not built.
 3. Light-mode: studio, charts list and chart studio checked OK; Workbench cell colours tokenised; Transform/Relationships/Why panels still unchecked visually.
 USER-ONLY: purge `backend/data/*.duckdb` from git history (holds the OpenRouter key; needs their approval) and rotate the key. The user's dev server runs on 5174 (restart after config changes); my test server was on 5175.
 
 ## Next / not started (platform)
 Dashboard filters, sharing · model routing (cheap vs strong) · MCP/agent API · query cost estimate · UI for audit log + source health ·
-persist refresh backoff across restarts · persistent engine connection / Store connection reuse (each metadata write opens a connection, ~50 ms) · eval benchmark for NL→SQL · semantic-model versioning · scheduled reports · auth/RBAC (deferred by user) · background jobs/embeddings.
+persist refresh backoff across restarts · persistent engine connection / Store connection reuse (each metadata write opens a connection, ~50 ms) · eval benchmark for NL→SQL · semantic-model versioning · scheduled reports · per-user quotas/admin role (auth + per-user isolation DONE 2026-10-07) · background jobs/embeddings.
 
 ## Known bugs / risks
 - (fixed 2026-10-01) `services/alerts.py::evaluate_alert` crashed with "cannot access local variable 'value'" — see changelog.
 - OPEN (needs user decision): `backend/data/*.duckdb` are tracked in git history (baseline + M1-M5b commits) and `metadata.duckdb` holds an AI provider API key. No remote exists, so nothing has leaked; purge history before ever pushing (a history rewrite was declined by the permission system, so it was left for the user).
 - (fixed 2026-10-02) vite proxy now defaults to 8000 to match `python backend/main.py`; override with API_TARGET.
 - Git repo exists since 2026-10-02 (branch improve/autonomous, tag baseline-before-improvements). Tests are plain scripts in backend/tests/ (no pytest, no CI).
+
+## Deployed (2026-10-07)
+Dokploy on Oracle (backend + frontend Nixpacks, self-hosted Supabase). Branch Dashtor_First. Open: replace the exposed Oracle SSH key; live sign-up untested; per-user disk quota; Supabase email (SMTP).

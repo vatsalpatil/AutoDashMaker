@@ -17,6 +17,8 @@ import httpx
 from ..core.config import settings
 from .base import DataConnector, ConnectorError, http_retry
 from .files import FileConnector
+from ..core import tenant
+from ..core.netguard import safe_client
 
 
 def _gsheet_csv_url(url: str) -> str | None:
@@ -36,7 +38,10 @@ class UrlConnector(DataConnector):
         if self.config.get("type_hint") == "gsheets" or "docs.google.com" in url:
             url = _gsheet_csv_url(url) or url
         try:
-            resp = http_retry(lambda: httpx.get(url, follow_redirects=True, timeout=60))
+            def get():
+                with safe_client(follow_redirects=True, timeout=60) as client:
+                    return client.get(url)
+            resp = http_retry(get)
             resp.raise_for_status()
         except Exception as e:
             raise ConnectorError(f"download failed: {e}") from e
@@ -55,7 +60,7 @@ class UrlConnector(DataConnector):
             }.get(ctype.split(";")[0], ".csv")
 
         name = re.sub(r"[^a-zA-Z0-9_-]", "_", self.config.get("name", "download"))[:40]
-        dest = Path(settings.upload_dir) / f"{name}{ext}"
+        dest = tenant.upload_dir() / f"{name}{ext}"
         dest.write_bytes(resp.content)
         return dest
 

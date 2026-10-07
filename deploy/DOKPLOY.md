@@ -20,3 +20,9 @@ redirect URLs to the frontend domain. Put its public URL + anon key into the bac
 ## Notes
 - `AUTH_ENABLED=false` (default) = no login; never expose that publicly.
 - Single backend instance only: DuckDB allows one writer process.
+
+## Multi-user safety (AUTH_ENABLED=true)
+- Every user gets their own workspace: separate DuckDB file under `/app/data/ws/` and uploads under `/app/uploads/ws/` (both on your volumes).
+- File/SQLite sources can only read the user's own uploads; connections to private/internal addresses are refused; SQL cannot read files.
+- Python transforms are off (`ALLOW_USER_PYTHON=false`). Turn on only for people you fully trust.
+- Back up both volumes (`adm-data`, `adm-uploads`): they hold every user's data.

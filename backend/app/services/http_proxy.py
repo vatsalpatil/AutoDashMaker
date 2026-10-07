@@ -10,6 +10,7 @@ from typing import Any
 from urllib.parse import urlsplit
 
 import httpx
+from ..core.netguard import NetworkBlocked, ensure_public_url, safe_client
 
 MAX_BODY = 5 * 1024 * 1024        # response bytes kept
 ALLOWED_METHODS = {"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"}
@@ -30,6 +31,10 @@ def check_url(url: str) -> str:
             raise ProxyError("that address is not allowed")
     except ValueError:
         pass  # a hostname, not an IP literal
+    try:
+        ensure_public_url(url)  # multi-user servers: no internal/private targets (no-op in local mode)
+    except NetworkBlocked as e:
+        raise ProxyError(str(e)) from e
     return url.strip()
 
 
@@ -41,7 +46,7 @@ def send(method: str, url: str, headers: dict[str, str] | None = None, body: str
     url = check_url(url)
     t0 = time.perf_counter()
     try:
-        with httpx.Client(follow_redirects=True, timeout=timeout) as client:
+        with safe_client(follow_redirects=True, timeout=timeout) as client:
             with client.stream(method, url, headers=headers or {}, params=params or None,
                                content=(body.encode() if body else None)) as resp:
                 chunks, size, truncated = [], 0, False

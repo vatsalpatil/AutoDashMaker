@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from .base import DataConnector, ConnectorError
+from ..core.netguard import NetworkBlocked, confine_path
 
 
 class FileConnector(DataConnector):
@@ -24,17 +25,23 @@ class FileConnector(DataConnector):
             raise ConnectorError(f"Unsupported file type: {ext}")
         return self.READERS[ext].format(path=str(path).replace("\\", "/"))
 
+    def _path(self) -> Path:
+        try:
+            return confine_path(self.config["path"])
+        except NetworkBlocked as e:
+            raise ConnectorError(str(e)) from e
+
     def test_connection(self) -> dict[str, Any]:
-        p = Path(self.config["path"])
+        p = self._path()
         ok = p.exists()
         return {"ok": ok, "detail": f"{p.name} found" if ok else f"file missing: {p}"}
 
     def discover(self) -> list[dict[str, Any]]:
-        p = Path(self.config["path"])
+        p = self._path()
         return [{"name": p.stem, "kind": p.suffix.lstrip(".").lower()}] if p.exists() else []
 
     def ingest(self, name: str, target_table: str, analytics_con) -> dict[str, Any]:
-        path = Path(self.config["path"])
+        path = self._path()
         if not path.exists():
             raise ConnectorError(f"file missing: {path}")
         reader = self._reader(path)

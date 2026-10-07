@@ -1,4 +1,5 @@
 """Data-quality runs: score datasets, list history."""
+from ..core import tenant
 from fastapi import APIRouter, HTTPException
 
 from ..core.store import store
@@ -27,6 +28,7 @@ def overview():
         SELECT q.*, d.name AS dataset_name, d.row_count AS dataset_rows
         FROM quality_runs q
         JOIN datasets d ON d.id = q.dataset_id
+        WHERE d.workspace_id = ?
         QUALIFY row_number() OVER (PARTITION BY q.dataset_id ORDER BY q.created_at DESC) = 1
-    """)
+    """, [tenant.current()])
     return rows

@@ -9,6 +9,7 @@ from typing import Any
 import httpx
 
 from .base import DataConnector, ConnectorError, http_retry
+from ..core.netguard import safe_client
 
 
 def find_records(data: Any) -> tuple[str, list] | None:
@@ -54,8 +55,10 @@ class RestConnector(DataConnector):
     def _fetch(self) -> Any:
         method, kwargs = self._request()
         try:
-            resp = http_retry(lambda: httpx.request(method, self.config["url"], timeout=30, follow_redirects=True, **kwargs),
-                              attempts=3 if method in ("GET", "HEAD") else 1)  # never replay a POST/PUT
+            def call():
+                with safe_client(timeout=30, follow_redirects=True) as client:
+                    return client.request(method, self.config["url"], **kwargs)
+            resp = http_retry(call, attempts=3 if method in ("GET", "HEAD") else 1)  # never replay a POST/PUT
             resp.raise_for_status()
             return resp.json()
         except Exception as e:

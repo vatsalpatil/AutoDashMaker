@@ -5,11 +5,28 @@ from typing import Any
 
 from .base import DataConnector, ConnectorError
 from .tls import postgres_ssl, sql_escape
+from ..core.netguard import NetworkBlocked, ensure_public_host
+
+
+def _check_host(c: dict[str, Any]) -> None:
+    """Auth-enabled servers: no connections to private/internal hosts (a DSN is parsed for its host)."""
+    host = c.get("host")
+    if c.get("dsn"):
+        from psycopg2.extensions import parse_dsn
+        try:
+            host = parse_dsn(c["dsn"]).get("host")
+        except Exception as e:
+            raise ConnectorError(f"invalid DSN: {e}") from e
+    try:
+        ensure_public_host(str(host or ""))
+    except NetworkBlocked as e:
+        raise ConnectorError(str(e)) from e
 
 
 class PostgresConnector(DataConnector):
     def _attach(self, con, alias: str = "pg_src") -> str:
         c = self.config
+        _check_host(c)
         dsn = c.get("dsn") or (
             f"host={c['host']} port={c.get('port', 5432)} dbname={c['database']} "
             f"user={c['user']} password={c.get('password', '')}{postgres_ssl(c)}"

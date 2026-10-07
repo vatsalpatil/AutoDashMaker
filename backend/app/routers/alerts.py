@@ -1,4 +1,5 @@
 """Alerts CRUD + manual evaluation + notifications (§25)."""
+from ..core import tenant
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
@@ -92,5 +93,5 @@ def mark_read(notif_id: str):
 
 @router.post("/notifications/read-all")
 def mark_all_read():
-    store.execute("UPDATE notifications SET read = TRUE")
+    store.execute("UPDATE notifications SET read = TRUE WHERE workspace_id = ?", [tenant.current()])
     return {"ok": True}

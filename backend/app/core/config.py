@@ -47,6 +47,8 @@ class Settings(BaseSettings):
     auth_enabled: bool = False
     supabase_url: str = ""            # e.g. https://xyz.supabase.co or your self-hosted URL
     supabase_anon_key: str = ""       # public key; served to the browser via /api/auth/config
+    # User-written Python transforms run in-process (Polars can read any file), so they are off for multi-user servers
+    allow_user_python: bool = False   # only consulted when auth_enabled; local mode always allows them
     supabase_jwt_secret: str = ""     # legacy HS256 projects; empty -> verify via JWKS (asymmetric keys)
 
     class Config:

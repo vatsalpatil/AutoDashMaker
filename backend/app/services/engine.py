@@ -6,10 +6,12 @@ import threading
 import time
 from collections import OrderedDict
 from contextlib import contextmanager
+from pathlib import Path
 from typing import Any, Iterator
 
 import duckdb
 
+from ..core import tenant
 from ..core.config import settings
 from ..core.security import UnsafeQueryError, quote_ident, validate_readonly
 
@@ -272,4 +274,30 @@ class QueryEngine:
                 con.execute(f"DROP VIEW IF EXISTS {table}")
 
 
-engine = QueryEngine(settings.analytics_db)
+class _WorkspaceEngines:
+    """`engine` as the rest of the app uses it, routed to the current workspace's own DuckDB file.
+
+    A user's SQL can therefore only ever see their own tables. System code (schedulers) must enter a
+    workspace first with tenant.run_as(); asking for an engine under all_workspaces() is a bug and fails loudly.
+    """
+
+    def __init__(self) -> None:
+        self._engines: dict[str, QueryEngine] = {}
+        self._lock = threading.Lock()
+
+    def for_workspace(self, ws: str) -> QueryEngine:
+        if ws == tenant.ALL:
+            raise RuntimeError("engine used outside a workspace: wrap the call in tenant.run_as(workspace_id, ...)")
+        with self._lock:
+            if ws not in self._engines:
+                path = tenant.analytics_path(ws)
+                if not Path(path).exists():  # first use by a new user: create their empty analytics file
+                    duckdb.connect(path).close()
+                self._engines[ws] = QueryEngine(path)
+            return self._engines[ws]
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self.for_workspace(tenant.current()), name)
+
+
+engine = _WorkspaceEngines()
