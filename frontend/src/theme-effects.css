@@ -1,0 +1,19 @@
+/* Theme preferences that are not colours: density and corner radius.
+   Colours live in src/index.css (shadcn tokens derived from the preset set by src/lib/theme.ts). */
+
+/* ---- Density ---- */
+html[data-density='compact'] td,
+html[data-density='compact'] th {
+  padding: 0.25rem 0.5rem !important;
+}
+html[data-density='compact'] body {
+  font-size: 0.875rem;
+}
+html[data-density='compact'] .p-6 {
+  padding: 1rem !important;
+}
+
+/* ---- Radius: every rounded-* utility follows --radius (see @theme in index.css) ---- */
+html[data-radius='sharp'] {
+  --radius: 0px;
+}

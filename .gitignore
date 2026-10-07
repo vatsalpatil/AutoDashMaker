@@ -1,0 +1,17 @@
+backend/.venv/
+frontend/node_modules/
+frontend/dist/
+__pycache__/
+*.pyc
+backend/.env
+backend/server*.log
+frontend/tsconfig.tsbuildinfo
+.vscode/
+Plan/*.exe
+Plan/wifi_speaker_config.json
+_backups/
+backend/data/tmp/
+
+*.duckdb
+*.duckdb.wal
+backend/uploads/
