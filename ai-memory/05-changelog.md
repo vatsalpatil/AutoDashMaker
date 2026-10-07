@@ -123,3 +123,4 @@ Format: `YYYY-MM-DD · tool · files · what + why`
 - 2026-10-07 · frontend/src/lib/brand.ts (BRAND_NAME='Dashtor'), AppSidebar, LoginPage, WelcomeSection, index.html title, backend core/config.py app_name · user-facing brand renamed AutoDashMaker -> Dashtor (repo/package names unchanged).
 - 2026-10-07 · frontend components/common/LogoIcon.tsx (new dashboard-window logo, theme gradient from --primary via color-mix), AppSidebar + LoginPage (tile removed, logo shown directly), public/favicon.svg (fixed purple-pink; favicons can't read the theme).
 - 2026-10-07 · .gitignore · ignore backend/OrcaleFiles/ and SSH key filenames (oracle_key*, *.pem, *.key, id_*): user's Oracle private key sat untracked in that folder.
+- 2026-10-07 · frontend LogoIcon.tsx (solid D with masked diagonal cut, theme gradient), public/favicon.svg, AppSidebar + LoginPage (bigger logo + name) · new Dashtor D logo.

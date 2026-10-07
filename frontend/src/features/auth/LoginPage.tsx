@@ -37,9 +37,9 @@ export function LoginPage() {
   return (
     <div className="grid min-h-svh place-items-center bg-background p-4">
       <Card className="w-full max-w-sm space-y-4 p-6">
-        <div className="flex items-center gap-2">
-          <LogoIcon className="size-9" />
-          <span className="font-semibold">{BRAND_NAME}</span>
+        <div className="flex items-center gap-3">
+          <LogoIcon className="size-11 shrink-0" />
+          <span className="text-2xl font-semibold leading-none tracking-tight">{BRAND_NAME}</span>
         </div>
         <h1 className="text-lg font-semibold">{title}</h1>
         <form onSubmit={onSubmit} className="space-y-3">

@@ -23,9 +23,9 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon" className="z-30">
       <SidebarHeader className="p-1">
-        <div className="flex h-8 items-center gap-2 pl-2 pr-5">
-          <LogoIcon className="size-7 shrink-0" />
-          <span className="truncate text-sm font-semibold tracking-tight group-data-[collapsible=icon]:hidden">{BRAND_NAME}</span>
+        <div className="flex h-12 items-center gap-2.5 pl-2 pr-5 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
+          <LogoIcon className="size-9 shrink-0" />
+          <span className="truncate text-xl font-semibold leading-none tracking-tight group-data-[collapsible=icon]:hidden">{BRAND_NAME}</span>
         </div>
       </SidebarHeader>
       <SidebarContent>
