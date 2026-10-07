@@ -23,10 +23,11 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon" className="z-30">
       <SidebarHeader className="p-1">
-        <div className="flex h-12 items-center gap-2.5 pl-2 pr-5 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
+        <NavLink to="/" title="Home" aria-label={`${BRAND_NAME} home`} onClick={() => isMobile && setOpenMobile(false)}
+          className="flex h-12 items-center gap-2.5 rounded-md pl-2 pr-5 outline-none transition-colors hover:bg-sidebar-accent focus-visible:ring-2 focus-visible:ring-sidebar-ring group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
           <LogoIcon className="size-9 shrink-0" />
           <span className="truncate text-xl font-semibold leading-none tracking-tight group-data-[collapsible=icon]:hidden">{BRAND_NAME}</span>
-        </div>
+        </NavLink>
       </SidebarHeader>
       <SidebarContent>
         {GROUPS.map((g) => (

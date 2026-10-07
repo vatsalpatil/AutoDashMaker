@@ -4,6 +4,7 @@ import { AppShell } from '@/components/layout/AppShell';
 import { KeepAlive } from '@/components/layout/KeepAlive';
 
 // Each page loads on first visit, so the first paint ships only the shell.
+const HomePage = lazy(() => import('@/pages/HomePage'));
 const AskPage = lazy(() => import('@/pages/AskPage'));
 const SourcesPage = lazy(() => import('@/pages/SourcesPage'));
 const ApiStudioPage = lazy(() => import('@/pages/ApiStudioPage'));
@@ -24,7 +25,7 @@ const SettingsPage = lazy(() => import('@/pages/SettingsPage'));
 
 // Pages that hold unsaved work stay mounted while you visit other tabs (see KeepAlive).
 const KEPT = {
-  '/': <AskPage />, '/sources': <SourcesPage />, '/workbench': <WorkbenchPage />, '/builder': <QueryBuilderPage />,
+  '/ask': <AskPage />, '/sources': <SourcesPage />, '/workbench': <WorkbenchPage />, '/builder': <QueryBuilderPage />,
 };
 
 export default function App() {
@@ -32,7 +33,8 @@ export default function App() {
     <AppShell>
       <KeepAlive pages={KEPT} />
       <Routes>
-        <Route path="/" element={null} />
+        <Route path="/" element={<HomePage />} />
+        <Route path="/ask" element={null} />
         <Route path="/sources" element={null} />
         <Route path="/sources/studio" element={<ApiStudioPage />} />
         <Route path="/datasets" element={<Navigate to="/sources" replace />} />

@@ -32,7 +32,7 @@ export function Breadcrumbs() {
   const parts = useLocation().pathname.split('/').filter(Boolean);
   const entity = useEntityName(NAMED.has(parts[0]) ? parts[0] : undefined, parts[1]);
 
-  if (parts.length === 0) return <span className="truncate text-sm font-medium">Ask</span>;
+  if (parts.length === 0) return <span className="truncate text-sm font-medium">Home</span>;
 
   const crumbs = parts.map((p, i) => ({
     label: i === 1 && entity ? entity : p === 'new' ? 'New' : CRUMB_LABELS[p] ?? p,

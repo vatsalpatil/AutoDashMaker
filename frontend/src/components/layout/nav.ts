@@ -1,12 +1,13 @@
 import {
-  BarChart3, BookOpen, Bell, Database, HelpCircle, FileClock, History, LayoutDashboard, Settings, ShieldCheck, Sparkles, TerminalSquare, Blocks,
+  BarChart3, BookOpen, Bell, Database, HelpCircle, FileClock, History, Home, LayoutDashboard, Settings, ShieldCheck, Sparkles, TerminalSquare, Blocks,
   type LucideIcon,
 } from 'lucide-react';
 
 export interface NavItem { to: string; label: string; icon: LucideIcon; end?: boolean; group: 'Work' | 'Govern' | 'Help' }
 
 export const NAV: NavItem[] = [
-  { to: '/', label: 'Ask', icon: Sparkles, end: true, group: 'Work' },
+  { to: '/', label: 'Home', icon: Home, end: true, group: 'Work' },
+  { to: '/ask', label: 'Ask', icon: Sparkles, group: 'Work' },
   { to: '/sources', label: 'Data Sources', icon: Database, group: 'Work' },
   { to: '/workbench', label: 'Workbench', icon: TerminalSquare, group: 'Work' },
   { to: '/builder', label: 'Query Builder', icon: Blocks, group: 'Work' },
@@ -24,9 +25,9 @@ export const NAV: NavItem[] = [
 export const GROUPS: NavItem['group'][] = ['Work', 'Govern', 'Help'];
 
 export const CRUMB_LABELS: Record<string, string> = {
-  sources: 'Data Sources', datasets: 'Data Sources', workbench: 'Workbench', builder: 'Query Builder', metrics: 'Semantic Layer', charts: 'Charts',
+  ask: 'Ask', sources: 'Data Sources', datasets: 'Data Sources', workbench: 'Workbench', builder: 'Query Builder', metrics: 'Semantic Layer', charts: 'Charts',
   dashboards: 'Dashboards', alerts: 'Alerts', reports: 'Reports', quality: 'Quality', activity: 'Activity', settings: 'Settings', guide: 'Guide', new: 'New', studio: 'API Studio',
 };
 
 /** Pages that own the whole viewport (their own scroll regions) instead of scrolling as a document. */
-export const isFullBleed = (path: string) => path === '/' || path === '/sources/studio' || path.startsWith('/workbench') || path === '/builder' || /^\/charts\/[^/]+/.test(path);
+export const isFullBleed = (path: string) => path === '/ask' || path === '/sources/studio' || path.startsWith('/workbench') || path === '/builder' || /^\/charts\/[^/]+/.test(path);

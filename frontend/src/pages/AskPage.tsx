@@ -6,6 +6,7 @@ import { AnswerCard } from '@/features/ask/AnswerCard';
 import { Composer } from '@/features/ask/Composer';
 import { useAskThread } from '@/features/ask/useAskThread';
 import { useApi } from '@/hooks/useApi';
+import { ASK_EVENT, takePendingQuestion } from '@/lib/askHandoff';
 import type { Dataset } from '@/lib/types';
 
 /** Ask: a conversation with an analyst that can see every table, saved query and metric. */
@@ -14,6 +15,13 @@ export default function AskPage() {
   const datasets = useApi<Dataset[]>('/datasets').data ?? [];
   const starters = useApi<{ questions: string[] }>(`/ai/suggestions${scope ? `?dataset_id=${scope}` : ''}`).data?.questions ?? [];
   const endRef = useRef<HTMLDivElement>(null);
+  // a question typed on Home: run it now (page already open) or on first mount
+  useEffect(() => {
+    const run = () => { const q = takePendingQuestion(); if (q) void ask(q); };
+    run();
+    window.addEventListener(ASK_EVENT, run);
+    return () => window.removeEventListener(ASK_EVENT, run);
+  }, [ask]);
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }); }, [turns]);
 
   return (
