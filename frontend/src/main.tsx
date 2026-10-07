@@ -6,8 +6,10 @@ import './index.css';
 import './theme-effects.css';
 import { AuthProvider } from '@/features/auth/AuthProvider';
 import { applyStoredPrefs } from '@/lib/theme';
+import { startFaviconSync } from '@/lib/favicon';
 
 applyStoredPrefs();
+startFaviconSync();
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
