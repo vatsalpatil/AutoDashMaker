@@ -12,7 +12,7 @@ from typing import Any
 
 from ..connectors import get_connector, ConnectorError
 from ..core.store import store, DEFAULT_ORG, DEFAULT_WS, DEFAULT_USER
-from . import audit
+from . import audit, disk
 from .engine import engine
 
 
@@ -25,6 +25,7 @@ def ingest_source(src: dict, friendly_name: str, discover_name: str | None = Non
                   target_table: str | None = None) -> dict[str, Any]:
     """Materialize `src` into the analytics DB. With `target_table`, overwrite that table
     and return its stats; otherwise register a new dataset and return it."""
+    disk.ensure_room()
     table = target_table or safe_table_name(friendly_name)
     try:
         with engine.writer() as con:

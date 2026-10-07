@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from ..connectors import ConnectorError
 from ..core.config import settings
 from ..core.store import store
-from ..services import audit, refresh_jobs
+from ..services import audit, disk, refresh_jobs
 from ..services.engine import engine
 from ..services.ingest import ingest_source, refresh_dataset
 from ..services.refresh import age_minutes, is_overdue
@@ -34,6 +34,10 @@ async def upload(file: UploadFile):
     filename = Path((file.filename or "").replace("\\", "/")).name  # strip any directory part (path traversal)
     if not filename:
         raise HTTPException(400, "missing file name")
+    try:
+        disk.ensure_room(file.size or 0)
+    except ConnectorError as e:
+        raise HTTPException(507, str(e))
     dest = Path(settings.upload_dir) / filename
     with dest.open("wb") as f:
         shutil.copyfileobj(file.file, f)

@@ -22,6 +22,8 @@ class Settings(BaseSettings):
     metadata_db: str = str(DATA_DIR / "metadata.duckdb")
     upload_dir: str = str(UPLOAD_DIR)
     max_upload_mb: int = 200
+    # Refuse uploads/imports once the data disk is more than this % full (0 = off)
+    disk_usage_limit_pct: int = 80
     default_row_limit: int = 10_000
     query_timeout_s: int = 30
     # DuckDB resource limits (spec §55: 4 CPU / 20 GB box shared with other services)
