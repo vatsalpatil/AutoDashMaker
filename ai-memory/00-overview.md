@@ -1,6 +1,6 @@
 # 00 — Overview (stable facts)
 
-**AutoDashMaker**: AI-native data analytics platform (rebuilt from "SmartDashBoardMaker").
+**AutoDashMaker** (user-facing brand: **Dashtor**, set in `frontend/src/lib/brand.ts`): AI-native data analytics platform (rebuilt from "SmartDashBoardMaker").
 Pipeline: **Source → Dataset → Query → Chart → Dashboard**, with data-quality scoring, lineage,
 a semantic layer (metrics/definitions), natural-language "Ask", alerts, and a pluggable AI provider layer
 (Gemini free tier default). Single-user local mode; auth/RBAC deliberately deferred (schema already has

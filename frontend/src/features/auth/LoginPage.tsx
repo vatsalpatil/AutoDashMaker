@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react';
+import { BRAND_NAME } from '@/lib/brand';
 import { LogoIcon } from '@/components/common/LogoIcon';
 import { Button, Card, TextInput } from '@/components/ui/kit';
 import { ErrorBanner } from '@/components/common/ErrorBanner';
@@ -38,7 +39,7 @@ export function LoginPage() {
       <Card className="w-full max-w-sm space-y-4 p-6">
         <div className="flex items-center gap-2">
           <span className="grid size-8 place-items-center rounded-lg bg-primary text-primary-foreground"><LogoIcon className="size-5" /></span>
-          <span className="font-semibold">AutoDashMaker</span>
+          <span className="font-semibold">{BRAND_NAME}</span>
         </div>
         <h1 className="text-lg font-semibold">{title}</h1>
         <form onSubmit={onSubmit} className="space-y-3">

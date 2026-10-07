@@ -1,15 +1,16 @@
 import { ArrowRight } from 'lucide-react';
+import { BRAND_NAME } from '@/lib/brand';
 import { Button, Card } from '@/components/ui/kit';
 import { P } from '../GuideParts';
 
 export function WelcomeSection({ onStart }: { onStart: () => void }) {
   return (
   <div className="flex flex-col gap-4">
-    <h1 className="text-2xl font-bold text-foreground">Welcome to AutoDashMaker</h1>
+    <h1 className="text-2xl font-bold text-foreground">Welcome to {BRAND_NAME}</h1>
     <Card padding={4}>
       <div className="flex flex-col gap-3">
         <P>
-          AutoDashMaker is an <strong>AI-native data platform</strong>. It takes you from raw data to answers
+          {BRAND_NAME} is an <strong>AI-native data platform</strong>. It takes you from raw data to answers
           and live dashboards in one place:
         </P>
         <div className="flex flex-wrap items-center gap-2 text-sm text-foreground">

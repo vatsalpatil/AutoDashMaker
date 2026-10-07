@@ -15,7 +15,7 @@ UPLOAD_DIR = BACKEND_ROOT / "uploads"
 
 
 class Settings(BaseSettings):
-    app_name: str = "AutoDashMaker"
+    app_name: str = "Dashtor"
     # Analytical engine (DuckDB file holding ingested datasets as tables)
     analytics_db: str = str(DATA_DIR / "analytics.duckdb")
     # Metadata store (DuckDB too, per project decision; swappable to Postgres)

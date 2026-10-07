@@ -1,4 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom';
+import { BRAND_NAME } from '@/lib/brand';
 import { LogOut, Moon, Sun } from 'lucide-react';
 import { LogoIcon } from '@/components/common/LogoIcon';
 import {
@@ -24,7 +25,7 @@ export function AppSidebar() {
       <SidebarHeader className="p-1">
         <div className="flex h-8 items-center gap-2 pl-2 pr-5">
           <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-primary text-primary-foreground"><LogoIcon className="size-4" /></span>
-          <span className="truncate text-sm font-semibold tracking-tight group-data-[collapsible=icon]:hidden">AutoDashMaker</span>
+          <span className="truncate text-sm font-semibold tracking-tight group-data-[collapsible=icon]:hidden">{BRAND_NAME}</span>
         </div>
       </SidebarHeader>
       <SidebarContent>
