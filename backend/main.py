@@ -1,14 +1,15 @@
 """AutoDashMaker — FastAPI entrypoint."""
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.core.auth import require_user
 from app.core.config import settings
 from app.core.store import store  # noqa: F401  (initializes metadata schema)
 from app.routers import (
     datasources, datasets, queries, charts, dash_ai, dashboards, quality, ai, studio, semantic,
-    alerts, why, transforms, audit, attention, reports, qb,
+    alerts, why, transforms, audit, attention, reports, qb, auth,
 )
 from app.services.alerts import scheduler_loop
 from app.services.refresh import refresh_loop
@@ -36,7 +37,8 @@ app.add_middleware(
 
 for r in (datasources, datasets, queries, charts, dash_ai, dashboards, quality, ai, studio,
           semantic, alerts, why, transforms, audit, attention, reports, qb):
-    app.include_router(r.router)
+    app.include_router(r.router, dependencies=[Depends(require_user)])
+app.include_router(auth.router)  # public: /api/auth/config; /api/auth/me checks the token itself
 
 
 @app.get("/api/health")

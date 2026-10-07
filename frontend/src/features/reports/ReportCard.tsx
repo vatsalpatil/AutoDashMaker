@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { downloadFile } from '@/lib/auth';
 import { ChevronDown, ChevronUp, Download, Play, Trash2 } from 'lucide-react';
 import { ErrorBanner } from '@/components/common/ErrorBanner';
 import { Loading } from '@/components/common/Loading';
@@ -64,7 +65,7 @@ export function ReportCard({ report, onChanged }: { report: Report; onChanged: (
                     <td className="px-3 py-1.5"><StatusBadge status={r.status} /></td>
                     <td className="px-3 py-1.5">{r.row_count}</td>
                     <td className="max-w-xs truncate px-3 py-1.5 text-muted-foreground" title={r.message}>{r.message}</td>
-                    <td className="px-3 py-1.5 text-right">{r.file_name && <a href={`/api/reports/runs/${r.id}/download`} className="inline-flex items-center gap-1 text-primary hover:underline"><Download className="size-3.5" /> CSV</a>}</td>
+                    <td className="px-3 py-1.5 text-right">{r.file_name && <button onClick={() => void downloadFile(`/api/reports/runs/${r.id}/download`, r.file_name ?? 'report.csv')} className="inline-flex items-center gap-1 text-primary hover:underline"><Download className="size-3.5" /> CSV</button>}</td>
                   </tr>
                 ))}
               </tbody>

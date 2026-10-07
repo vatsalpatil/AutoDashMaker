@@ -1,4 +1,5 @@
 // Small fetch wrapper for the AutoDashMaker API.
+import { authFetch } from '@/lib/auth';
 
 const BASE = '/api';
 
@@ -12,7 +13,7 @@ async function request<T>(method: string, path: string, body?: unknown, isForm =
       init.body = JSON.stringify(body);
     }
   }
-  const res = await fetch(`${BASE}${path}`, init);
+  const res = await authFetch(`${BASE}${path}`, init);
   if (!res.ok) {
     let detail = `${res.status} ${res.statusText}`;
     try {

@@ -1,10 +1,11 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { Moon, Sun } from 'lucide-react';
+import { LogOut, Moon, Sun } from 'lucide-react';
 import { LogoIcon } from '@/components/common/LogoIcon';
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarMenu,
   SidebarMenuButton, SidebarMenuItem, useSidebar,
 } from '@/components/ui/sidebar';
+import { useAuth } from '@/features/auth/AuthProvider';
 import { useIsDark } from '@/hooks/useIsDark';
 import { toggleDarkMode } from '@/lib/theme';
 import { GROUPS, NAV } from './nav';
@@ -15,6 +16,7 @@ export function AppSidebar() {
   const { pathname } = useLocation();
   const { isMobile, setOpenMobile } = useSidebar();
   const dark = useIsDark();
+  const auth = useAuth();
   const active = (to: string, end?: boolean) => (end ? pathname === to : pathname === to || pathname.startsWith(`${to}/`));
 
   return (
@@ -53,6 +55,14 @@ export function AppSidebar() {
               <span>{dark ? 'Light mode' : 'Dark mode'}</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
+          {auth.enabled && (
+            <SidebarMenuItem>
+              <SidebarMenuButton tooltip={`Sign out ${auth.email ?? ''}`} onClick={auth.signOut}>
+                <LogOut />
+                <span className="truncate">Sign out{auth.email ? ` (${auth.email})` : ''}</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          )}
         </SidebarMenu>
       </SidebarFooter>
       <SidebarResizeRail />

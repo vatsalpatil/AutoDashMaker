@@ -23,6 +23,7 @@
     "@headless-tree/core": "^1.7.0",
     "@headless-tree/react": "^1.7.0",
     "@lezer/highlight": "^1.2.5",
+    "@supabase/supabase-js": "^2.117.2",
     "@tanstack/react-table": "^9.2.4",
     "@tanstack/react-virtual": "^3.14.13",
     "@uiw/react-codemirror": "^4.25.12",

@@ -41,6 +41,12 @@ class Settings(BaseSettings):
     default_ai_provider: str = "gemini"
     default_ai_model: str = "gemini-2.0-flash"
 
+    # Authentication (Supabase Auth JWTs). Off by default = single-user local mode.
+    auth_enabled: bool = False
+    supabase_url: str = ""            # e.g. https://xyz.supabase.co or your self-hosted URL
+    supabase_anon_key: str = ""       # public key; served to the browser via /api/auth/config
+    supabase_jwt_secret: str = ""     # legacy HS256 projects; empty -> verify via JWKS (asymmetric keys)
+
     class Config:
         env_file = str(BACKEND_ROOT / ".env")
         extra = "ignore"

@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { authFetch } from '@/lib/auth';
 import { Loader2, Play, Square, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/kit';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
@@ -37,7 +38,7 @@ export function SsePanel() {
     abort.current = ctl;
     setRunning(true);
     try {
-      const res = await fetch('/api/studio/stream', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: url.trim(), seconds: 120 }), signal: ctl.signal });
+      const res = await authFetch('/api/studio/stream', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: url.trim(), seconds: 120 }), signal: ctl.signal });
       if (!res.ok || !res.body) throw new Error((await res.text()) || `HTTP ${res.status}`);
       const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
       let buf = '';

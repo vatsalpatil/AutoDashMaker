@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { authFetch } from '@/lib/auth';
 import { useLibrary, type LibItem } from '@/hooks/useLibrary';
 import { readStorage, useLocalStorage } from '@/hooks/useLocalStorage';
 
@@ -126,7 +127,7 @@ export function useAgent(getContext: () => AgentContext, actions: NotebookAction
     setBusy(true);
     const t0 = Date.now();
     try {
-      const res = await fetch('/api/ai/agent', {
+      const res = await authFetch('/api/ai/agent', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: ctl.signal,
         body: JSON.stringify({ task: text, mode: prefs.mode, history, active_sql: ctx.activeSql, error: ctx.error, cells: ctx.cells }),
       });
