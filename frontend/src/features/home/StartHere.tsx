@@ -14,7 +14,7 @@ export function StartHere() {
     nav(`/datasets/${ds.id}`);
   });
   return (
-    <section className="mx-auto flex w-full max-w-2xl flex-col gap-3 rounded-2xl border bg-card p-5 shadow-sm">
+    <section className="flex flex-col gap-3 rounded-xl border bg-card p-5 shadow-xs">
       <div>
         <h2 className="text-base font-semibold">Start with your data</h2>
         <p className="text-sm text-muted-foreground">Drop a file and you can ask questions about it in seconds.</p>
