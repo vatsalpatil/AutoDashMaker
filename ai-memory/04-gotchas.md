@@ -48,3 +48,6 @@
 - Testing a second backend against `backend/data/*.duckdb` fails on Windows with 'file is being used by another process' while the user's server runs: copy both DBs to `backend/scratch/` and set METADATA_DB/ANALYTICS_DB.
 - Free reasoning models (OpenRouter nemotron) write their thinking BEFORE the JSON and can hit `max_tokens` before answering; always parse the LAST JSON object, give formula calls >= 2500 tokens, and salvage a stated 'Expression: `...`'. Don't validate with a scanning query on linked 1M-row tables (3-20 s): use `LIMIT 0` or skip when the schema already guarantees the columns.
 - Testing against the real `backend/data/*.duckdb` while the dev server runs fails with a file-lock IO error (qb from-sql then reports 'wrapped'); use a temp DB like tests/test_qb_import.py or restart the server.
+
+## Nixpacks + Caddy
+Never add `caddy` to `nixPkgs` when the app has a Caddyfile: Nixpacks adds it itself and the duplicate fails with 'Unable to build profile. There is a conflict ... caddy-api.service'.

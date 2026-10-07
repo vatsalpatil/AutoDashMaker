@@ -1,10 +1,8 @@
 # Dokploy service "frontend": Build Type = Nixpacks, Base Directory = /frontend
 # Builds the Vite app, then Caddy serves dist/ and proxies /api to the backend (same origin, no CORS).
+# Do NOT list caddy in nixPkgs: Nixpacks detects ./Caddyfile and installs Caddy itself (listing it too conflicts).
 [variables]
 NIXPACKS_NODE_VERSION = "22"
-
-[phases.setup]
-nixPkgs = ["...", "caddy"]
 
 [phases.install]
 cmds = ["npm ci"]
