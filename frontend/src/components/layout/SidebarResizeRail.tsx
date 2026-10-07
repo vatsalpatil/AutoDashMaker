@@ -42,16 +42,16 @@ export function SidebarResizeRail() {
       <button type="button" aria-label="Resize sidebar" title="Drag to resize"
         tabIndex={-1} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp}
         className="absolute inset-0 flex cursor-col-resize touch-none after:absolute after:inset-y-0 after:left-1/2 after:w-0.5 after:transition-colors hover:after:bg-primary/60 active:after:bg-primary" />
-      {/* expand / collapse tab shaped like a bell curve lying on the sidebar border (both tails run tangent to it). Collapsed: it pokes out
+      {/* expand / collapse tab: one smooth S-curve bulge lying on the sidebar border (both ends run tangent to it, no point), as tall as the logo row. Collapsed: it pokes out
           to the right of the rail; expanded: it moves inside the navbar (mirrored, pointing left). Hover changes its colour, nothing moves. */}
       {(() => {
         const open = state === 'expanded';
         return (
           <button type="button" onClick={toggleSidebar} aria-label={open ? 'Collapse sidebar' : 'Expand sidebar'} title={open ? 'Collapse sidebar' : 'Expand sidebar'}
-            className={cn('group absolute left-1/2 top-0 flex h-10 w-4 items-center text-primary drop-shadow-md transition-colors hover:text-[color-mix(in_oklab,var(--primary)_70%,black)]',
+            className={cn('group absolute left-1/2 top-0 flex h-14 w-4 items-center text-primary drop-shadow-md transition-colors hover:text-[color-mix(in_oklab,var(--primary)_70%,black)]',
               open && '-translate-x-full justify-end')}>
-            <svg viewBox="0 0 18 64" preserveAspectRatio="none" className={cn('absolute inset-0 size-full', open && '-scale-x-100')} aria-hidden="true">
-              <path d="M0 0C0 6 1.5 12 4 18C5.5 24 17 25 17 32C17 39 5.5 40 4 46C1.5 52 0 58 0 64Z" fill="currentColor" />
+            <svg viewBox="0 0 17 56" preserveAspectRatio="none" className={cn('absolute inset-0 size-full', open && '-scale-x-100')} aria-hidden="true">
+              <path d="M0 0C0 16 17 12 17 28C17 44 0 40 0 56Z" fill="currentColor" />
             </svg>
             <span className={cn("relative grid h-full w-2.5 place-items-center text-primary-foreground", open ? "mr-[5px]" : "ml-[3px]")}>
               {open ? <ChevronLeft className="size-3.5" /> : <ChevronRight className="size-3.5" />}
