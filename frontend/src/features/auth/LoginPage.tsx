@@ -38,7 +38,7 @@ export function LoginPage() {
     <div className="grid min-h-svh place-items-center bg-background p-4">
       <Card className="w-full max-w-sm space-y-4 p-6">
         <div className="flex items-center gap-2">
-          <span className="grid size-8 place-items-center rounded-lg bg-primary text-primary-foreground"><LogoIcon className="size-5" /></span>
+          <LogoIcon className="size-9" />
           <span className="font-semibold">{BRAND_NAME}</span>
         </div>
         <h1 className="text-lg font-semibold">{title}</h1>

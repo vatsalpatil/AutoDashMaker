@@ -24,7 +24,7 @@ export function AppSidebar() {
     <Sidebar collapsible="icon" className="z-30">
       <SidebarHeader className="p-1">
         <div className="flex h-8 items-center gap-2 pl-2 pr-5">
-          <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-primary text-primary-foreground"><LogoIcon className="size-4" /></span>
+          <LogoIcon className="size-7 shrink-0" />
           <span className="truncate text-sm font-semibold tracking-tight group-data-[collapsible=icon]:hidden">{BRAND_NAME}</span>
         </div>
       </SidebarHeader>
