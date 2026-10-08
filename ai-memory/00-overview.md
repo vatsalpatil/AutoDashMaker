@@ -22,6 +22,7 @@ cd backend
 cd frontend
 npm run dev
 ```
+**One click on Windows: double-click `start-local.bat`** (git pull on Dashtor_First, venv + pip + npm install, starts backend :8000 and frontend :5174; stops if you have uncommitted tracked changes).
 Local screen on the LIVE server's data (sign in with your account): `cd frontend && npm run dev:online` (API_TARGET in `frontend/.env.online`).
 API docs: http://127.0.0.1:8000/docs (or your uvicorn port)/docs · UI: http://localhost:5174
 `python backend/main.py` uses port 8000 (reload=True) = the proxy default; uvicorn examples use 8001, so set `API_TARGET` when using them.
