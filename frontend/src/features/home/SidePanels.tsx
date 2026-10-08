@@ -45,16 +45,16 @@ export function TryAsking({ questions, onAsk }: { questions: string[]; onAsk: ()
   );
 }
 
+/** One compact row of shortcuts under the stat tiles. */
 export function QuickActions() {
   return (
-    <Panel title="Shortcuts">
-      <div className="grid grid-cols-2 gap-2 p-3">
-        {QUICK_ACTIONS.map(({ to, title, text, icon: Icon }) => (
-          <Link key={to} to={to} title={text} className="group flex items-center gap-2 rounded-lg border px-2.5 py-2 text-sm transition-colors hover:border-primary hover:text-primary">
-            <Icon className="size-4 shrink-0 text-primary" /><span className="truncate">{title}</span>
-          </Link>
-        ))}
-      </div>
-    </Panel>
+    <section aria-label="Shortcuts" className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+      {QUICK_ACTIONS.map(({ to, title, text, icon: Icon }) => (
+        <Link key={to} to={to} title={text} className="group flex items-center gap-2.5 rounded-xl border bg-card px-3 py-2.5 text-sm font-medium shadow-xs transition-colors hover:border-primary hover:text-primary">
+          <span className="grid size-7 shrink-0 place-items-center rounded-md bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground"><Icon className="size-4" /></span>
+          <span className="truncate">{title}</span>
+        </Link>
+      ))}
+    </section>
   );
 }

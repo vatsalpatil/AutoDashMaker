@@ -13,7 +13,7 @@ export function HomeHeader({ hasData }: { hasData: boolean }) {
   const style = { '--tilt-x': `${tilt.x}deg`, '--tilt-y': `${tilt.y}deg` } as CSSProperties;
   return (
     <header
-      className="relative overflow-hidden rounded-2xl border bg-card px-6 py-8 shadow-xs sm:px-8 sm:py-10 md:min-h-64"
+      className="relative overflow-hidden rounded-2xl border bg-card px-6 py-8 shadow-xs sm:px-8 sm:py-10 md:min-h-72"
       style={style}
       onMouseMove={onMove}
       onMouseLeave={() => setTilt({ x: 0, y: 0 })}

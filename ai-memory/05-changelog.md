@@ -139,3 +139,4 @@ Format: `YYYY-MM-DD · tool · files · what + why`
 2026-10-08 · frontend/node_modules · ran npm install (@supabase/supabase-js was missing, Vite import error)
 2026-10-08 · local checkout · fast-forwarded Dashtor_First to origin (was 11 behind: Home page, logo, lazy PyJWT); re-ran npm/pip install
 2026-10-08 · features/home/{HeroScene,CatchGame,useCatchGame,HomeHeader}, pages/HomePage, index.css · animated glass-card hero + 'Catch the data' mini game filling the empty left column; columns now stretch equal height. verify --quick failed only on disk 91% full (tests hit disk_usage_limit_pct=80), not on this change
+2026-10-08 · features/home/{HeroGame(new),HeroScene,SidePanels,HomeHeader}, pages/HomePage · game moved from a bottom panel into the hero; Shortcuts became one compact row under the stat tiles; removed CatchGame.tsx
