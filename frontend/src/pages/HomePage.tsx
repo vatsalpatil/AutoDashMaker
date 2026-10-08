@@ -2,7 +2,6 @@ import { useNavigate } from 'react-router-dom';
 import { AttentionPanel } from '@/components/AttentionPanel';
 import { Loading } from '@/components/common/Loading';
 import { AskBar } from '@/features/home/AskBar';
-import { ChartPreviews } from '@/features/home/ChartPreviews';
 import { ExampleQuestions, HowItWorks } from '@/features/home/GettingStarted';
 import { HomeHeader } from '@/features/home/HomeHeader';
 import { RecentWork } from '@/features/home/RecentWork';
@@ -43,7 +42,7 @@ export default function HomePage() {
           {hasData ? <TryAsking questions={questions} onAsk={() => nav('/ask')} /> : <ExampleQuestions />}
         </div>
       </div>
-      {hasData && <><ChartPreviews charts={charts} /><AttentionPanel /></>}
+      {hasData && <AttentionPanel />}
     </div>
   );
 }
