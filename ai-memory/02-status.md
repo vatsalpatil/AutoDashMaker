@@ -42,3 +42,6 @@ persist refresh backoff across restarts · persistent engine connection / Store 
 
 ## Deployed (2026-10-07)
 Dokploy on Oracle (backend + frontend Nixpacks, self-hosted Supabase). Branch Dashtor_First. Open: replace the exposed Oracle SSH key; live sign-up untested; per-user disk quota; Supabase email (SMTP).
+
+## 2026-10-08 (late)
+Metrics hub redesigned (live values, builder, suggestions). Settings is tabbed (AI/Appearance/System/Backup). Backend now runs from `backend/.venv` (3.12) - restarted by me after the old global-Python worker wedged. Disk is 91% full vs the 80% upload limit: set `DISK_USAGE_LIMIT_PCT=95` in `backend/.env` or free space (tests + uploads fail otherwise). Metrics/dimensions are not yet used by charts/alerts selectors (only Ask + the hub).
