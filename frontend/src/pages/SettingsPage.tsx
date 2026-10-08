@@ -1,33 +1,37 @@
-import { useEffect, useState } from 'react';
-import { Card } from '@/components/ui/kit';
-import { api } from '@/lib/api';
-import type { Health } from '@/lib/types';
+import { lazy, Suspense } from 'react';
+import { Loading } from '@/components/common/Loading';
+import { Tab, TabList } from '@/components/ui/kit';
 import AiSettings from '@/features/ai/AiSettings';
 import ThemeSettings from '@/features/settings/ThemeSettings';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
 
+const SystemSettings = lazy(() => import('@/features/settings/SystemSettings'));
+const BackupSettings = lazy(() => import('@/features/settings/BackupSettings'));
+
+const TABS = [
+  { id: 'ai', label: 'AI models' },
+  { id: 'appearance', label: 'Appearance' },
+  { id: 'system', label: 'System' },
+  { id: 'backup', label: 'Backup' },
+] as const;
+type TabId = (typeof TABS)[number]['id'];
+
+/** Settings hub: one focused panel per tab (the last tab you used is remembered). */
 export default function SettingsPage() {
-  const [health, setHealth] = useState<Health | null>(null);
-  useEffect(() => {
-    api.get<Health>('/health').then(setHealth).catch(() => {});
-  }, []);
-
+  const [tab, setTab] = useLocalStorage<TabId>('settings.tab', 'ai');
+  const active: TabId = TABS.some((t) => t.id === tab) ? tab : 'ai';
   return (
-    <div className="flex max-w-4xl flex-col gap-6">
+    <div className="flex max-w-4xl flex-col gap-5">
       <h1 className="text-2xl font-bold">Settings</h1>
-
-      <section className="flex flex-col gap-3">
-        <h2 className="text-lg font-semibold">AI models</h2>
-        <AiSettings />
-      </section>
-
-      <ThemeSettings />
-
-      <Card padding={4}>
-        <h2 className="mb-1 font-semibold">About</h2>
-        <p className="text-sm text-muted-foreground">
-          {health ? `${health.app} v${health.version} — backend ${health.status}` : 'Backend unreachable'}
-        </p>
-      </Card>
+      <TabList value={active} onChange={(v) => setTab(v as TabId)} aria-label="Settings sections">
+        {TABS.map((t) => <Tab key={t.id} value={t.id} label={t.label} />)}
+      </TabList>
+      <Suspense fallback={<Loading />}>
+        {active === 'ai' && <AiSettings />}
+        {active === 'appearance' && <ThemeSettings />}
+        {active === 'system' && <SystemSettings />}
+        {active === 'backup' && <BackupSettings />}
+      </Suspense>
     </div>
   );
 }

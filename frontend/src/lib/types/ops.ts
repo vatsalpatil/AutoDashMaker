@@ -78,3 +78,13 @@ export interface Health {
   app: string;
   version: string;
 }
+
+/** GET /api/system: workspace health, storage, engine limits and cache, for Settings → System. */
+export interface SystemInfo {
+  app: string; version: string; python: string; uptime_s: number; auth_enabled: boolean; workspace: string;
+  disk: { used_pct: number; limit_pct: number; free_gb: number; total_gb: number };
+  files: { analytics_mb: number; metadata_mb: number; uploads_mb: number };
+  limits: { memory: string; threads: number; query_timeout_s: number; max_upload_mb: number; default_row_limit: number };
+  cache: { entries: number; max: number; ttl_s: number };
+  counts: Record<string, number>;
+}

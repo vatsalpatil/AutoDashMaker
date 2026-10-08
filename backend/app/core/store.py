@@ -45,6 +45,12 @@ class Store:
                     con.execute(sql)
                 except Exception:
                     pass  # column already exists
+            # rows written before per-user workspaces have workspace_id NULL: they belong to the legacy default
+            # workspace, otherwise the workspace filter would hide them (idempotent)
+            tables = [r[0] for r in con.execute(
+                "SELECT table_name FROM information_schema.columns WHERE column_name = 'workspace_id'").fetchall()]
+            for t in tables:
+                con.execute(f"UPDATE {t} SET workspace_id = '{DEFAULT_WS}' WHERE workspace_id IS NULL")
 
     def version(self, table: str) -> int:
         return self._versions.get(table, 0)
