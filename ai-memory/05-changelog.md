@@ -134,3 +134,8 @@ Format: `YYYY-MM-DD · tool · files · what + why`
 - 2026-10-07 · backend core/auth.py · PyJWT imported lazily (only with AUTH_ENABLED=true): local mode starts without it, e.g. when launched with the global Python instead of backend/.venv.
 - 2026-10-07 · start-local.bat, ai-memory/00-overview.md · one-click local update+start script for Windows (the assistant cannot reach the user's PC, only GitHub). Written for cmd.exe, not run on Windows by the assistant.
 - 2026-10-08 · scripts/verify.py, verify.bat, start-local-server.bat, ai-memory/00-overview.md (release gate), deploy/DOKPLOY.md (release flow) · localhost-first workflow: staging branch Dashtor_First, server follows 'production' which only moves on the user's 'deploy'; verify script (22 checks incl. login-on isolation test + production build) exits non-zero on any failure.
+2026-10-08 · backend/.env (new, git-ignored) · installed requirements into .venv (PyJWT was missing); added local .env with AUTH_ENABLED=false
+2026-10-08 · backend/.venv · rebuilt on Python 3.12.3 (was 3.11 from hermes runtime); matches nixpacks 3.12
+2026-10-08 · frontend/node_modules · ran npm install (@supabase/supabase-js was missing, Vite import error)
+2026-10-08 · local checkout · fast-forwarded Dashtor_First to origin (was 11 behind: Home page, logo, lazy PyJWT); re-ran npm/pip install
+2026-10-08 · features/home/{HeroScene,CatchGame,useCatchGame,HomeHeader}, pages/HomePage, index.css · animated glass-card hero + 'Catch the data' mini game filling the empty left column; columns now stretch equal height. verify --quick failed only on disk 91% full (tests hit disk_usage_limit_pct=80), not on this change

@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { AttentionPanel } from '@/components/AttentionPanel';
 import { Loading } from '@/components/common/Loading';
+import { CatchGame } from '@/features/home/CatchGame';
 import { AskBar } from '@/features/home/AskBar';
 import { ChartPreviews } from '@/features/home/ChartPreviews';
 import { ExampleQuestions, HowItWorks } from '@/features/home/GettingStarted';
@@ -26,8 +27,8 @@ export default function HomePage() {
   if (datasets.loading && !datasets.data) return <Loading />;
 
   const counts = { datasets: list.length, dashboards: dashboards.length, charts: charts.length, alerts: alerts.filter((a) => a.active).length };
-  // With little to show, the columns stretch to the bottom of the screen (last card grows) instead of leaving the page half empty.
-  const stretch = !hasData ? 'items-stretch [&>div>section:last-child]:flex-1' : 'items-start';
+  // Columns stretch to equal height and each column's last card grows, so no space is left empty (the game fills the left).
+  const stretch = 'items-stretch [&>div>section:last-child]:flex-1';
   return (
     <div className="mx-auto flex min-h-[calc(100svh-5.5rem)] w-full min-w-0 max-w-7xl flex-col gap-4 pb-2">
       <HomeHeader hasData={hasData} />
@@ -36,6 +37,7 @@ export default function HomePage() {
       <div className={cn('grid flex-1 gap-4 lg:grid-cols-3', stretch)}>
         <div className="flex min-w-0 flex-col gap-4 lg:col-span-2">
           {hasData ? <><RecentWork dashboards={dashboards} charts={charts} /><ChartPreviews charts={charts} /></> : <><StartHere /><HowItWorks /></>}
+          <CatchGame />
         </div>
         <div className="flex min-w-0 flex-col gap-4">
           {hasData && <AttentionPanel />}
