@@ -2,15 +2,14 @@
 
 AUTH_ENABLED=false (default) -> every request is the local single user, so dev is unchanged.
 AUTH_ENABLED=true -> requests need `Authorization: Bearer <supabase access token>`.
+PyJWT is imported only when auth is on, so local mode runs without it installed.
 Verification: HS256 with SUPABASE_JWT_SECRET (legacy projects) or, when the secret is empty,
 the project's public JWKS at `<SUPABASE_URL>/auth/v1/.well-known/jwks.json` (ES256/RS256).
 """
 from functools import lru_cache
 
-import jwt
 from fastapi import Header, HTTPException
 from fastapi.concurrency import run_in_threadpool
-from jwt import PyJWKClient
 
 from app.core import tenant
 from app.core.config import settings
@@ -19,11 +18,16 @@ LOCAL_USER = {"id": "local", "email": "local@localhost", "role": "owner"}
 
 
 @lru_cache(maxsize=1)
-def _jwks() -> PyJWKClient:
+def _jwks():
+    from jwt import PyJWKClient
     return PyJWKClient(f"{settings.supabase_url.rstrip('/')}/auth/v1/.well-known/jwks.json", cache_keys=True)
 
 
 def verify_token(token: str) -> dict:
+    try:
+        import jwt
+    except ImportError as e:  # AUTH_ENABLED=true needs: pip install -r requirements.txt
+        raise HTTPException(500, "Server is missing PyJWT (pip install -r backend/requirements.txt)") from e
     try:
         alg = jwt.get_unverified_header(token).get("alg", "")
         if alg == "HS256":

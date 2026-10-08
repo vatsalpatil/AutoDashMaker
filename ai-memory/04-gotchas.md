@@ -58,3 +58,4 @@ Never add `caddy` to `nixPkgs` when the app has a Caddyfile: Nixpacks adds it it
 - New table = add `workspace_id TEXT DEFAULT 'ws_default'` (SCHEMA or MIGRATIONS). Raw `store.execute` is NOT scoped: add `WHERE workspace_id = ?` yourself.
 - Never open files by a user-supplied path: use `netguard.confine_path`; never fetch a user-supplied URL with plain httpx: use `netguard.safe_client`.
 - Test: `python tests/test_tenant.py` (two users, must stay green). `test_refresh` needs real data, `test_remote` needs DuckDB extension downloads (both fail in the sandbox, not bugs).
+- Backend 'ModuleNotFoundError' on start (e.g. jwt): you launched the GLOBAL Python (C:/Program Files/Python312). Use backend\.venv\Scripts\python.exe, or in VS Code pick that interpreter; after pulling new code run 'backend\.venv\Scripts\python.exe -m pip install -r backend\requirements.txt'.
