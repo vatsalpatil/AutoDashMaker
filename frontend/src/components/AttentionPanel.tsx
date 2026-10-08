@@ -11,8 +11,17 @@ const SEVERITY_VARIANT = { high: 'red', medium: 'warning', low: 'neutral' } as c
 export function AttentionPanel() {
   const [report, setReport] = useState<AttentionReport | null>(null);
 
+  // The first answer is the fast report; while the server finishes the deep dashboard scan, check back a few times.
   useEffect(() => {
-    api.get<AttentionReport>('/attention').then(setReport).catch(() => setReport(null));
+    let alive = true;
+    let tries = 0;
+    const load = () => api.get<AttentionReport>('/attention').then((r) => {
+      if (!alive) return;
+      setReport(r);
+      if (r.deep_pending && tries++ < 8) setTimeout(load, 4000);
+    }).catch(() => alive && setReport(null));
+    load();
+    return () => { alive = false; };
   }, []);
 
   if (!report) return null;

@@ -15,6 +15,12 @@ export default defineConfig(({ mode }) => {
     resolve: {
       alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
     },
+    build: {
+      rollupOptions: {
+        // stable vendor chunk: browsers keep it cached across deploys, so only app code is re-downloaded
+        output: { manualChunks: { react: ['react', 'react-dom', 'react-router-dom'] } },
+      },
+    },
     server: {
       port: 5174,
       // changeOrigin: remote hosts (Cloudflare/Traefik) route by Host header

@@ -5,6 +5,7 @@ from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.auth import require_user
+from app.core.compression import ApiGZipMiddleware
 from app.core.config import settings
 from app.core.store import store  # noqa: F401  (initializes metadata schema)
 from app.routers import (
@@ -28,6 +29,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title=settings.app_name, version="2.0.0", lifespan=lifespan)
 
+app.add_middleware(ApiGZipMiddleware, minimum_size=1024)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,

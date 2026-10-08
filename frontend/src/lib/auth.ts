@@ -1,6 +1,6 @@
 // Supabase client bootstrap. Config comes from the backend (/api/auth/config) at runtime,
 // so one built image works for any Supabase project (no VITE_* build-time keys).
-import { createClient, type Session, type SupabaseClient } from '@supabase/supabase-js';
+import type { Session, SupabaseClient } from '@supabase/supabase-js';
 
 export interface AuthConfig { enabled: boolean; supabase_url: string; supabase_anon_key: string }
 
@@ -10,6 +10,8 @@ export async function initAuth(): Promise<{ enabled: boolean; session: Session |
   const res = await fetch('/api/auth/config');
   const cfg = (await res.json()) as AuthConfig;
   if (!cfg.enabled) return { enabled: false, session: null };
+  // loaded only when login is on: local single-user mode never downloads the Supabase client
+  const { createClient } = await import('@supabase/supabase-js');
   client = createClient(cfg.supabase_url, cfg.supabase_anon_key);
   const { data } = await client.auth.getSession();
   return { enabled: true, session: data.session };

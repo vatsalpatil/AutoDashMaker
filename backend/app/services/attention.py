@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import threading
 import time
+from contextvars import copy_context
 from datetime import datetime, timezone
 from typing import Any
 
@@ -20,7 +21,8 @@ SEVERITY_ORDER = {"high": 0, "medium": 1, "low": 2}
 MAX_DASHBOARDS = 10      # bound the deep scan (each widget re-runs its query; cached by the engine)
 REPORT_TTL_S = 60
 _cache: dict[tuple[str, bool], tuple[float, dict[str, Any]]] = {}  # (workspace, deep) -> (time, report)
-_compute_lock = threading.Lock()  # single-flight: one scan at a time
+_compute_lock = threading.Lock()  # single-flight: one deep scan at a time
+_fast_lock = threading.Lock()     # separate, so a running deep scan never blocks the fast report
 
 
 def _item(severity: str, category: str, title: str, detail: str, link: str, **evidence: Any) -> dict[str, Any]:
@@ -91,16 +93,50 @@ def _dashboard_items() -> list[dict[str, Any]]:
     return items
 
 
+_bg_running: set[tuple[str, bool]] = set()
+_bg_lock = threading.Lock()
+
+
+def _refresh_in_background(deep: bool) -> None:
+    """Rebuild the report off the request path (single-flight per workspace), keeping the caller's workspace."""
+    key = (tenant.current(), deep)
+    with _bg_lock:
+        if key in _bg_running:
+            return
+        _bg_running.add(key)
+    ctx = copy_context()
+
+    def work() -> None:
+        try:
+            with _compute_lock:
+                ctx.run(_build_report, deep)
+        except Exception:
+            pass  # a failed scan keeps serving the last report
+        finally:
+            with _bg_lock:
+                _bg_running.discard(key)
+
+    threading.Thread(target=work, daemon=True, name="attention-refresh").start()
+
+
 def attention_report(deep: bool = True) -> dict[str, Any]:
+    """Never makes the caller wait for the deep scan (it re-runs widget queries: seconds on big data).
+
+    Fresh cache -> return it. Stale cache -> return it and refresh in the background (stale-while-revalidate).
+    Cold -> return the fast report now (alerts/freshness/quality) and run the deep scan in the background;
+    the report says `deep_pending` so the UI can poll once the scan has landed.
+    """
     key = (tenant.current(), deep)
     cached = _cache.get(key)
-    if cached and time.monotonic() - cached[0] < REPORT_TTL_S:
+    if cached:
+        if time.monotonic() - cached[0] >= REPORT_TTL_S:
+            _refresh_in_background(deep)
         return cached[1]
-    with _compute_lock:
-        cached = _cache.get(key)  # another request may have finished while we waited
-        if cached and time.monotonic() - cached[0] < REPORT_TTL_S:
-            return cached[1]
-        return _build_report(deep)
+    if not deep:
+        with _fast_lock:
+            return _cache.get(key, (0, None))[1] or _build_report(False)
+    _refresh_in_background(True)
+    return {**attention_report(False), "deep_pending": True}
 
 
 def _build_report(deep: bool) -> dict[str, Any]:

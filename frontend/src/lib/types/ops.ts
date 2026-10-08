@@ -69,6 +69,8 @@ export interface AttentionReport {
   summary: { high: number; medium: number; low: number };
   items: AttentionItem[];
   scope: string;
+  /** true while the server is still running the deep dashboard scan; the fast report is already in `items`. */
+  deep_pending?: boolean;
 }
 
 export interface Health {
