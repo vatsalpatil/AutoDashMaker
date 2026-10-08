@@ -9,6 +9,7 @@ import { ContentDialog } from '@/features/dashboards/ContentDialog';
 import { RefreshContext, useDashboardRefresh } from '@/features/dashboards/dashboardRefresh';
 import { DashboardAiPanel } from '@/features/dashboards/DashboardAiPanel';
 import { DashboardToolbar } from '@/features/dashboards/DashboardToolbar';
+import { FilterViews } from '@/features/dashboards/FilterViews';
 import { FullscreenModal } from '@/features/dashboards/FullscreenModal';
 import { BriefCard, LineageCard } from '@/features/dashboards/InsightPanels';
 import { PageTabs } from '@/features/dashboards/PageTabs';
@@ -52,6 +53,7 @@ export default function DashboardDetailPage() {
       />
       <ErrorBanner message={d.error} />
       {df.bar && <div className="flex flex-wrap items-center gap-2">{df.bar}</div>}
+      <FilterViews dashboardId={d.dashboard.id} query={df.query} active={df.active} onApply={df.setQuery} />
 
       <PageTabs
         pages={d.pages}

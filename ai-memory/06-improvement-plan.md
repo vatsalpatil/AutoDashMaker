@@ -26,3 +26,9 @@ if a milestone fails verification: revert that commit, log why in 04-gotchas.md,
 ## Log (newest last)
 - 2026-10-02 baseline committed (fbdb2c9, tag baseline-before-improvements); branch improve/autonomous created.
 - 2026-10-02 M1-M5b committed (see git log). Open: data .duckdb files tracked in git history (API key) - needs user decision; security-review + final verification done (security-review skill could not run: repo has no origin remote; manual security pass done instead).
+
+## Databricks AI/BI comparison (2026-10-08, from the user's Free Edition workspace, read-only)
+Seen: Dashboards list (chips: Domain/Owned by me/Modified this week/Favorited/Certified/Popular, star, list/grid, sort) · dashboard = Data tab (datasets, relationships, SQL dataset, parameters, result/schema, custom calcs) + pages + global filters + Bookmarks (saved filter states) + Publish/Share + warehouse picker + refresh · Genie agents list · Alerts v2 · SQL editor/Queries/History/Warehouses. The console flags automated browsers, so research stayed read-only.
+- DONE: favorites star + quick chips (All/Favorites/New this week) + favorites-first sort on Dashboards list (`useFavorites`, `QuickChips`); saved filter views per dashboard (`FilterViews`, localStorage).
+- NEXT: dashboard **Data tab** (datasets a dashboard uses: schema + result preview + relationships) · same chips/favorites on Charts + Datasets lists · date-range preset filter widget · Publish/draft state · email subscriptions (scheduled reports) · "Genie spaces" (named Ask contexts with instructions) · query history page.
+- Views/favorites are browser-local; move to a DB table if they must follow the user across devices.

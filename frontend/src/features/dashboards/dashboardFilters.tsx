@@ -80,5 +80,5 @@ export function useDashboardFilterState() {
 
   const api = useMemo<DashboardFilterApi>(() => ({ apply, register, values, pick }), [apply, register, values, pick]);
   const bar = fields.length > 0 ? <Filters fields={fields} query={query} onQueryChange={setQuery} showClear /> : null;
-  return { api, bar, active: !isFilterQueryEmpty(query) };
+  return { api, bar, active: !isFilterQueryEmpty(query), query, setQuery };
 }
