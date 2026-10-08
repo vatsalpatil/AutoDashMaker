@@ -26,7 +26,7 @@ export default function HomePage() {
   if (datasets.loading && !datasets.data) return <Loading />;
 
   const counts = { datasets: list.length, dashboards: dashboards.length, charts: charts.length, alerts: alerts.filter((a) => a.active).length };
-  // Columns stretch to equal height and each column's last card grows, so no space is left empty (no dead space under the shorter one).
+  // Both columns stretch to the same height; the last card of each grows and spreads its rows evenly, so nothing is hollow.
   const stretch = 'items-stretch [&>div>section:last-child]:flex-1';
   return (
     <div className="mx-auto flex min-h-[calc(100svh-5.5rem)] w-full min-w-0 max-w-7xl flex-col gap-4 pb-2">
@@ -36,14 +36,14 @@ export default function HomePage() {
       <QuickActions />
       <div className={cn('grid flex-1 gap-4 lg:grid-cols-3', stretch)}>
         <div className="flex min-w-0 flex-col gap-4 lg:col-span-2">
-          {hasData ? <><RecentWork dashboards={dashboards} charts={charts} /><ChartPreviews charts={charts} /></> : <><StartHere /><HowItWorks /></>}
+          {hasData ? <RecentWork dashboards={dashboards} charts={charts} /> : <><StartHere /><HowItWorks /></>}
         </div>
         <div className="flex min-w-0 flex-col gap-4">
-          {hasData && <AttentionPanel />}
           <DataPanel datasets={list} />
           {hasData ? <TryAsking questions={questions} onAsk={() => nav('/ask')} /> : <ExampleQuestions />}
         </div>
       </div>
+      {hasData && <><ChartPreviews charts={charts} /><AttentionPanel /></>}
     </div>
   );
 }

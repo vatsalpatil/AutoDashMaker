@@ -226,6 +226,9 @@ div.pointer-events-auto.touch-none > .bg-border:hover, div.pointer-events-auto.t
 [data-slot="data-grid-scroll-area"] tr[data-state="selected"] > td { background-color: color-mix(in oklab, var(--primary) 16%, var(--background)) !important; }
 [data-slot="data-grid-scroll-area"] tr[data-state="selected"] > td:first-child { box-shadow: inset 3px 0 0 var(--primary); }
 
+.hero-plot { background:
+  linear-gradient(color-mix(in oklab, var(--border) 70%, transparent) 1px, transparent 1px) 0 0 / 100% 20%,
+  linear-gradient(90deg, color-mix(in oklab, var(--border) 70%, transparent) 1px, transparent 1px) 0 0 / 12.5% 100%; }
 /* ---- Home hero: floating glass cards (HeroScene.tsx) ---- */
 .hero-stage { perspective: 1100px; }
 .hero-deck { position: absolute; inset: 0; transform-style: preserve-3d; transition: transform .3s ease-out;
@@ -251,11 +254,3 @@ div.pointer-events-auto.touch-none > .bg-border:hover, div.pointer-events-auto.t
 @keyframes hero-grow { from { transform: scaleY(0); } }
 @keyframes hero-shimmer { to { background-position: -200% 0; } }
 @media (prefers-reduced-motion: reduce) { .hero-card, .hero-aurora, .hero-title, .hero-dot { animation: none; } .hero-line { animation: none; stroke-dashoffset: 0; } .hero-area { animation: none; opacity: 1; } }
-
-/* ---- Home mini game (CatchGame.tsx) ---- */
-.catch-plot { background:
-  linear-gradient(color-mix(in oklab, var(--border) 70%, transparent) 1px, transparent 1px) 0 0 / 100% 20%,
-  linear-gradient(90deg, color-mix(in oklab, var(--border) 70%, transparent) 1px, transparent 1px) 0 0 / 12.5% 100%; }
-.catch-dot { animation: catch-life var(--life) linear forwards; box-shadow: 0 0 14px color-mix(in oklab, var(--primary) 65%, transparent); }
-.catch-dot:hover { background: color-mix(in oklab, var(--primary) 60%, transparent); }
-@keyframes catch-life { 0% { transform: translate(-50%, -50%) scale(.2); opacity: 0; } 12% { transform: translate(-50%, -50%) scale(1); opacity: 1; } 100% { transform: translate(-50%, -50%) scale(.35); opacity: .25; } }

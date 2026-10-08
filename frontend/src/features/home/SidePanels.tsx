@@ -11,10 +11,10 @@ export function DataPanel({ datasets }: { datasets: Dataset[] }) {
     <Panel title="Your data" to="/sources" linkLabel="Manage">
       {datasets.length === 0
         ? <p className="px-4 py-4 text-sm text-muted-foreground">No datasets yet.</p>
-        : <ul className="divide-y">
+        : <ul className="flex flex-1 flex-col divide-y">
             {datasets.slice(0, 6).map((d) => (
-              <li key={d.id}>
-                <Link to={`/datasets/${d.id}`} className="group flex items-center gap-2.5 px-4 py-2 transition-colors hover:bg-accent/50">
+              <li key={d.id} className="flex-1">
+                <Link to={`/datasets/${d.id}`} className="group flex h-full items-center gap-2.5 px-4 py-2 transition-colors hover:bg-accent/50">
                   <Database className="size-4 shrink-0 text-muted-foreground" />
                   <span className="min-w-0 flex-1 truncate text-sm font-medium group-hover:text-primary" title={d.name}>{d.name}</span>
                   <span className="shrink-0 text-xs text-muted-foreground">{fmt(d.row_count)} rows</span>
@@ -32,10 +32,10 @@ export function TryAsking({ questions, onAsk }: { questions: string[]; onAsk: ()
   if (!questions.length) return null;
   return (
     <Panel title="Try asking">
-      <ul className="divide-y">
+      <ul className="flex flex-1 flex-col divide-y">
         {questions.slice(0, 4).map((q) => (
-          <li key={q}>
-            <button onClick={() => { sendToAsk(q); onAsk(); }} className="flex w-full items-start gap-2.5 px-4 py-2 text-left text-sm transition-colors hover:bg-accent/50 hover:text-primary">
+          <li key={q} className="flex-1">
+            <button onClick={() => { sendToAsk(q); onAsk(); }} className="flex h-full w-full items-center gap-2.5 px-4 py-2 text-left text-sm transition-colors hover:bg-accent/50 hover:text-primary">
               <Sparkles className="mt-0.5 size-3.5 shrink-0 text-primary" /><span>{q}</span>
             </button>
           </li>
