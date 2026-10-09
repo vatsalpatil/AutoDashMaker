@@ -51,8 +51,8 @@ def _admin_headers() -> dict[str, str]:
     return {"apikey": settings.supabase_service_key, "Authorization": f"Bearer {settings.supabase_service_key}"}
 
 
-def find_user_id(email: str) -> str | None:
-    """Account id for an email (admin API has no email filter, so scan the user list; fine at this size)."""
+def find_user(email: str) -> dict | None:
+    """The account for an email (admin API has no email filter, so scan the user list; fine at this size)."""
     for page in range(1, 11):
         try:
             r = httpx.get(f"{_base()}/admin/users", params={"page": page, "per_page": 200}, headers=_admin_headers(), timeout=15)
@@ -63,10 +63,15 @@ def find_user_id(email: str) -> str | None:
         users = r.json().get("users", [])
         for u in users:
             if (u.get("email") or "").lower() == email:
-                return u["id"]
+                return u
         if len(users) < 200:
             return None
     return None
+
+
+def find_user_id(email: str) -> str | None:
+    u = find_user(email)
+    return u["id"] if u else None
 
 
 def set_password(user_id: str, password: str) -> None:

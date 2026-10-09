@@ -257,4 +257,25 @@ for _ in range(25):
     r = c.post("/api/auth/password/forgot", json={"email": "flood@x.com"})
 assert r.status_code == 429 and "10 minute" in r.json()["detail"], r.text
 
+# --- 11. a failed sign-in says what is actually wrong
+gotrue.password_login = fake_login          # always 'invalid_credentials' unless the password is "right"
+accounts = {"has@x.com": {"id": "u1", "app_metadata": {"providers": ["email"]}},
+            "g@x.com": {"id": "u2", "app_metadata": {"providers": ["google"]}}}
+gotrue.find_user = lambda email: accounts.get(email)
+now[0] += 5000
+
+
+def why(email):
+    r = c.post("/api/auth/login", json={"email": email, "password": "bad"})
+    assert r.status_code == 401, r.text
+    return r.json()["detail"]
+
+
+assert why("nobody@x.com") == "No account found for this email. Create an account first."
+assert "Google" in why("g@x.com")
+assert why("has@x.com") == "Wrong email or password."
+settings.supabase_service_key = ""                                       # without the admin key it can only say "wrong"
+assert why("nobody@x.com") == "Wrong email or password."
+settings.supabase_service_key = "service-key"
+
 print("auth hardening tests OK")

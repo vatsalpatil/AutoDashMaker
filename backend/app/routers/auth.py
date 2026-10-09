@@ -51,7 +51,7 @@ async def login(body: LoginIn, request: Request):
     if err.get("error_code") == "invalid_credentials":
         throttle.fail(*keys)
         throttle.check(*keys)
-        raise HTTPException(401, "Wrong email or password.")
+        raise HTTPException(401, await run_in_threadpool(_why_failed, email))
     if err.get("error_code") == "email_not_confirmed":
         raise HTTPException(403, "Please confirm your email first: open the link we sent you.")
     raise HTTPException(r.status_code if r.status_code < 500 else 502, err.get("msg") or "Sign-in failed. Please try again.")
@@ -76,3 +76,17 @@ async def password_forgot(body: ForgotIn, request: Request):
 @router.post("/password/reset")
 async def password_reset_confirm(body: ResetIn, request: Request):
     return await run_in_threadpool(password_reset.confirm, body.email, body.code, body.password, _client_ip(request))
+
+
+def _why_failed(email: str) -> str:
+    """Say what is actually wrong (no account / Google-only account / wrong password). Every failed try still counts
+    towards the lockout, so this can't be used to scan for accounts quickly. Without the service key we can only say 'wrong'."""
+    if not gotrue.email_change_enabled():
+        return "Wrong email or password."
+    user = gotrue.find_user(email)
+    if user is None:
+        return "No account found for this email. Create an account first."
+    providers = (user.get("app_metadata") or {}).get("providers") or []
+    if providers and "email" not in providers:
+        return "This account signs in with Google. Use Continue with Google."
+    return "Wrong email or password."

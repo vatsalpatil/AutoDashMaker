@@ -108,6 +108,9 @@ export function LoginPage({ notice = null }: { notice?: string | null }) {
                   autoComplete={mode === 'signin' ? 'current-password' : 'new-password'} onChange={setPassword} />
               )}
               <ErrorBanner message={error} />
+              {mode === 'signin' && /no account/i.test(error ?? '') && (
+                <Button variant="primary" className="w-full" label="Create an account" onClick={() => go('signup')} />
+              )}
               {unconfirmed && (
                 <Button className="w-full" label={resending ? 'Sending…' : 'Resend the confirmation email'} onClick={() => resend()} isDisabled={resending || !email} />
               )}
