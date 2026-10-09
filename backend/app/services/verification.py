@@ -18,7 +18,7 @@ from fastapi import HTTPException
 
 from ..core.config import settings
 from ..core.store import store
-from . import delivery, throttle
+from . import delivery, email_templates, throttle
 
 CODE_TTL_S = 600
 RESEND_COOLDOWN_S = 60
@@ -123,9 +123,13 @@ def issue(user: dict[str, Any], channel: str, target: str, purpose: str = "verif
     cid = uuid.uuid4().hex[:12]
     store.execute("INSERT INTO verification_codes (id, user_id, channel, target, code_hash, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
                   [cid, user["id"], channel, target, _hash(user["id"], channel, target, code), now, now + timedelta(seconds=CODE_TTL_S)])
-    text = f"Your Dashtor {purpose} code is {code}. It expires in {CODE_TTL_S // 60} minutes. If you didn't ask for it, ignore this message."
+    minutes = CODE_TTL_S // 60
     try:
-        mode = delivery.send_email(target, f"Your Dashtor {purpose} code", text) if channel.startswith("email") else delivery.send_sms(target, text)
+        if channel.startswith("email"):  # branded HTML + plain-text fallback
+            subject, text, html = email_templates.code_email(purpose, code, minutes)
+            mode = delivery.send_email(target, subject, text, html)
+        else:
+            mode = delivery.send_sms(target, f"Your Dashtor {purpose} code is {code}. It expires in {minutes} minutes. If you didn't ask for it, ignore this message.")
     except delivery.DeliveryError as e:
         store.execute("UPDATE verification_codes SET consumed_at = ? WHERE id = ?", [now, cid])  # unusable: nothing was delivered
         raise HTTPException(502, str(e)) from e

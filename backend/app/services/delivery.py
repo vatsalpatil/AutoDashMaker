@@ -26,13 +26,16 @@ def sms_mode() -> str:
     return "twilio" if settings.sms_provider == "twilio" and settings.twilio_account_sid else "console"
 
 
-def send_email(to: str, subject: str, body: str) -> str:
+def send_email(to: str, subject: str, body: str, html: str | None = None) -> str:
+    """Plain text always; with `html` the message is multipart, so mail apps that can't show HTML fall back to the text."""
     if email_mode() == "console":
         log.warning("[verify:email] to=%s subject=%r body=%r", to, subject, body)
         return "console"
     msg = EmailMessage()
     msg["From"], msg["To"], msg["Subject"] = settings.smtp_from or settings.smtp_user, to, subject
     msg.set_content(body)
+    if html:
+        msg.add_alternative(html, subtype="html")
     try:
         with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=15) as s:
             s.starttls()

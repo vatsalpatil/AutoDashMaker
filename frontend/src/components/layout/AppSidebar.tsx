@@ -59,9 +59,9 @@ export function AppSidebar() {
           </SidebarMenuItem>
           {auth.enabled && (
             <SidebarMenuItem>
-              <SidebarMenuButton tooltip={`Sign out ${auth.email ?? ''}`} onClick={auth.signOut}>
+              <SidebarMenuButton tooltip="Sign out" onClick={auth.signOut}>
                 <LogOut />
-                <span className="truncate">Sign out{auth.email ? ` (${auth.email})` : ''}</span>
+                <span className="truncate">Sign out</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
           )}

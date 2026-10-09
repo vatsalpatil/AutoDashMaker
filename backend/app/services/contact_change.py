@@ -14,7 +14,7 @@ from fastapi import HTTPException
 
 from ..core.config import settings
 from ..core.store import store
-from . import delivery, gotrue, verification as v
+from . import delivery, email_templates, gotrue, verification as v
 
 EMAIL = re.compile(r"^[^@\s]{1,64}@[^@\s]{1,255}\.[^@\s]{2,}$")
 
@@ -65,8 +65,8 @@ def start(user: dict[str, Any], channel: str, new_value: str) -> dict[str, Any]:
         raise HTTPException(409, "That number is already verified on another account.")
     if channel == "email" and store.execute("SELECT 1 FROM user_contacts WHERE lower(email) = ? AND user_id <> ?", [target, user["id"]]):
         raise HTTPException(409, "That email address is already in use.")
-    sent_new = v.issue(user, channel, target)
-    sent_proof = v.issue(user, proof, proof_target)
+    sent_new = v.issue(user, channel, target, purpose="change")
+    sent_proof = v.issue(user, proof, proof_target, purpose="change")
     return {"new": sent_new, "proof": sent_proof}
 
 
@@ -92,8 +92,10 @@ def finish(user: dict[str, Any], channel: str, proof_code: str, new_code: str) -
     v.consume(proof_row)
     what = "email address" if channel == "email" else "mobile number"
     try:  # best effort: the change is already done
-        delivery.send_email(old_email, f"Your Dashtor {what} was changed",
-                            f"The {what} on your Dashtor account was changed to {v.mask(channel, target)}. If this wasn't you, contact support now.")
+        subject, text, html = email_templates.notice_email(
+            f"Your {what} was changed",
+            f"The {what} on your Dashtor account was changed to {v.mask(channel, target)}. If this wasn't you, contact support now.")
+        delivery.send_email(old_email, subject, text, html)
     except delivery.DeliveryError:
         pass
     return v.status({**user, "email": target if channel == "email" else user.get("email", "")})
