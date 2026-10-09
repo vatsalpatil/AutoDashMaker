@@ -10,7 +10,7 @@ from app.core.config import settings
 from app.core.store import store  # noqa: F401  (initializes metadata schema)
 from app.routers import (
     datasources, datasets, queries, charts, dash_ai, dashboards, quality, ai, studio, semantic,
-    alerts, why, transforms, audit, attention, reports, qb, auth, system, metrics, verify,
+    alerts, why, transforms, audit, attention, reports, qb, auth, system, metrics, verify, account,
 )
 from app.services.alerts import scheduler_loop
 from app.services.refresh import refresh_loop
@@ -40,6 +40,7 @@ app.add_middleware(
 for r in (datasources, datasets, queries, charts, dash_ai, dashboards, quality, ai, studio,
           metrics, semantic, alerts, why, transforms, audit, attention, reports, qb, system):
     app.include_router(r.router, dependencies=[Depends(require_verified)])
+app.include_router(account.router)  # delete my account: signed-in only, needs an emailed code
 app.include_router(verify.router)  # signed-in only, but never blocked by verification itself
 app.include_router(auth.router)  # public: /api/auth/config; /api/auth/me checks the token itself
 

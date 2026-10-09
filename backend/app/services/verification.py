@@ -109,7 +109,7 @@ def send_code(user: dict[str, Any], channel: str, phone: str | None = None) -> d
     return issue(user, channel, target)
 
 
-def issue(user: dict[str, Any], channel: str, target: str) -> dict[str, Any]:
+def issue(user: dict[str, Any], channel: str, target: str, purpose: str = "verification") -> dict[str, Any]:
     """Create and deliver a code for `target`, honouring the resend cooldown and the hourly cap."""
     now = _now()
     recent = store.execute("SELECT created_at FROM verification_codes WHERE user_id = ? AND channel = ? ORDER BY created_at DESC LIMIT 1", [user["id"], channel])
@@ -123,9 +123,9 @@ def issue(user: dict[str, Any], channel: str, target: str) -> dict[str, Any]:
     cid = uuid.uuid4().hex[:12]
     store.execute("INSERT INTO verification_codes (id, user_id, channel, target, code_hash, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
                   [cid, user["id"], channel, target, _hash(user["id"], channel, target, code), now, now + timedelta(seconds=CODE_TTL_S)])
-    text = f"Your Dashtor verification code is {code}. It expires in {CODE_TTL_S // 60} minutes. If you didn't ask for it, ignore this message."
+    text = f"Your Dashtor {purpose} code is {code}. It expires in {CODE_TTL_S // 60} minutes. If you didn't ask for it, ignore this message."
     try:
-        mode = delivery.send_email(target, "Your Dashtor verification code", text) if channel.startswith("email") else delivery.send_sms(target, text)
+        mode = delivery.send_email(target, f"Your Dashtor {purpose} code", text) if channel.startswith("email") else delivery.send_sms(target, text)
     except delivery.DeliveryError as e:
         store.execute("UPDATE verification_codes SET consumed_at = ? WHERE id = ?", [now, cid])  # unusable: nothing was delivered
         raise HTTPException(502, str(e)) from e
@@ -138,7 +138,7 @@ def issue(user: dict[str, Any], channel: str, target: str) -> dict[str, Any]:
 def check_code(user: dict[str, Any], channel: str, code: str) -> dict[str, Any]:
     """Validate the user's newest unused code on `channel` and return its row (not consumed yet).
     Wrong guesses count towards the per-account lockout (20 in 10 minutes)."""
-    if channel not in ("email", "phone", "email_old"):
+    if channel not in ("email", "phone", "email_old", "email_delete"):
         raise HTTPException(400, "channel must be email or phone")
     key = f"otp:{user['id']}"
     throttle.check(key)

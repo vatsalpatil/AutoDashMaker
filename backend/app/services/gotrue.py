@@ -34,3 +34,14 @@ def set_email(user_id: str, new_email: str) -> None:
         raise HTTPException(409, "That email address is already in use.")
     if r.status_code >= 300:
         raise HTTPException(502, "The email address could not be changed. Please try again.")
+
+
+def delete_user(user_id: str) -> None:
+    """Remove the sign-in account itself (after the user proved they want it). A missing user counts as done."""
+    try:
+        r = httpx.delete(f"{_base()}/admin/users/{user_id}", timeout=15,
+                         headers={"apikey": settings.supabase_service_key, "Authorization": f"Bearer {settings.supabase_service_key}"})
+    except httpx.HTTPError as e:
+        raise HTTPException(502, "Could not reach the sign-in service. Nothing was deleted; please try again.") from e
+    if r.status_code >= 300 and r.status_code != 404:
+        raise HTTPException(502, "The account could not be deleted. Nothing was deleted; please try again.")

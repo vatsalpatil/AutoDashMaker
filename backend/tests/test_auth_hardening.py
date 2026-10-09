@@ -173,4 +173,37 @@ assert done.status_code == 200 and done.json()["email_verified"], done.text
 assert ("dave", "dave2@x.com") in changed
 settings.verification_phone = True
 
+# --- 8. delete my account: needs the emailed code AND the typed email; removes the sign-in account, rows, files, folders
+import glob  # noqa: E402
+
+settings.verification_phone = False  # like production for now: a verified email is enough to use the app
+E, F = token("erin"), token("frank")
+up = c.post("/api/datasets/upload", files={"file": ("sales.csv", b"a,b\n1,2\n3,4\n", "text/csv")}, headers=E)
+assert up.status_code == 200, up.text
+c.post("/api/charts", json={"name": "mine", "spec": {}}, headers=E)
+c.post("/api/datasets/upload", files={"file": ("other.csv", b"x\n1\n", "text/csv")}, headers=F)  # a bystander whose data must survive
+deleted_users = []
+gotrue.delete_user = lambda uid: deleted_users.append(uid)
+
+settings.supabase_service_key = ""
+assert c.post("/api/account/delete/start", headers=E).status_code == 501      # not configured: refuses before anything happens
+settings.supabase_service_key = "service-key"
+expire_cooldown("erin")
+st = c.post("/api/account/delete/start", headers=E)
+assert st.status_code == 200 and st.json()["dev_code"], st.text
+code = st.json()["dev_code"]
+assert c.post("/api/account/delete/confirm", json={"code": code, "email": "wrong@x.com"}, headers=E).status_code == 400
+assert c.post("/api/account/delete/confirm", json={"code": "000000", "email": "erin@x.com"}, headers=E).status_code == 400
+assert deleted_users == [], "nothing may be deleted before both proofs pass"
+assert c.post("/api/account/delete/confirm", json={"code": code, "email": "ERIN@x.com"}, headers=E).status_code == 200
+assert deleted_users == ["erin"]
+from app.core import tenant  # noqa: E402
+with tenant.all_workspaces():
+    assert not store.list("datasets", where="workspace_id = ?", params=["ws_erin"], order=None)
+    assert not store.list("charts", where="workspace_id = ?", params=["ws_erin"], order=None)
+    assert store.list("datasets", where="workspace_id = ?", params=["ws_frank"], order=None), "other users keep their data"
+assert not store.execute("SELECT 1 FROM user_contacts WHERE user_id = 'erin'")
+assert not os.path.exists(f"{TMP}/ws/ws_erin") and not os.path.exists(f"{TMP}/uploads/ws/ws_erin")
+assert glob.glob(f"{TMP}/ws/ws_frank/parquet/*.parquet"), "other users keep their files"
+
 print("auth hardening tests OK")

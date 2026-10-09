@@ -1,6 +1,7 @@
 import { Loading } from '@/components/common/Loading';
 import { useVerification } from '@/features/verify/useVerification';
 import { ChangeContactCard } from './ChangeContactCard';
+import { DeleteAccountCard } from './DeleteAccountCard';
 
 /** Settings → Account: the verified email and mobile number, and how to change them. */
 export default function AccountSettings() {
@@ -15,6 +16,7 @@ export default function AccountSettings() {
         <ChangeContactCard channel="email" v={v} />
         {v.status.channels.phone && <ChangeContactCard channel="phone" v={v} />}
       </div>
+      <DeleteAccountCard v={v} />
     </div>
   );
 }
