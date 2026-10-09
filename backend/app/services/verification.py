@@ -142,7 +142,7 @@ def issue(user: dict[str, Any], channel: str, target: str, purpose: str = "verif
 def check_code(user: dict[str, Any], channel: str, code: str) -> dict[str, Any]:
     """Validate the user's newest unused code on `channel` and return its row (not consumed yet).
     Wrong guesses count towards the per-account lockout (20 in 10 minutes)."""
-    if channel not in ("email", "phone", "email_old", "email_delete"):
+    if channel not in ("email", "phone", "email_old", "email_delete", "email_reset"):
         raise HTTPException(400, "channel must be email or phone")
     key = f"otp:{user['id']}"
     throttle.check(key)

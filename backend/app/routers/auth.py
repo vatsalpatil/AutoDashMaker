@@ -5,7 +5,7 @@ from pydantic import BaseModel
 
 from app.core.auth import require_user
 from app.core.config import settings
-from app.services import gotrue, throttle
+from app.services import gotrue, password_reset, throttle
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -55,3 +55,24 @@ async def login(body: LoginIn, request: Request):
     if err.get("error_code") == "email_not_confirmed":
         raise HTTPException(403, "Please confirm your email first: open the link we sent you.")
     raise HTTPException(r.status_code if r.status_code < 500 else 502, err.get("msg") or "Sign-in failed. Please try again.")
+
+
+class ForgotIn(BaseModel):
+    email: str
+
+
+class ResetIn(BaseModel):
+    email: str
+    code: str
+    password: str
+
+
+@router.post("/password/forgot")
+async def password_forgot(body: ForgotIn, request: Request):
+    """Email a 6-digit reset code. Always answers the same, so it can't be used to find out who has an account."""
+    return await run_in_threadpool(password_reset.request, body.email, _client_ip(request))
+
+
+@router.post("/password/reset")
+async def password_reset_confirm(body: ResetIn, request: Request):
+    return await run_in_threadpool(password_reset.confirm, body.email, body.code, body.password, _client_ip(request))

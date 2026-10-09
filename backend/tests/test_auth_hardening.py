@@ -227,4 +227,34 @@ assert r.status_code == 403 and "confirm your email" in r.json()["detail"], r.te
 for _ in range(25):  # an unconfirmed email is not a wrong password: it must never lock anyone out
     assert c.post("/api/auth/login", json={"email": "newbie@x.com", "password": "whatever1"}).status_code == 403
 
+# --- 10. forgot password: branded code email -> code + new password; never reveals who has an account
+import re  # noqa: E402
+from app.services import delivery  # noqa: E402
+
+mails, passwords = [], []
+delivery.send_email = lambda to, subject, body, html=None: (mails.append((to, subject, body, html)), "smtp")[1]
+gotrue.set_password = lambda uid, pw: passwords.append((uid, pw))
+gotrue.find_user_id = lambda email: None   # the admin list is only the fallback; known users come from user_contacts
+now[0] += 5000
+known = c.post("/api/auth/password/forgot", json={"email": "Gina@X.com"})
+unknown = c.post("/api/auth/password/forgot", json={"email": "nobody@x.com"})
+assert known.status_code == unknown.status_code == 200 and known.json() == unknown.json() == {"sent": True}
+assert len(mails) == 1 and mails[0][0] == "gina@x.com", mails                      # only the real account got an email
+assert "password" in mails[0][1].lower() and mails[0][3].startswith("<!doctype html>"), mails[0][1]
+code = re.search(r"Your code: (\d{6})", mails[0][2]).group(1)
+
+assert c.post("/api/auth/password/reset", json={"email": "gina@x.com", "code": "000000", "password": "newpassword1"}).status_code == 400
+assert c.post("/api/auth/password/reset", json={"email": "gina@x.com", "code": code, "password": "short"}).status_code == 400
+assert c.post("/api/auth/password/reset", json={"email": "nobody@x.com", "code": code, "password": "newpassword1"}).status_code == 400
+assert passwords == [], "nothing may change before the code and a valid password are both right"
+ok = c.post("/api/auth/password/reset", json={"email": "gina@x.com", "code": code, "password": "newpassword1"})
+assert ok.status_code == 200 and passwords == [("gina", "newpassword1")], (ok.text, passwords)
+assert c.post("/api/auth/password/reset", json={"email": "gina@x.com", "code": code, "password": "another-pass1"}).status_code == 400  # a code works once
+
+# a flood of reset requests is throttled like password guessing (20 in 10 minutes)
+r = None
+for _ in range(25):
+    r = c.post("/api/auth/password/forgot", json={"email": "flood@x.com"})
+assert r.status_code == 429 and "10 minute" in r.json()["detail"], r.text
+
 print("auth hardening tests OK")

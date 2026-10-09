@@ -45,3 +45,36 @@ def delete_user(user_id: str) -> None:
         raise HTTPException(502, "Could not reach the sign-in service. Nothing was deleted; please try again.") from e
     if r.status_code >= 300 and r.status_code != 404:
         raise HTTPException(502, "The account could not be deleted. Nothing was deleted; please try again.")
+
+
+def _admin_headers() -> dict[str, str]:
+    return {"apikey": settings.supabase_service_key, "Authorization": f"Bearer {settings.supabase_service_key}"}
+
+
+def find_user_id(email: str) -> str | None:
+    """Account id for an email (admin API has no email filter, so scan the user list; fine at this size)."""
+    for page in range(1, 11):
+        try:
+            r = httpx.get(f"{_base()}/admin/users", params={"page": page, "per_page": 200}, headers=_admin_headers(), timeout=15)
+        except httpx.HTTPError:
+            return None
+        if r.status_code >= 300:
+            return None
+        users = r.json().get("users", [])
+        for u in users:
+            if (u.get("email") or "").lower() == email:
+                return u["id"]
+        if len(users) < 200:
+            return None
+    return None
+
+
+def set_password(user_id: str, password: str) -> None:
+    try:
+        r = httpx.put(f"{_base()}/admin/users/{user_id}", json={"password": password}, headers=_admin_headers(), timeout=15)
+    except httpx.HTTPError as e:
+        raise HTTPException(502, "Could not reach the sign-in service. Please try again.") from e
+    if r.status_code in (400, 422):
+        raise HTTPException(400, "That password was not accepted. Try a longer or less common one.")
+    if r.status_code >= 300:
+        raise HTTPException(502, "The password could not be changed. Please try again.")

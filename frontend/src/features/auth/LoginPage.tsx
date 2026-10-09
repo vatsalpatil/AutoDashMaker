@@ -7,8 +7,10 @@ import { useAsyncAction } from '@/hooks/useAsyncAction';
 import { api } from '@/lib/api';
 import { supabase } from '@/lib/auth';
 
-type Mode = 'signin' | 'signup' | 'reset' | 'check-email';
-const TITLES: Record<Mode, string> = { signin: 'Sign in', signup: 'Create account', reset: 'Reset password', 'check-email': 'Check your email' };
+type Mode = 'signin' | 'signup' | 'reset' | 'reset-code' | 'check-email';
+const TITLES: Record<Mode, string> = {
+  signin: 'Sign in', signup: 'Create account', reset: 'Reset password', 'reset-code': 'Choose a new password', 'check-email': 'Check your email',
+};
 const confirmLink = () => `${window.location.origin}/?confirmed=1`; // the emailed link comes back here, then the app shows Sign in
 
 /**
@@ -22,6 +24,8 @@ export function LoginPage({ notice = null }: { notice?: string | null }) {
   const [password, setPassword] = useState('');
   const [info, setInfo] = useState(notice ?? '');
   const [unconfirmed, setUnconfirmed] = useState(false);
+  const [code, setCode] = useState('');
+  const [newPassword, setNewPassword] = useState('');
 
   const go = (m: Mode, message = '') => { setMode(m); setInfo(message); setUnconfirmed(false); };
 
@@ -42,11 +46,19 @@ export function LoginPage({ notice = null }: { notice?: string | null }) {
       const { data, error } = await auth.signUp({ email, password, options: { emailRedirectTo: confirmLink() } });
       if (error) throw new Error(error.message);
       if (!data.session) setMode('check-email'); // no session = the email still has to be confirmed
+    } else if (mode === 'reset') {
+      await api.post('/auth/password/forgot', { email }); // always answers the same, whether or not the address has an account
+      setMode('reset-code');
+      setInfo('If that email has an account, we sent a 6-digit code. It expires in 10 minutes.');
     } else {
-      const { error } = await auth.resetPasswordForEmail(email, { redirectTo: window.location.origin });
-      if (error) throw new Error(error.message);
-      setInfo('Password reset link sent. Check your email.');
+      await api.post('/auth/password/reset', { email, code, password: newPassword });
+      go('signin', 'Password changed. Please sign in with your new password.');
+      setPassword(''); setCode(''); setNewPassword('');
     }
+  });
+  const [resendCode, { busy: resendingCode, error: resendCodeError }] = useAsyncAction(async () => {
+    await api.post('/auth/password/forgot', { email });
+    setInfo('Sent again. It can take a minute; check your spam folder too.');
   });
   const [resend, { busy: resending, error: resendError }] = useAsyncAction(async () => {
     const { error } = await supabase().auth.resend({ type: 'signup', email, options: { emailRedirectTo: confirmLink() } });
@@ -75,6 +87,18 @@ export function LoginPage({ notice = null }: { notice?: string | null }) {
             <Button className="w-full" label={resending ? 'Sending…' : 'Resend the email'} onClick={() => resend()} isDisabled={resending} />
             <Button variant="primary" className="w-full" label="Go to sign in" onClick={() => go('signin')} />
           </div>
+        ) : mode === 'reset-code' ? (
+          <form onSubmit={onSubmit} className="space-y-3">
+            {info && <p className="text-sm text-muted-foreground">{info}</p>}
+            <TextInput label="6-digit code" required inputMode="numeric" autoComplete="one-time-code" maxLength={6} placeholder="123456"
+              value={code} onChange={(x: string) => setCode(x.replace(/\D/g, '').slice(0, 6))} />
+            <TextInput label="New password" type="password" required minLength={8} maxLength={72} placeholder="8+ characters" autoComplete="new-password"
+              value={newPassword} onChange={setNewPassword} />
+            <ErrorBanner message={error ?? resendCodeError} />
+            <Button type="submit" variant="primary" className="w-full" isDisabled={busy || code.length !== 6 || newPassword.length < 8}>{busy ? 'Please wait…' : 'Change password'}</Button>
+            <Button className="w-full" label={resendingCode ? 'Sending…' : 'Send a new code'} onClick={() => resendCode()} isDisabled={resendingCode} />
+            <button type="button" className="text-sm text-muted-foreground hover:underline" onClick={() => go('signin')}>Back to sign in</button>
+          </form>
         ) : (
           <>
             <form onSubmit={onSubmit} className="space-y-3">
