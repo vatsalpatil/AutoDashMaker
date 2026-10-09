@@ -54,6 +54,7 @@ class Settings(BaseSettings):
     supabase_anon_key: str = ""       # public key; served to the browser via /api/auth/config
     # User-written Python transforms run in-process (Polars can read any file), so they are off for multi-user servers
     allow_user_python: bool = False   # only consulted when auth_enabled; local mode always allows them
+    supabase_service_key: str = ""    # SECRET service-role key: only used to change a user's email after they proved the new address
     supabase_jwt_secret: str = ""     # legacy HS256 projects; empty -> verify via JWKS (asymmetric keys)
 
     # Account verification (email + mobile one-time codes). Off by default so a fresh install can never lock anyone out:

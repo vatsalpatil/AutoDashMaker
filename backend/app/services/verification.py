@@ -18,7 +18,7 @@ from fastapi import HTTPException
 
 from ..core.config import settings
 from ..core.store import store
-from . import delivery
+from . import delivery, throttle
 
 CODE_TTL_S = 600
 RESEND_COOLDOWN_S = 60
@@ -51,7 +51,7 @@ def ensure_contact(user: dict[str, Any]) -> dict[str, Any]:
     if row is None:
         store.execute("INSERT INTO user_contacts (user_id, email, email_verified_at, first_seen_at, updated_at) VALUES (?, ?, ?, ?, ?)",
                       [uid, email, now if trusted and email else None, now, now])
-    elif row["email"] != email:  # the account's email changed: it must be proven again
+    elif row["email"] != email and email != row.get("prev_email"):  # the account's email changed: it must be proven again
         store.execute("UPDATE user_contacts SET email = ?, email_verified_at = ?, updated_at = ? WHERE user_id = ?",
                       [email, now if trusted and email else None, now, uid])
     elif trusted and email and not row["email_verified_at"]:
@@ -100,9 +100,15 @@ def send_code(user: dict[str, Any], channel: str, phone: str | None = None) -> d
         target = re.sub(r"[\s\-()]", "", phone or "")
         if not E164.match(target):
             raise HTTPException(400, "Enter the number with its country code, like +919876543210.")
-        taken = store.execute("SELECT 1 FROM user_contacts WHERE phone = ? AND phone_verified_at IS NOT NULL AND user_id <> ?", [target, user["id"]])
-        if taken:
+        if c["phone_verified_at"]:
+            raise HTTPException(409, "Your number is already verified. Use Change number in Settings > Account.")
+        if phone_taken(target, user["id"]):
             raise HTTPException(409, "That number is already verified on another account.")
+    return issue(user, channel, target)
+
+
+def issue(user: dict[str, Any], channel: str, target: str) -> dict[str, Any]:
+    """Create and deliver a code for `target`, honouring the resend cooldown and the hourly cap."""
     now = _now()
     recent = store.execute("SELECT created_at FROM verification_codes WHERE user_id = ? AND channel = ? ORDER BY created_at DESC LIMIT 1", [user["id"], channel])
     if recent and (wait := RESEND_COOLDOWN_S - (now - recent[0]["created_at"]).total_seconds()) > 0:
@@ -127,24 +133,47 @@ def send_code(user: dict[str, Any], channel: str, phone: str | None = None) -> d
     return out
 
 
-def confirm_code(user: dict[str, Any], channel: str, code: str) -> dict[str, Any]:
+def check_code(user: dict[str, Any], channel: str, code: str) -> dict[str, Any]:
+    """Validate the user's newest unused code on `channel` and return its row (not consumed yet).
+    Wrong guesses count towards the per-account lockout (20 in 10 minutes)."""
     if channel not in ("email", "phone"):
         raise HTTPException(400, "channel must be email or phone")
-    now = _now()
+    key = f"otp:{user['id']}"
+    throttle.check(key)
     rows = store.execute("SELECT * FROM verification_codes WHERE user_id = ? AND channel = ? AND consumed_at IS NULL ORDER BY created_at DESC LIMIT 1", [user["id"], channel])
-    if not rows or rows[0]["expires_at"] < now:
+    if not rows or rows[0]["expires_at"] < _now():
         raise HTTPException(400, "That code has expired. Request a new one.")
     row = rows[0]
     if row["attempts"] >= MAX_ATTEMPTS:
         raise HTTPException(429, "Too many wrong attempts. Request a new code.")
     store.execute("UPDATE verification_codes SET attempts = attempts + 1 WHERE id = ?", [row["id"]])
     if not hmac.compare_digest(row["code_hash"], _hash(user["id"], channel, row["target"], (code or "").strip())):
+        throttle.fail(key)
+        throttle.check(key)  # the 20th wrong guess says "try again in 10 minutes" right away
         left = MAX_ATTEMPTS - row["attempts"] - 1
         raise HTTPException(400, f"That code is not correct. {left} attempt{'s' if left != 1 else ''} left." if left > 0 else "That code is not correct. Request a new code.")
-    if channel == "phone" and store.execute("SELECT 1 FROM user_contacts WHERE phone = ? AND phone_verified_at IS NOT NULL AND user_id <> ?", [row["target"], user["id"]]):
+    return row
+
+
+def phone_taken(phone: str, user_id: str) -> bool:
+    return bool(store.execute("SELECT 1 FROM user_contacts WHERE phone = ? AND phone_verified_at IS NOT NULL AND user_id <> ?", [phone, user_id]))
+
+
+def consume(row: dict[str, Any]) -> None:
+    store.execute("UPDATE verification_codes SET consumed_at = ? WHERE id = ?", [_now(), row["id"]])
+
+
+def confirm_code(user: dict[str, Any], channel: str, code: str) -> dict[str, Any]:
+    row = check_code(user, channel, code)
+    now = _now()
+    c = ensure_contact(user)
+    if channel == "email" and row["target"] != c["email"]:
+        raise HTTPException(400, "That code was sent for a different address. Request a new code.")
+    if channel == "phone" and c["phone_verified_at"]:
+        raise HTTPException(409, "Your number is already verified. Use Change number in Settings > Account.")
+    if channel == "phone" and phone_taken(row["target"], user["id"]):
         raise HTTPException(409, "That number is already verified on another account.")
-    store.execute("UPDATE verification_codes SET consumed_at = ? WHERE id = ?", [now, row["id"]])
-    ensure_contact(user)
+    consume(row)
     if channel == "email":
         store.execute("UPDATE user_contacts SET email_verified_at = ?, updated_at = ? WHERE user_id = ?", [now, now, user["id"]])
     else:

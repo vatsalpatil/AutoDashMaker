@@ -4,6 +4,7 @@ import { LogoIcon } from '@/components/common/LogoIcon';
 import { Button, Card, TextInput } from '@/components/ui/kit';
 import { ErrorBanner } from '@/components/common/ErrorBanner';
 import { useAsyncAction } from '@/hooks/useAsyncAction';
+import { api } from '@/lib/api';
 import { supabase } from '@/lib/auth';
 
 type Mode = 'signin' | 'signup' | 'reset';
@@ -18,7 +19,9 @@ export function LoginPage() {
     setInfo('');
     const auth = supabase().auth;
     if (mode === 'signin') {
-      const { error } = await auth.signInWithPassword({ email, password });
+      // through our backend, which counts wrong passwords (20 in 10 minutes blocks sign-in for 10 minutes)
+      const t = await api.post<{ access_token: string; refresh_token: string }>('/auth/login', { email, password });
+      const { error } = await auth.setSession({ access_token: t.access_token, refresh_token: t.refresh_token });
       if (error) throw new Error(error.message);
     } else if (mode === 'signup') {
       const { data, error } = await auth.signUp({ email, password });

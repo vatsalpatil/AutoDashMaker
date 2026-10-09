@@ -136,6 +136,7 @@ CREATE TABLE IF NOT EXISTS audit_log (
 
 # Columns added after the first release — applied idempotently on startup.
 MIGRATIONS = [
+    "ALTER TABLE user_contacts ADD COLUMN prev_email TEXT",  # set by an email change: tokens issued before it still carry the old address
     "ALTER TABLE datasets ADD COLUMN expected_interval_minutes INTEGER",
     "ALTER TABLE datasets ADD COLUMN refreshed_at TIMESTAMP",
     "ALTER TABLE datasets ADD COLUMN layers TEXT",  # JSON transform pipeline for derived datasets

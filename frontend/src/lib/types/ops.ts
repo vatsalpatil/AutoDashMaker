@@ -99,4 +99,6 @@ export interface VerifyStatus {
   /** "console" = this server has no SMTP/SMS provider yet, so codes only appear in its log */
   delivery: { email: 'smtp' | 'console'; phone: 'twilio' | 'console' };
 }
+/** Answer of POST /verify/change/start: a code went to the new value and one to the account's other verified contact. */
+export interface ContactChangeStarted { new: VerifySent; proof: VerifySent }
 export interface VerifySent { sent: boolean; channel: 'email' | 'phone'; to: string; expires_in_s: number; resend_in_s: number; delivery: string; dev_code?: string }
