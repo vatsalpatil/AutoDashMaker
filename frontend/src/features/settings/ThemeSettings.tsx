@@ -1,12 +1,19 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { PreviewSelect } from './PreviewSelect';
+import { SelectField } from '@/components/common/SelectField';
 import { Sun, Moon, Monitor } from 'lucide-react';
 import {
   ACCENTS,
+  FONTS,
+  FONT_MAX,
+  FONT_MIN,
+  FAMILIES,
   PRESETS,
+  familyOf,
   applyPrefs,
   loadPrefs,
-  resolvePresetFor,
   savePrefs,
+  type FontFamily,
   type ThemeMode,
   type ThemePrefs,
 } from '@/lib/theme';
@@ -24,13 +31,13 @@ export default function ThemeSettings() {
     applyPrefs(prefs);
   }, []);
 
+  const prefsRef = useRef(prefs);   // latest committed prefs: hover previews restore to this, never to a stale render
   const update = (patch: Partial<ThemePrefs>) => {
-    setPrefs((prev) => {
-      const next = { ...prev, ...patch };
-      applyPrefs(next);
-      savePrefs(next);
-      return next;
-    });
+    const next = { ...prefsRef.current, ...patch };
+    prefsRef.current = next;
+    setPrefs(next);
+    applyPrefs(next);
+    savePrefs(next);
   };
 
   return (
@@ -40,9 +47,46 @@ export default function ThemeSettings() {
         Customize theme, accent color, density, and text size. Changes apply instantly.
       </p>
 
+      {/* Font family */}
+      <div className="mt-6 max-w-xs">
+        <SelectField label="Font" value={prefs.font} onChange={(e) => update({ font: e.target.value as FontFamily })}>
+          {FONTS.map((f) => <option key={f.id} value={f.id}>{f.label}</option>)}
+        </SelectField>
+      </div>
+
+      {/* Font scale */}
+      <div className="mt-6">
+        <div className="flex items-center justify-between">
+          <label
+            htmlFor="theme-font-scale"
+            className="text-sm font-medium text-foreground"
+          >
+            Font size
+          </label>
+          <span className="text-sm tabular-nums text-muted-foreground">
+            {Math.round(prefs.fontScale * 100)}%
+          </span>
+        </div>
+        <input
+          id="theme-font-scale"
+          type="range"
+          min={FONT_MIN}
+          max={FONT_MAX}
+          step={0.01}
+          value={prefs.fontScale}
+          onChange={(e) => update({ fontScale: Number(e.target.value) })}
+          className="mt-2 w-full accent-foreground "
+        />
+        <div className="mt-1 flex justify-between text-xs text-muted-foreground/70">
+          <span>{Math.round(FONT_MIN * 100)}%</span>
+          <button type="button" onClick={() => update({ fontScale: 1 })} className="hover:text-foreground">Default 100%</button>
+          <span>{Math.round(FONT_MAX * 100)}%</span>
+        </div>
+      </div>
+
       {/* Mode */}
       <div className="mt-6">
-        <label className="text-sm font-medium text-foreground">Theme</label>
+        <label className="block text-sm font-medium text-foreground">Theme</label>
         <div className="mt-2 inline-flex rounded-lg border border-border bg-muted p-1 ">
           {MODES.map(({ value, label, Icon }) => {
             const active = prefs.mode === value;
@@ -65,77 +109,25 @@ export default function ThemeSettings() {
         </div>
       </div>
 
-      {/* Preset gallery: 10 light + 10 dark */}
-      {(['light', 'dark'] as const).map((mode) => (
-        <div key={mode} className="mt-6">
-          <label className="text-sm font-medium capitalize text-foreground">
-            {mode} themes
-          </label>
-          <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-5">
-            {PRESETS.filter((p) => p.mode === mode).map((p) => {
-              const active = (resolvePresetFor(prefs)?.id ?? prefs.preset) === p.id;
-              return (
-                <button
-                  key={p.id}
-                  type="button"
-                  onClick={() => update({ preset: p.id, mode: p.mode })}
-                  title={p.name}
-                  className={`flex flex-col items-center gap-1.5 rounded-lg border p-2 transition-all ${
-                    active
-                      ? 'border-blue-500 ring-2 ring-blue-500/40 dark:border-blue-400'
-                      : 'border-border hover:border-ring '
-                  }`}
-                  style={{ backgroundColor: p.vars.bg }}
-                >
-                  <span className="flex gap-1">
-                    {p.swatch.map((c, i) => (
-                      <span
-                        key={i}
-                        className="h-3.5 w-3.5 rounded-full border border-black/10"
-                        style={{ backgroundColor: c }}
-                      />
-                    ))}
-                  </span>
-                  <span
-                    className="max-w-full truncate text-[11px] font-medium"
-                    style={{ color: p.vars.text }}
-                  >
-                    {p.name}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      ))}
+      <PreviewSelect
+        label="Theme"
+        value={familyOf(prefs.preset)?.id ?? ''}
+        groups={[{ options: FAMILIES.map((f) => ({ value: f.id, label: f.name, swatch: <Dots colors={[swatchOf(f.light, 0), swatchOf(f.light, 1), swatchOf(f.dark, 0)]} /> })) }]}
+        onChange={(id) => { const f = FAMILIES.find((x) => x.id === id); if (f) update({ preset: f.light }); }}
+        onPreview={(id) => { const f = FAMILIES.find((x) => x.id === id); applyPrefs(f ? { ...prefsRef.current, preset: f.light } : prefsRef.current); }}
+      />
 
-      {/* Accent */}
-      <div className="mt-6">
-        <label className="text-sm font-medium text-foreground">Accent color</label>
-        <div className="mt-2 flex flex-wrap gap-3">
-          {ACCENTS.map(({ name, hex }) => {
-            const active = prefs.accent === name;
-            return (
-              <button
-                key={name}
-                type="button"
-                aria-label={`Accent ${name}`}
-                onClick={() => update({ accent: name })}
-                className={`h-8 w-8 rounded-full transition-shadow ${
-                  active
-                    ? 'ring-2 ring-foreground ring-offset-2 ring-offset-white dark:ring-offset-slate-800'
-                    : 'hover:scale-110'
-                }`}
-                style={{ backgroundColor: hex }}
-              />
-            );
-          })}
-        </div>
-      </div>
+      <PreviewSelect
+        label="Accent color"
+        value={prefs.accent}
+        groups={[{ options: ACCENTS.map((a) => ({ value: a.name, label: a.name[0].toUpperCase() + a.name.slice(1), swatch: <Dots colors={[a.hex]} /> })) }]}
+        onChange={(name) => update({ accent: name as ThemePrefs['accent'] })}
+        onPreview={(name) => applyPrefs(name ? { ...prefsRef.current, accent: name as ThemePrefs['accent'] } : prefsRef.current)}
+      />
 
       {/* Density */}
       <div className="mt-6">
-        <label className="text-sm font-medium text-foreground">Density</label>
+        <label className="block text-sm font-medium text-foreground">Density</label>
         <div className="mt-2 inline-flex rounded-lg border border-border bg-muted p-1 ">
           {(['comfortable', 'compact'] as const).map((d) => {
             const active = prefs.density === d;
@@ -157,58 +149,38 @@ export default function ThemeSettings() {
         </div>
       </div>
 
-      {/* Font scale */}
-      <div className="mt-6">
-        <div className="flex items-center justify-between">
-          <label
-            htmlFor="theme-font-scale"
-            className="text-sm font-medium text-foreground"
-          >
-            Font size
-          </label>
-          <span className="text-sm tabular-nums text-muted-foreground">
-            {Math.round(prefs.fontScale * 100)}%
-          </span>
-        </div>
-        <input
-          id="theme-font-scale"
-          type="range"
-          min={0.9}
-          max={1.15}
-          step={0.05}
-          value={prefs.fontScale}
-          onChange={(e) => update({ fontScale: Number(e.target.value) })}
-          className="mt-2 w-full accent-foreground "
-        />
-        <div className="mt-1 flex justify-between text-xs text-muted-foreground/70">
-          <span>90%</span>
-          <span>115%</span>
-        </div>
-      </div>
-
-      {/* Radius */}
-      <div className="mt-6">
-        <label className="text-sm font-medium text-foreground">Corner radius</label>
-        <div className="mt-2 inline-flex rounded-lg border border-border bg-muted p-1 ">
-          {(['rounded', 'sharp'] as const).map((r) => {
-            const active = prefs.radius === r;
-            return (
-              <button
-                key={r}
-                type="button"
-                onClick={() => update({ radius: r })}
-                className={`rounded-md px-3 py-1.5 text-sm font-medium capitalize transition-colors ${
-                  active
-                    ? 'bg-card text-foreground shadow-xs '
-                    : 'text-muted-foreground hover:text-foreground '
-                }`}
-              >
-                {r}
-              </button>
-            );
-          })}
-        </div>
-      </div>
+      <Segmented label="Corner radius" value={prefs.radius} options={['sharp', 'rounded', 'round']} onChange={(radius) => update({ radius })} />
     </section>
   );
 }
+
+/** Labelled single-choice pill toggle. */
+function Segmented<T extends string>({ label, value, options, labels, onChange }: { label: string; value: T; options: readonly T[]; labels?: Record<string, string>; onChange: (v: T) => void }) {
+  return (
+    <div className="mt-6">
+      <label className="block text-sm font-medium text-foreground">{label}</label>
+      <div className="mt-2 inline-flex max-w-full flex-wrap rounded-lg border border-border bg-muted p-1">
+        {options.map((o) => (
+          <button
+            key={o}
+            type="button"
+            onClick={() => onChange(o)}
+            className={`rounded-md px-3 py-1.5 text-sm font-medium capitalize transition-colors ${value === o ? 'bg-card text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'}`}
+          >
+            {labels?.[o] ?? o}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function Dots({ colors }: { colors: string[] }) {
+  return (
+    <span className="flex gap-1">
+      {colors.map((c, i) => <span key={i} className="h-3.5 w-3.5 rounded-full border border-black/10" style={{ backgroundColor: c }} />)}
+    </span>
+  );
+}
+
+const swatchOf = (id: string, i: number) => PRESETS.find((p) => p.id === id)?.swatch[i] ?? '#888';

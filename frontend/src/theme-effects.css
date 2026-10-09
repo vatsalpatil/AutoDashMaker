@@ -17,3 +17,15 @@ html[data-density='compact'] .p-6 {
 html[data-radius='sharp'] {
   --radius: 0px;
 }
+html[data-radius='round'] {
+  --radius: 1rem;
+}
+
+/* ---- Font family: Tailwind inlines --font-sans into .font-sans, so set the property itself (--app-font comes from lib/theme.ts) ---- */
+html[data-font] body,
+html[data-font] .font-sans {
+  font-family: var(--app-font);
+}
+
+/* Smooth text-size changes */
+html { transition: font-size 0.15s ease-out; }

@@ -113,13 +113,13 @@ export default function DatasetDetailPage() {
 
       {tab === 'schema' &&
         (!schema ? (
-          <Loading />
+          <Loading compact />
         ) : (
           <SchemaGrid schema={schema} />
         ))}
 
       {tab === 'preview' &&
-        (!preview ? <Loading /> : <DataGrid columns={preview.columns} rows={preview.rows} />)}
+        (!preview ? <Loading compact /> : <DataGrid columns={preview.columns} rows={preview.rows} />)}
 
       {tab === 'why' && <WhyPanel datasetId={id!} />}
 

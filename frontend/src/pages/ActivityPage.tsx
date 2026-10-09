@@ -39,7 +39,7 @@ export default function ActivityPage() {
         actions={<Button variant="secondary" label="Refresh" icon={<RefreshCw className="size-4" />} onClick={reload} />} />
       <ErrorBanner message={error} />
       <div className="overflow-x-auto"><UnderlineTabs tabs={CATEGORIES.map((c) => ({ id: c.id, label: c.label, count: counts[c.id] }))} value={cat} onChange={setCat} /></div>
-      {!items ? <Loading /> : rows.length === 0
+      {!items ? <Loading compact /> : rows.length === 0
         ? <EmptyState title="Nothing here yet" description="Run a query or ask a question and it will appear here." />
         : <DataGrid columns={COLUMNS} rows={rows} maxHeight="68vh" />}
     </div>

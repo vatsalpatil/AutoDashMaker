@@ -26,7 +26,7 @@ export function WidgetBody({
   const s = widget.settings ?? {};
   if (isContent(widget)) return <ContentBody widget={widget} />;
   if (error) return <p className="text-xs text-destructive">{error}</p>;
-  if (!chart || !data) return <Loading />;
+  if (!chart || !data) return <Loading compact />;
   if (view === 'table')
     return (
       <DataTable

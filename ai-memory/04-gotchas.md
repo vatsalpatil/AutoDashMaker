@@ -63,3 +63,4 @@ Never add `caddy` to `nixPkgs` when the app has a Caddyfile: Nixpacks adds it it
 - **Windows `curl localhost:PORT` adds ~0.2 s** (tries IPv6 `::1` first). Time the API with `127.0.0.1`; the real backend answers metadata endpoints in 2-35 ms. The Vite proxy already targets 127.0.0.1.
 - `python backend/main.py` runs uvicorn with reload, but a worker can miss edits (seen once): if a code change does not show up, restart the backend terminal.
 - **Legacy rows had `workspace_id = NULL`** (charts, dashboards, queries created before per-user workspaces): the workspace filter hid them as soon as new code ran (looked like "all my charts vanished"). `Store._init` now backfills NULL -> `ws_default` on every start; keep that when adding tables.
+- `@theme inline` in index.css bakes values into utilities: overriding `--font-sans` at runtime does nothing; set the property directly (see theme-effects.css font rules).

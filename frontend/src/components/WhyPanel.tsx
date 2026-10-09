@@ -50,7 +50,7 @@ export function WhyPanel({ datasetId }: { datasetId: string }) {
     }
   }
 
-  if (!schema) return <Loading />;
+  if (!schema) return <Loading compact />;
 
   const cols = [...schema.columns].sort((a, b) => {
     const score = (dt: string, re: RegExp) => (re.test(dt) ? 0 : 1);

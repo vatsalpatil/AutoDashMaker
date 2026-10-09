@@ -63,7 +63,7 @@ export function AlertCard({ alert, datasetName, onChanged }: { alert: Alert; dat
       <ErrorBanner message={error} />
       {historyOpen && (
         <div className="mt-3 overflow-auto rounded-lg border">
-          {!runs ? <Loading /> : runs.length === 0 ? <p className="p-3 text-sm text-muted-foreground">No runs yet.</p> : (
+          {!runs ? <Loading compact /> : runs.length === 0 ? <p className="p-3 text-sm text-muted-foreground">No runs yet.</p> : (
             <table className="min-w-full divide-y text-sm">
               <thead className="bg-muted"><tr>{['Time', 'Value', 'Status', 'Message'].map((h) => <th key={h} className="px-3 py-2 text-left font-semibold">{h}</th>)}</tr></thead>
               <tbody className="divide-y">

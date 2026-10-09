@@ -8,7 +8,7 @@ export function BriefCard({ brief }: { brief: BriefResponse | null }) {
   return (
     <Card padding={4}>
       <h3 className="mb-2 font-semibold">Decision brief</h3>
-      {!brief ? <Loading /> : (
+      {!brief ? <Loading compact /> : (
         <div className="flex flex-col gap-3">
           <ol className="list-decimal space-y-1 pl-5 text-sm">{brief.findings.map((f, i) => <li key={i}>{f}</li>)}</ol>
           {brief.attention.length > 0 && (
@@ -31,7 +31,7 @@ export function LineageCard({ lineage }: { lineage: LineageNode | null }) {
       <h3 className="mb-2 font-semibold">Lineage (Source → Dataset → Query → Chart)</h3>
       {lineage
         ? <pre className="mono max-h-96 overflow-auto rounded-md bg-muted p-3 text-xs">{JSON.stringify(lineage, null, 2)}</pre>
-        : <Loading />}
+        : <Loading compact />}
     </Card>
   );
 }
