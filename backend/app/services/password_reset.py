@@ -9,7 +9,6 @@ import re
 
 from fastapi import HTTPException
 
-from ..core.store import store
 from . import gotrue, throttle, verification as v
 from ..core.config import settings
 
@@ -26,8 +25,9 @@ def _email(raw: str) -> str:
 
 
 def _user_id(email: str) -> str | None:
-    row = store.execute("SELECT user_id FROM user_contacts WHERE lower(email) = ? LIMIT 1", [email])
-    return row[0]["user_id"] if row else gotrue.find_user_id(email)
+    """The account that owns this email RIGHT NOW. Always asked of Supabase: our own user_contacts table can still hold the id
+    of an account that was deleted and re-created, and changing the password of that stale id fails."""
+    return gotrue.find_user_id(email)
 
 
 def _ready() -> None:

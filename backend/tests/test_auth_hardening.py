@@ -241,7 +241,10 @@ from app.services import delivery  # noqa: E402
 mails, passwords = [], []
 delivery.send_email = lambda to, subject, body, html=None: (mails.append((to, subject, body, html)), "smtp")[1]
 gotrue.set_password = lambda uid, pw: passwords.append((uid, pw))
-gotrue.find_user_id = lambda email: None   # the admin list is only the fallback; known users come from user_contacts
+current_ids = {"gina@x.com": "gina", "stale@x.com": "new_id"}   # what Supabase says right now
+gotrue.find_user_id = lambda email: current_ids.get(email)
+# our own table still remembers an account that was deleted and re-created: it must NOT be used
+store.execute("INSERT INTO user_contacts (user_id, email, first_seen_at, updated_at) VALUES ('old_id', 'stale@x.com', now(), now())")
 now[0] += 5000
 known = c.post("/api/auth/password/forgot", json={"email": "Gina@X.com"})
 unknown = c.post("/api/auth/password/forgot", json={"email": "nobody@x.com"})
@@ -257,6 +260,13 @@ assert passwords == [], "nothing may change before the code and a valid password
 ok = c.post("/api/auth/password/reset", json={"email": "gina@x.com", "code": code, "password": "newpassword1"})
 assert ok.status_code == 200 and passwords == [("gina", "newpassword1")], (ok.text, passwords)
 assert c.post("/api/auth/password/reset", json={"email": "gina@x.com", "code": code, "password": "another-pass1"}).status_code == 400  # a code works once
+
+mails.clear()
+now[0] += 100
+c.post("/api/auth/password/forgot", json={"email": "stale@x.com"})
+stale_code = re.search(r"Your code: (\d{6})", mails[0][2]).group(1)
+ok = c.post("/api/auth/password/reset", json={"email": "stale@x.com", "code": stale_code, "password": "newpassword2"})
+assert ok.status_code == 200 and passwords[-1] == ("new_id", "newpassword2"), passwords   # the CURRENT account, never old_id
 
 # a flood of reset requests is throttled like password guessing (20 in 10 minutes)
 r = None

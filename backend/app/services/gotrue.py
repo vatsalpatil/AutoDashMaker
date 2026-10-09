@@ -1,12 +1,15 @@
 """The few Supabase Auth (GoTrue) calls the backend makes itself: the password login proxy and the admin email change."""
 from __future__ import annotations
 
+import logging
 import time
 
 import httpx
 from fastapi import HTTPException
 
 from ..core.config import settings
+
+log = logging.getLogger("dashtor.gotrue")
 
 
 def _base() -> str:
@@ -81,9 +84,12 @@ def set_password(user_id: str, password: str) -> None:
         r = httpx.put(f"{_base()}/admin/users/{user_id}", json={"password": password}, headers=_admin_headers(), timeout=15)
     except httpx.HTTPError as e:
         raise HTTPException(502, "Could not reach the sign-in service. Please try again.") from e
+    if r.status_code == 404:
+        raise HTTPException(400, "That account no longer exists. Create a new account instead.")
     if r.status_code in (400, 422):
         raise HTTPException(400, "That password was not accepted. Try a longer or less common one.")
     if r.status_code >= 300:
+        log.error("Supabase refused to set a password: %s %s", r.status_code, r.text[:300])
         raise HTTPException(502, "The password could not be changed. Please try again.")
 
 
