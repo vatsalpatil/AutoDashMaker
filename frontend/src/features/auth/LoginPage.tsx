@@ -27,9 +27,7 @@ export function LoginPage({ notice = null }: { notice?: string | null }) {
   const [code, setCode] = useState('');
   const [newPassword, setNewPassword] = useState('');
 
-  const go = (m: Mode, message = '') => { setMode(m); setInfo(message); setUnconfirmed(false); };
-
-  const [run, { busy, error }] = useAsyncAction(async () => {
+  const [run, { busy, error, setError }] = useAsyncAction(async () => {
     setInfo('');
     const auth = supabase().auth;
     if (mode === 'signin') {
@@ -56,15 +54,20 @@ export function LoginPage({ notice = null }: { notice?: string | null }) {
       setPassword(''); setCode(''); setNewPassword('');
     }
   });
-  const [resendCode, { busy: resendingCode, error: resendCodeError }] = useAsyncAction(async () => {
+  const [resendCode, { busy: resendingCode, error: resendCodeError, setError: setResendCodeError }] = useAsyncAction(async () => {
     await api.post('/auth/password/forgot', { email });
     setInfo('Sent again. It can take a minute; check your spam folder too.');
   });
-  const [resend, { busy: resending, error: resendError }] = useAsyncAction(async () => {
+  const [resend, { busy: resending, error: resendError, setError: setResendError }] = useAsyncAction(async () => {
     const { error } = await supabase().auth.resend({ type: 'signup', email, options: { emailRedirectTo: confirmLink() } });
     if (error) throw new Error(error.message);
     setInfo('Sent again. It can take a minute; check your spam folder too.');
   });
+  /** Switch screen: every message from the previous screen goes away (errors, notices, the resend hint). */
+  const go = (m: Mode, message = '') => {
+    setMode(m); setInfo(message); setUnconfirmed(false);
+    setError(null); setResendError(null); setResendCodeError(null);
+  };
   const google = () => void supabase().auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin } });
   const onSubmit = (e: FormEvent) => { e.preventDefault(); void run(); };
 
