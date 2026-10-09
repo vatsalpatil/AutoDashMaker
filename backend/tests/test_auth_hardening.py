@@ -213,6 +213,10 @@ assert not c.get("/api/verify/status", headers=G).json()["email_verified"]
 settings.auth_confirms_email = True
 gotrue.autoconfirm_on = lambda: True    # Supabase still signs people in without a link: AUTH_CONFIRMS_EMAIL must NOT be trusted
 assert not c.get("/api/verify/status", headers=token("iris", google=False)).json()["email_verified"]
+gotrue.autoconfirm_on = lambda: True    # ...and the token's own email_verified claim is worthless too: autoconfirm sets it for everyone
+claimed = jwt.encode({"sub": "jo", "email": "jo@x.com", "aud": "authenticated", "exp": time.time() + 600,
+                      "user_metadata": {"email_verified": True}}, "s" * 40, algorithm="HS256")
+assert not c.get("/api/verify/status", headers={"Authorization": "Bearer " + claimed}).json()["email_verified"]
 gotrue.autoconfirm_on = lambda: False   # Supabase really requires the link: a signed-in password user has proven the email
 s = c.get("/api/verify/status", headers=token("hank", google=False)).json()
 assert s["email_verified"] and s["complete"] and not s["blocked"], s
