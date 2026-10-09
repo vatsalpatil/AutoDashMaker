@@ -6,15 +6,27 @@ export interface AuthConfig { enabled: boolean; supabase_url: string; supabase_a
 
 let client: SupabaseClient | null = null;
 
-export async function initAuth(): Promise<{ enabled: boolean; session: Session | null }> {
+export async function initAuth(): Promise<{ enabled: boolean; session: Session | null; notice: string | null }> {
   const res = await fetch('/api/auth/config');
   const cfg = (await res.json()) as AuthConfig;
-  if (!cfg.enabled) return { enabled: false, session: null };
+  if (!cfg.enabled) return { enabled: false, session: null, notice: null };
   // loaded only when login is on: local single-user mode never downloads the Supabase client
   const { createClient } = await import('@supabase/supabase-js');
   client = createClient(cfg.supabase_url, cfg.supabase_anon_key);
+  const url = new URL(window.location.href);
+  if (url.searchParams.get('confirmed') === '1') {
+    // The confirmation link in the email just signed the user in. The flow wants a normal sign-in next, so end that session.
+    const failed = /error/.test(window.location.hash);
+    await client.auth.getSession(); // lets supabase-js read the tokens from the link before we drop them
+    await client.auth.signOut();
+    window.history.replaceState({}, '', url.pathname);
+    return {
+      enabled: true, session: null,
+      notice: failed ? 'That confirmation link is invalid or has expired. Sign in and we will send a new one.' : 'Email confirmed. Please sign in.',
+    };
+  }
   const { data } = await client.auth.getSession();
-  return { enabled: true, session: data.session };
+  return { enabled: true, session: data.session, notice: null };
 }
 
 export const supabase = () => {

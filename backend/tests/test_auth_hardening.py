@@ -206,4 +206,25 @@ assert not store.execute("SELECT 1 FROM user_contacts WHERE user_id = 'erin'")
 assert not os.path.exists(f"{TMP}/ws/ws_erin") and not os.path.exists(f"{TMP}/uploads/ws/ws_erin")
 assert glob.glob(f"{TMP}/ws/ws_frank/parquet/*.parquet"), "other users keep their files"
 
+# --- 9. confirmation-link sign-up: Supabase only issues a session after the link was clicked, so a signed-in user counts as email-verified
+settings.verification_phone = False
+G = token("gina", google=False)  # a password user: no provider proof, no email_verified claim in the token
+assert not c.get("/api/verify/status", headers=G).json()["email_verified"]
+settings.auth_confirms_email = True
+s = c.get("/api/verify/status", headers=token("hank", google=False)).json()
+assert s["email_verified"] and s["complete"] and not s["blocked"], s
+settings.auth_confirms_email = False
+
+
+def not_confirmed(email, password):
+    return httpx.Response(400, json={"error_code": "email_not_confirmed", "msg": "Email not confirmed"})
+
+
+gotrue.password_login = not_confirmed
+now[0] += 5000  # clear any lockout state from the earlier sections
+r = c.post("/api/auth/login", json={"email": "newbie@x.com", "password": "whatever1"})
+assert r.status_code == 403 and "confirm your email" in r.json()["detail"], r.text
+for _ in range(25):  # an unconfirmed email is not a wrong password: it must never lock anyone out
+    assert c.post("/api/auth/login", json={"email": "newbie@x.com", "password": "whatever1"}).status_code == 403
+
 print("auth hardening tests OK")

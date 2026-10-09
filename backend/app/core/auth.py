@@ -43,7 +43,8 @@ def verify_token(token: str) -> dict:
         raise HTTPException(401, f"Invalid or expired token: {e}") from e
     meta, app_meta = claims.get("user_metadata") or {}, claims.get("app_metadata") or {}
     # an identity provider (Google…) has already proven the address; for password sign-ups we prove it with a code
-    email_verified = bool(meta.get("email_verified")) or app_meta.get("provider") in ("google", "github", "azure", "apple")
+    email_verified = (settings.auth_confirms_email or bool(meta.get("email_verified"))
+                      or app_meta.get("provider") in ("google", "github", "azure", "apple"))
     return {"id": claims["sub"], "email": claims.get("email", ""), "role": claims.get("role", "authenticated"), "email_verified": email_verified}
 
 

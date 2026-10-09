@@ -52,4 +52,6 @@ async def login(body: LoginIn, request: Request):
         throttle.fail(*keys)
         throttle.check(*keys)
         raise HTTPException(401, "Wrong email or password.")
+    if err.get("error_code") == "email_not_confirmed":
+        raise HTTPException(403, "Please confirm your email first: open the link we sent you.")
     raise HTTPException(r.status_code if r.status_code < 500 else 502, err.get("msg") or "Sign-in failed. Please try again.")

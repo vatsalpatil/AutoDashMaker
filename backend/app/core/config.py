@@ -53,6 +53,9 @@ class Settings(BaseSettings):
     supabase_url: str = ""            # e.g. https://xyz.supabase.co or your self-hosted URL
     supabase_anon_key: str = ""       # public key; served to the browser via /api/auth/config
     # User-written Python transforms run in-process (Polars can read any file), so they are off for multi-user servers
+    # Supabase only lets a password user sign in AFTER they clicked the confirmation link (ENABLE_EMAIL_AUTOCONFIRM=false), so
+    # every signed-in user already proved their email. Turn on together with that Supabase setting.
+    auth_confirms_email: bool = False
     allow_user_python: bool = False   # only consulted when auth_enabled; local mode always allows them
     supabase_service_key: str = ""    # SECRET service-role key: only used to change a user's email after they proved the new address
     supabase_jwt_secret: str = ""     # legacy HS256 projects; empty -> verify via JWKS (asymmetric keys)
