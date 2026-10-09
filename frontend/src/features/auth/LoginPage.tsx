@@ -5,7 +5,7 @@ import { Button, Card, TextInput } from '@/components/ui/kit';
 import { ErrorBanner } from '@/components/common/ErrorBanner';
 import { useAsyncAction } from '@/hooks/useAsyncAction';
 import { api } from '@/lib/api';
-import { supabase } from '@/lib/auth';
+import { googleEnabled, supabase } from '@/lib/auth';
 
 type Mode = 'signin' | 'signup' | 'reset' | 'reset-code' | 'check-email';
 const TITLES: Record<Mode, string> = {
@@ -118,7 +118,7 @@ export function LoginPage({ notice = null }: { notice?: string | null }) {
               {info && <p className="text-sm text-muted-foreground">{info}</p>}
               <Button type="submit" className="w-full" isDisabled={busy}>{busy ? 'Please wait…' : TITLES[mode]}</Button>
             </form>
-            {mode !== 'reset' && <Button variant="outline" className="w-full" onClick={google}>Continue with Google</Button>}
+            {mode !== 'reset' && googleEnabled && <Button variant="outline" className="w-full" onClick={google}>Continue with Google</Button>}
             <div className="flex justify-between text-sm text-muted-foreground">
               <button className="hover:underline" onClick={() => go(mode === 'signin' ? 'signup' : 'signin')}>
                 {mode === 'signin' ? 'Create an account' : 'Back to sign in'}

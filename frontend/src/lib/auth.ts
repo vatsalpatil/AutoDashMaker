@@ -2,14 +2,17 @@
 // so one built image works for any Supabase project (no VITE_* build-time keys).
 import type { Session, SupabaseClient } from '@supabase/supabase-js';
 
-export interface AuthConfig { enabled: boolean; supabase_url: string; supabase_anon_key: string }
+export interface AuthConfig { enabled: boolean; supabase_url: string; supabase_anon_key: string; google?: boolean }
 
 let client: SupabaseClient | null = null;
+/** True only when Supabase has Google sign-in switched on; the login page hides the button otherwise (it would just fail). */
+export let googleEnabled = false;
 
 export async function initAuth(): Promise<{ enabled: boolean; session: Session | null; notice: string | null }> {
   const res = await fetch('/api/auth/config');
   const cfg = (await res.json()) as AuthConfig;
   if (!cfg.enabled) return { enabled: false, session: null, notice: null };
+  googleEnabled = !!cfg.google;
   // loaded only when login is on: local single-user mode never downloads the Supabase client
   const { createClient } = await import('@supabase/supabase-js');
   client = createClient(cfg.supabase_url, cfg.supabase_anon_key);

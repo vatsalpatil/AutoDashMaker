@@ -93,22 +93,33 @@ def set_password(user_id: str, password: str) -> None:
         raise HTTPException(502, "The password could not be changed. Please try again.")
 
 
-_autoconfirm = {"at": -1e9, "on": True}
+_public_cache: dict = {"at": -1e9, "data": None}
+
+
+def _public() -> dict | None:
+    """Supabase's own public settings (what it has switched on), cached 5 min; None if they can't be read (retried in 30 s)."""
+    now = time.monotonic()
+    if now - _public_cache["at"] < 300:
+        return _public_cache["data"]
+    try:
+        r = httpx.get(f"{_base()}/settings", headers={"apikey": settings.supabase_anon_key}, timeout=5)
+        data = r.json() if r.status_code < 300 else None
+        _public_cache.update(at=now if data else now - 270, data=data)
+    except (httpx.HTTPError, ValueError):
+        _public_cache.update(at=now - 270, data=None)
+    return _public_cache["data"]
 
 
 def autoconfirm_on() -> bool:
-    """Does Supabase sign people in WITHOUT making them confirm their email? Read from its public settings (cached 5 min).
-    If it can't be read we assume yes, the safe answer: nobody is then trusted as email-verified."""
-    now = time.monotonic()
-    if now - _autoconfirm["at"] < 300:
-        return _autoconfirm["on"]
-    try:
-        r = httpx.get(f"{_base()}/settings", headers={"apikey": settings.supabase_anon_key}, timeout=5)
-        on = bool(r.json().get("mailer_autoconfirm", True)) if r.status_code < 300 else True
-        _autoconfirm.update(at=now, on=on)
-    except (httpx.HTTPError, ValueError):
-        _autoconfirm.update(at=now - 270, on=True)  # retry in 30 s
-    return _autoconfirm["on"]
+    """Does Supabase sign people in WITHOUT making them confirm their email? If it can't be read we assume yes,
+    the safe answer: nobody is then trusted as email-verified."""
+    data = _public()
+    return bool(data.get("mailer_autoconfirm", True)) if data else True
+
+
+def google_enabled() -> bool:
+    """Is Google sign-in switched on in Supabase? (The login page only shows the button when it is.)"""
+    return bool(((_public() or {}).get("external") or {}).get("google"))
 
 
 def create_user(email: str, password: str) -> str | None:
