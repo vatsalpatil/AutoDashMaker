@@ -211,6 +211,9 @@ settings.verification_phone = False
 G = token("gina", google=False)  # a password user: no provider proof, no email_verified claim in the token
 assert not c.get("/api/verify/status", headers=G).json()["email_verified"]
 settings.auth_confirms_email = True
+gotrue.autoconfirm_on = lambda: True    # Supabase still signs people in without a link: AUTH_CONFIRMS_EMAIL must NOT be trusted
+assert not c.get("/api/verify/status", headers=token("iris", google=False)).json()["email_verified"]
+gotrue.autoconfirm_on = lambda: False   # Supabase really requires the link: a signed-in password user has proven the email
 s = c.get("/api/verify/status", headers=token("hank", google=False)).json()
 assert s["email_verified"] and s["complete"] and not s["blocked"], s
 settings.auth_confirms_email = False

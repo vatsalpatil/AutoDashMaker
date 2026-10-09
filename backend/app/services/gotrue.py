@@ -1,6 +1,8 @@
 """The few Supabase Auth (GoTrue) calls the backend makes itself: the password login proxy and the admin email change."""
 from __future__ import annotations
 
+import time
+
 import httpx
 from fastapi import HTTPException
 
@@ -83,3 +85,21 @@ def set_password(user_id: str, password: str) -> None:
         raise HTTPException(400, "That password was not accepted. Try a longer or less common one.")
     if r.status_code >= 300:
         raise HTTPException(502, "The password could not be changed. Please try again.")
+
+
+_autoconfirm = {"at": -1e9, "on": True}
+
+
+def autoconfirm_on() -> bool:
+    """Does Supabase sign people in WITHOUT making them confirm their email? Read from its public settings (cached 5 min).
+    If it can't be read we assume yes, the safe answer: nobody is then trusted as email-verified."""
+    now = time.monotonic()
+    if now - _autoconfirm["at"] < 300:
+        return _autoconfirm["on"]
+    try:
+        r = httpx.get(f"{_base()}/settings", headers={"apikey": settings.supabase_anon_key}, timeout=5)
+        on = bool(r.json().get("mailer_autoconfirm", True)) if r.status_code < 300 else True
+        _autoconfirm.update(at=now, on=on)
+    except (httpx.HTTPError, ValueError):
+        _autoconfirm.update(at=now - 270, on=True)  # retry in 30 s
+    return _autoconfirm["on"]
