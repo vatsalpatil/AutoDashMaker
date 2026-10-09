@@ -4,6 +4,15 @@ frontend/dist/
 __pycache__/
 *.pyc
 backend/.env
+# Any env file that may hold secrets, anywhere in the repo (templates named *.example stay tracked)
+.env
+**/.env
+.env.local
+**/.env.local
+.env.production
+**/.env.production
+backend/.env.*
+!backend/.env.example
 backend/server*.log
 frontend/tsconfig.tsbuildinfo
 .vscode/
