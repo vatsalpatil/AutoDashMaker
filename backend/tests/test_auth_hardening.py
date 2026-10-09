@@ -348,10 +348,4 @@ assert len(mails) == 3
 now[0] += 100
 assert c.post("/api/auth/signup/resend", json={"email": "ghost@x.com"}).json() == {"sent": True} and len(mails) == 3
 
-# --- 13. the login page shows the Google button only when Supabase has Google switched on
-gotrue.google_enabled = lambda: False
-assert c.get("/api/auth/config").json()["google"] is False
-gotrue.google_enabled = lambda: True
-assert c.get("/api/auth/config").json()["google"] is True
-
 print("auth hardening tests OK")

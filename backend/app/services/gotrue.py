@@ -117,11 +117,6 @@ def autoconfirm_on() -> bool:
     return bool(data.get("mailer_autoconfirm", True)) if data else True
 
 
-def google_enabled() -> bool:
-    """Is Google sign-in switched on in Supabase? (The login page only shows the button when it is.)"""
-    return bool(((_public() or {}).get("external") or {}).get("google"))
-
-
 def create_user(email: str, password: str) -> str | None:
     """Create a password account that is NOT yet confirmed (so it can't sign in until the emailed link is used).
     Returns the new id, or None when the email already has an account."""
