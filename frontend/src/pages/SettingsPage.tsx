@@ -1,18 +1,13 @@
-import { lazy, Suspense } from 'react';
+import { Suspense } from 'react';
 import { Loading } from '@/components/common/Loading';
 import { Tab, TabList } from '@/components/ui/kit';
 import AiSettings from '@/features/ai/AiSettings';
 import ThemeSettings from '@/features/settings/ThemeSettings';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 
-const SystemSettings = lazy(() => import('@/features/settings/SystemSettings'));
-const BackupSettings = lazy(() => import('@/features/settings/BackupSettings'));
-
 const TABS = [
   { id: 'ai', label: 'AI models' },
   { id: 'appearance', label: 'Appearance' },
-  { id: 'system', label: 'System' },
-  { id: 'backup', label: 'Backup' },
 ] as const;
 type TabId = (typeof TABS)[number]['id'];
 
@@ -29,8 +24,6 @@ export default function SettingsPage() {
       <Suspense fallback={<Loading />}>
         {active === 'ai' && <AiSettings />}
         {active === 'appearance' && <ThemeSettings />}
-        {active === 'system' && <SystemSettings />}
-        {active === 'backup' && <BackupSettings />}
       </Suspense>
     </div>
   );
