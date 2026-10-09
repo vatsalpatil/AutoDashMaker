@@ -8,7 +8,7 @@ the project's public JWKS at `<SUPABASE_URL>/auth/v1/.well-known/jwks.json` (ES2
 """
 from functools import lru_cache
 
-from fastapi import Header, HTTPException
+from fastapi import Depends, Header, HTTPException
 from fastapi.concurrency import run_in_threadpool
 
 from app.core import tenant
@@ -41,7 +41,10 @@ def verify_token(token: str) -> dict:
         raise
     except jwt.PyJWTError as e:
         raise HTTPException(401, f"Invalid or expired token: {e}") from e
-    return {"id": claims["sub"], "email": claims.get("email", ""), "role": claims.get("role", "authenticated")}
+    meta, app_meta = claims.get("user_metadata") or {}, claims.get("app_metadata") or {}
+    # an identity provider (Google…) has already proven the address; for password sign-ups we prove it with a code
+    email_verified = bool(meta.get("email_verified")) or app_meta.get("provider") in ("google", "github", "azure", "apple")
+    return {"id": claims["sub"], "email": claims.get("email", ""), "role": claims.get("role", "authenticated"), "email_verified": email_verified}
 
 
 async def require_user(authorization: str | None = Header(default=None)) -> dict:
@@ -58,4 +61,14 @@ async def require_user(authorization: str | None = Header(default=None)) -> dict
         user = await run_in_threadpool(verify_token, authorization[7:].strip())  # JWKS fetch may block
         user["workspace_id"] = tenant.workspace_for_user(user["id"])
     tenant.set_workspace(user["workspace_id"])
+    return user
+
+
+async def require_verified(user: dict = Depends(require_user)) -> dict:
+    """require_user, plus: once VERIFICATION_REQUIRED is on and the grace period is over, unverified users get 403
+    {code: verification_required} everywhere except /api/verify and /api/auth (so they can still verify)."""
+    if settings.auth_enabled and settings.verification_required:
+        from app.services import verification  # lazy: keeps local mode import-light
+        if await run_in_threadpool(verification.is_blocked, user):
+            raise HTTPException(403, {"code": "verification_required", "message": "Verify your email and mobile number to continue."})
     return user

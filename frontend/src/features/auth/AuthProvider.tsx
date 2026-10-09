@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 import type { Session } from '@supabase/supabase-js';
 import { initAuth, supabase } from '@/lib/auth';
 import { Loading } from '@/components/common/Loading';
+import { VerifyGate } from '@/features/verify/VerifyGate';
 import { LoginPage } from './LoginPage';
 
 interface AuthState { enabled: boolean; email: string | null; signOut: () => void }
@@ -25,7 +26,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   if (state.enabled && !state.session) return <LoginPage />;
   return (
     <Ctx.Provider value={{ enabled: state.enabled, email: state.session?.user.email ?? null, signOut: () => void supabase().auth.signOut() }}>
-      {children}
+      {state.enabled ? <VerifyGate>{children}</VerifyGate> : children}
     </Ctx.Provider>
   );
 }

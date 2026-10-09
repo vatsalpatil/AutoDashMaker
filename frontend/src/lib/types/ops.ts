@@ -88,3 +88,15 @@ export interface SystemInfo {
   cache: { entries: number; max: number; ttl_s: number };
   counts: Record<string, number>;
 }
+
+/** GET /api/verify/status: where the signed-in user stands with email + mobile verification. */
+export interface VerifyStatus {
+  email: string; email_masked: string; email_verified: boolean;
+  phone_masked: string; phone_verified: boolean;
+  channels: { email: boolean; phone: boolean };
+  missing: ('email' | 'phone')[]; complete: boolean;
+  required: boolean; blocked: boolean; grace_ends_at: string;
+  /** "console" = this server has no SMTP/SMS provider yet, so codes only appear in its log */
+  delivery: { email: 'smtp' | 'console'; phone: 'twilio' | 'console' };
+}
+export interface VerifySent { sent: boolean; channel: 'email' | 'phone'; to: string; expires_in_s: number; resend_in_s: number; delivery: string; dev_code?: string }

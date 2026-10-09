@@ -51,6 +51,24 @@ class Settings(BaseSettings):
     allow_user_python: bool = False   # only consulted when auth_enabled; local mode always allows them
     supabase_jwt_secret: str = ""     # legacy HS256 projects; empty -> verify via JWKS (asymmetric keys)
 
+    # Account verification (email + mobile one-time codes). Off by default so a fresh install can never lock anyone out:
+    # first configure SMTP / SMS below, then set VERIFICATION_REQUIRED=true (existing users get the grace period).
+    verification_required: bool = False
+    verification_email: bool = True        # email counts toward "verified"
+    verification_phone: bool = True        # mobile counts toward "verified"
+    verification_grace_days: int = 7       # days after a user's first visit (or the feature going live) before blocking
+    verification_dev_echo: bool = False    # return the code in the API response when delivery is the server log (dev/tests only)
+    verification_secret: str = ""          # HMAC key for stored codes; empty -> derived from SUPABASE_JWT_SECRET
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    smtp_from: str = ""                    # e.g. "Dashtor <no-reply@yourdomain.com>"
+    sms_provider: str = "console"          # console (log only) | twilio
+    twilio_account_sid: str = ""
+    twilio_auth_token: str = ""
+    twilio_from: str = ""                  # your Twilio number or messaging service sender
+
     class Config:
         env_file = str(BACKEND_ROOT / ".env")
         extra = "ignore"

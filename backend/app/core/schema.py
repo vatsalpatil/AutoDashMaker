@@ -56,6 +56,14 @@ CREATE TABLE IF NOT EXISTS conversations (
     id TEXT PRIMARY KEY, workspace_id TEXT, state TEXT DEFAULT '{}',
     created_at TIMESTAMP
 );
+CREATE TABLE IF NOT EXISTS user_contacts (
+    user_id TEXT PRIMARY KEY, email TEXT, email_verified_at TIMESTAMP,
+    phone TEXT, phone_verified_at TIMESTAMP, first_seen_at TIMESTAMP, updated_at TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS verification_codes (
+    id TEXT PRIMARY KEY, user_id TEXT, channel TEXT, target TEXT, code_hash TEXT,
+    attempts INTEGER DEFAULT 0, created_at TIMESTAMP, expires_at TIMESTAMP, consumed_at TIMESTAMP
+);
 CREATE TABLE IF NOT EXISTS metrics (
     id TEXT PRIMARY KEY, workspace_id TEXT, dataset_id TEXT,
     name TEXT, label TEXT, expression TEXT, filters TEXT DEFAULT '[]',

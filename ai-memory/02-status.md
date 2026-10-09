@@ -45,3 +45,6 @@ Dokploy on Oracle (backend + frontend Nixpacks, self-hosted Supabase). Branch Da
 
 ## 2026-10-08 (late)
 Metrics hub redesigned (live values, builder, suggestions). Settings is tabbed (AI/Appearance/System/Backup). Backend now runs from `backend/.venv` (3.12) - restarted by me after the old global-Python worker wedged. Disk is 91% full vs the 80% upload limit: set `DISK_USAGE_LIMIT_PCT=95` in `backend/.env` or free space (tests + uploads fail otherwise). Metrics/dimensions are not yet used by charts/alerts selectors (only Ask + the hub).
+
+## 2026-10-09 Email + mobile verification
+Built and tested (`tests/test_verify.py`). NOT live-tested with real delivery: needs `SMTP_*` and `SMS_PROVIDER=twilio` + `TWILIO_*` in the server env, then `VERIFICATION_REQUIRED=true`. UI never seen against a real Supabase login (gate only mounts when auth is on). Settings page has no "Account" tab yet (another session had uncommitted edits to SettingsPage.tsx).
