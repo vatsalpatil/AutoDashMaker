@@ -168,3 +168,4 @@ Format: `YYYY-MM-DD · tool · files · what + why`
 2026-10-09 · .gitignore · ignore every .env / .env.local / .env.production anywhere in the repo (templates *.example stay tracked); real Supabase values live only in the git-ignored backend/.env
 2026-10-09 · scripts/reset_everything.py · user-run clean-slate script: deletes all Supabase accounts (admin API) + backend/data + uploads after a typed confirmation; backs up to _backups/ first; dry run by default
 2026-10-09 · backend/tests/test_auth_hardening.py · clear supabase_service_key at start so a real backend/.env can't leak into the test
+2026-10-09 · production · fast-forwarded production to 4761959 (Parquet storage + quotas, sign-in lockout, change email/mobile); user presses Deploy in Dokploy (backend first)
