@@ -17,7 +17,7 @@ from typing import Any
 
 from ..connectors import ConnectorError, get_connector
 from ..core.store import DEFAULT_ORG, DEFAULT_USER, DEFAULT_WS, store
-from . import audit
+from . import audit, columnar
 from .ingest import safe_table_name
 
 _lock = threading.Lock()
@@ -183,12 +183,13 @@ def convert_to_linked(ds: dict[str, Any], remote_name: str | None = None) -> dic
         with engine.writer() as con:
             connector = get_connector(src["type"], src["config"])
             connector.link(remote, f"{table}__live", con, alias_for(src["id"]))   # proves the table exists before the copy is dropped
-            con.execute(f"DROP TABLE IF EXISTS {table}")
+            columnar.drop_relation(con, table)
             con.execute(f"ALTER VIEW {table}__live RENAME TO {table}")
             info = con.execute(f"PRAGMA table_info('{table}')").fetchall()
             count = connector.count_rows(con, alias_for(src["id"]), table, remote)
     except Exception as e:
         raise e if isinstance(e, ConnectorError) else ConnectorError(str(e)[:500]) from e
+    columnar.remove(table)
     store.update("datasets", ds["id"], {"remote_table": remote, "row_count": count, "column_count": len(info), "refreshed_at": datetime.now(timezone.utc)})
     invalidate()
     audit.record("dataset.link", entity_type="dataset", entity_id=ds["id"], detail=f"{ds['name']} switched to a live link ({count} rows, nothing stored)")

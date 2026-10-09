@@ -11,6 +11,7 @@ from typing import Any
 from ..core import tenant
 from ..core.config import DATA_DIR, settings
 from ..core.store import store
+from . import quota
 from .engine import engine
 
 STARTED = time.time()
@@ -55,7 +56,9 @@ def info() -> dict[str, Any]:
             "analytics_mb": round(_size(tenant.analytics_path(ws)) / 1e6, 1),
             "metadata_mb": round(_size(settings.metadata_db) / 1e6, 1),
             "uploads_mb": round(_dir_size(tenant.upload_dir(ws)) / 1e6, 1),
+            "datasets_mb": round(_dir_size(tenant.parquet_dir(ws)) / 1e6, 1),
         },
+        "quota": quota.usage(),
         "limits": {
             "memory": settings.duckdb_memory_limit,
             "threads": settings.duckdb_threads,

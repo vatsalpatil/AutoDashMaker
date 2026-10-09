@@ -21,7 +21,12 @@ class Settings(BaseSettings):
     # Metadata store (DuckDB too, per project decision; swappable to Postgres)
     metadata_db: str = str(DATA_DIR / "metadata.duckdb")
     upload_dir: str = str(UPLOAD_DIR)
-    max_upload_mb: int = 200
+    # Per-user limits, enforced only on hosted servers (AUTH_ENABLED); local mode is unlimited. Quota counts the
+    # compressed Parquet files + uploads, not the size of what the user uploaded.
+    max_upload_mb: int = 50
+    user_quota_mb: int = 250
+    max_rows_per_dataset: int = 5_000_000
+    max_datasets: int = 20
     # Refuse uploads/imports once the data disk is more than this % full (0 = off)
     disk_usage_limit_pct: int = 80
     default_row_limit: int = 10_000

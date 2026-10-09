@@ -1,5 +1,4 @@
 """Datasets: upload files, ingest from sources, schema discovery, preview."""
-import shutil
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, UploadFile
@@ -8,7 +7,7 @@ from pydantic import BaseModel
 from ..connectors import ConnectorError
 from ..core.config import settings
 from ..core.store import store
-from ..services import audit, disk, refresh_jobs
+from ..services import audit, columnar, disk, quota, refresh_jobs
 from ..services.engine import engine
 from ..services.ingest import ingest_source, refresh_dataset
 from ..services.refresh import age_minutes, is_overdue
@@ -37,15 +36,34 @@ async def upload(file: UploadFile):
         raise HTTPException(400, "missing file name")
     try:
         disk.ensure_room(file.size or 0)
+        quota.check_dataset_count()
+        quota.ensure_fits(file.size or 0)
     except ConnectorError as e:
         raise HTTPException(507, str(e))
     dest = tenant.upload_dir() / filename
+    try:
+        _save_capped(file, dest)
+        src = store.insert("datasources", {
+            "name": filename, "type": "file", "config": {"path": str(dest)},
+        })
+        return _ingest(src, dest.stem)
+    finally:
+        if quota.enforced():  # hosted: the Parquet copy is the dataset; keeping the original would double the storage
+            dest.unlink(missing_ok=True)
+
+
+def _save_capped(file: UploadFile, dest: Path) -> None:
+    """Stream the upload to disk, stopping (and removing the partial file) once it passes the size limit."""
+    cap = settings.max_upload_mb * 1_000_000 if quota.enforced() else None
+    written = 0
     with dest.open("wb") as f:
-        shutil.copyfileobj(file.file, f)
-    src = store.insert("datasources", {
-        "name": filename, "type": "file", "config": {"path": str(dest)},
-    })
-    return _ingest(src, dest.stem)
+        while chunk := file.file.read(1_000_000):
+            written += len(chunk)
+            if cap and written > cap:
+                f.close()
+                dest.unlink(missing_ok=True)
+                raise HTTPException(413, f"File is larger than the {settings.max_upload_mb} MB limit.")
+            f.write(chunk)
 
 
 @router.post("/ingest")
@@ -194,6 +212,7 @@ def delete_dataset(dataset_id: str):
     if ds:
         audit.record("dataset.delete", entity_type="dataset", entity_id=dataset_id, detail=ds["name"])
         engine.drop_table(ds["physical_name"])
+        columnar.remove(ds["physical_name"])
         store.delete("datasets", dataset_id)
         if ds.get("remote_table"):
             from ..services.remote import invalidate

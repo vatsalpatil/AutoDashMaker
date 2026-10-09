@@ -48,3 +48,6 @@ Metrics hub redesigned (live values, builder, suggestions). Settings is tabbed (
 
 ## 2026-10-09 Email + mobile verification
 Built and tested (`tests/test_verify.py`). NOT live-tested with real delivery: needs `SMTP_*` and `SMS_PROVIDER=twilio` + `TWILIO_*` in the server env, then `VERIFICATION_REQUIRED=true`. UI never seen against a real Supabase login (gate only mounts when auth is on). Settings page has no "Account" tab yet (another session had uncommitted edits to SettingsPage.tsx).
+
+## 2026-10-09 storage
+Datasets are Parquet-backed (D24) + hosted per-user quotas (50 MB/file, 250 MB/user, 5M rows, 20 datasets) done in backend. TODO: usage bar in Settings (uses `/api/system` `quota`), per-user daily AI cap, migrate pre-D24 table datasets + derived datasets to Parquet, inactive-account cleanup, load test, then deploy (user must say so).

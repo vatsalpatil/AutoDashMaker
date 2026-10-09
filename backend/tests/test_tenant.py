@@ -1,4 +1,5 @@
 """Per-user isolation: two signed-in users must never see or reach each other's data. Run: python tests/test_tenant.py"""
+import glob
 import os
 import shutil
 import sys
@@ -57,8 +58,10 @@ try:
         assert r.status_code >= 400, f"allowed: {evil}"
 
     # --- separate files on disk
-    assert os.path.exists(f"{TMP}/ws/ws_alice/analytics.duckdb") and os.path.exists(f"{TMP}/uploads/ws/ws_alice/sales.csv")
-    assert not os.path.exists(f"{TMP}/uploads/ws/ws_bob/sales.csv")
+    # hosted mode keeps only the compressed Parquet copy of an upload, in the owner's own folder
+    assert os.path.exists(f"{TMP}/ws/ws_alice/analytics.duckdb") and glob.glob(f"{TMP}/ws/ws_alice/parquet/*.parquet")
+    assert not os.path.exists(f"{TMP}/uploads/ws/ws_alice/sales.csv")
+    assert not glob.glob(f"{TMP}/ws/ws_bob/parquet/*.parquet")
 
     # --- a file source pointing at someone else's file / server files is refused
     for path in (f"{TMP}/uploads/ws/ws_alice/sales.csv", "/etc/passwd"):

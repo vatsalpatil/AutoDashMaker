@@ -80,6 +80,13 @@ def analytics_path(ws: str) -> str:
     return str(d / "analytics.duckdb")
 
 
+def parquet_dir(ws: str | None = None) -> Path:
+    """Where this workspace's dataset files live (zstd Parquet): next to its analytics DuckDB file."""
+    d = Path(analytics_path(ws or current())).parent / "parquet"
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
 def upload_dir(ws: str | None = None) -> Path:
     ws = _checked(ws or current())
     root = Path(settings.upload_dir)

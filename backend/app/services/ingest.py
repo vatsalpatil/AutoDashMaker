@@ -12,7 +12,7 @@ from typing import Any
 
 from ..connectors import get_connector, ConnectorError
 from ..core.store import store, DEFAULT_ORG, DEFAULT_WS, DEFAULT_USER
-from . import audit, disk
+from . import audit, columnar, disk, quota
 from .engine import engine
 
 
@@ -26,12 +26,21 @@ def ingest_source(src: dict, friendly_name: str, discover_name: str | None = Non
     """Materialize `src` into the analytics DB. With `target_table`, overwrite that table
     and return its stats; otherwise register a new dataset and return it."""
     disk.ensure_room()
+    if not target_table:
+        quota.check_dataset_count()
+    quota.ensure_fits()
     table = target_table or safe_table_name(friendly_name)
+    stage = f"{table}__stg"  # the connector fills a plain table; columnar.publish turns it into a Parquet file + view
     try:
         with engine.writer() as con:
-            result = get_connector(src["type"], src["config"]).ingest(
-                discover_name or friendly_name, table, con
-            )
+            columnar.drop_relation(con, stage)
+            try:
+                result = get_connector(src["type"], src["config"]).ingest(discover_name or friendly_name, stage, con)
+                quota.check_rows(result["row_count"])
+            except Exception:
+                columnar.drop_relation(con, stage)
+                raise
+            columnar.publish(con, stage, table)
     except ConnectorError as e:
         audit.record("dataset.ingest", entity_type="source", entity_id=src["id"],
                      detail=f"{friendly_name}: {e}", status="error")
