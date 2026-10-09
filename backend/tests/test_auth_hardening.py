@@ -24,6 +24,7 @@ from app.core.config import settings  # noqa: E402
 from app.core.store import store  # noqa: E402
 from app.services import gotrue, throttle  # noqa: E402
 
+settings.supabase_service_key = ""  # a developer's real backend/.env must not leak into the test
 now = [1000.0]
 throttle.clock = lambda: now[0]
 
