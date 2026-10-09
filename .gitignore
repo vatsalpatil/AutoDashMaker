@@ -13,6 +13,8 @@ backend/.env
 **/.env.production
 backend/.env.*
 !backend/.env.example
+# the paste-ready copy of the server's environment (all real secrets in one file)
+backend/.env.dokploy
 backend/server*.log
 frontend/tsconfig.tsbuildinfo
 .vscode/
