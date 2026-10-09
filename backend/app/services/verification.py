@@ -37,7 +37,7 @@ def _hash(user_id: str, channel: str, target: str, code: str) -> str:
 
 
 def mask(channel: str, target: str) -> str:
-    if channel == "email":
+    if channel.startswith("email"):
         name, _, host = target.partition("@")
         return f"{name[:1]}{'*' * max(len(name) - 1, 2)}@{host}"
     return f"{target[:3]}{'*' * max(len(target) - 6, 3)}{target[-3:]}"
@@ -91,6 +91,8 @@ def is_blocked(user: dict[str, Any]) -> bool:
 def send_code(user: dict[str, Any], channel: str, phone: str | None = None) -> dict[str, Any]:
     if channel not in ("email", "phone"):
         raise HTTPException(400, "channel must be email or phone")
+    if channel == "phone" and not settings.verification_phone:
+        raise HTTPException(400, "Mobile number verification is switched off on this server.")
     c = ensure_contact(user)
     if channel == "email":
         target = c["email"]
@@ -123,7 +125,7 @@ def issue(user: dict[str, Any], channel: str, target: str) -> dict[str, Any]:
                   [cid, user["id"], channel, target, _hash(user["id"], channel, target, code), now, now + timedelta(seconds=CODE_TTL_S)])
     text = f"Your Dashtor verification code is {code}. It expires in {CODE_TTL_S // 60} minutes. If you didn't ask for it, ignore this message."
     try:
-        mode = delivery.send_email(target, "Your Dashtor verification code", text) if channel == "email" else delivery.send_sms(target, text)
+        mode = delivery.send_email(target, "Your Dashtor verification code", text) if channel.startswith("email") else delivery.send_sms(target, text)
     except delivery.DeliveryError as e:
         store.execute("UPDATE verification_codes SET consumed_at = ? WHERE id = ?", [now, cid])  # unusable: nothing was delivered
         raise HTTPException(502, str(e)) from e
@@ -136,7 +138,7 @@ def issue(user: dict[str, Any], channel: str, target: str) -> dict[str, Any]:
 def check_code(user: dict[str, Any], channel: str, code: str) -> dict[str, Any]:
     """Validate the user's newest unused code on `channel` and return its row (not consumed yet).
     Wrong guesses count towards the per-account lockout (20 in 10 minutes)."""
-    if channel not in ("email", "phone"):
+    if channel not in ("email", "phone", "email_old"):
         raise HTTPException(400, "channel must be email or phone")
     key = f"otp:{user['id']}"
     throttle.check(key)

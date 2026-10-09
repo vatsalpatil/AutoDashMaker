@@ -158,4 +158,19 @@ assert s["complete"] and not s["blocked"], s
 s = c.get("/api/verify/status", headers=token("alice", "alice2@x.com")).json()  # a refreshed token carries the new address
 assert s["complete"] and s["email"] == "alice2@x.com", s
 
+# --- 7. mobile verification switched off: only email counts, and an email change is proven with a code to the CURRENT email
+settings.verification_phone = False
+D = token("dave")
+s = c.get("/api/verify/status", headers=D).json()
+assert s["complete"] and s["missing"] == [] and not s["channels"]["phone"], s
+assert c.post("/api/verify/send", json={"channel": "phone", "phone": "+919700000001"}, headers=D).status_code == 400
+assert c.post("/api/verify/change/start", json={"channel": "phone", "new_value": "+919700000001"}, headers=D).status_code == 400
+st = c.post("/api/verify/change/start", json={"channel": "email", "new_value": "dave2@x.com"}, headers=D)
+assert st.status_code == 200, st.text
+done = c.post("/api/verify/change/confirm", json={"channel": "email", "proof_code": st.json()["proof"]["dev_code"],
+                                                   "new_code": st.json()["new"]["dev_code"]}, headers=D)
+assert done.status_code == 200 and done.json()["email_verified"], done.text
+assert ("dave", "dave2@x.com") in changed
+settings.verification_phone = True
+
 print("auth hardening tests OK")

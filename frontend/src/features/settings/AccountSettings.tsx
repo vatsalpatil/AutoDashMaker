@@ -9,11 +9,11 @@ export default function AccountSettings() {
   return (
     <div className="flex flex-col gap-3">
       <p className="text-sm text-muted-foreground">
-        Changing either one needs a code sent to the new value <b>and</b> a code sent to your other verified contact, so nobody can take over your account from an open session.
+        Changing {v.status.channels.phone ? 'either one' : 'your email'} needs a code sent to the new value <b>and</b> a code sent to {v.status.channels.phone ? 'your other verified contact' : 'your current email'}, so nobody can take over your account from an open session.
       </p>
       <div className="grid gap-3 md:grid-cols-2">
         <ChangeContactCard channel="email" v={v} />
-        <ChangeContactCard channel="phone" v={v} />
+        {v.status.channels.phone && <ChangeContactCard channel="phone" v={v} />}
       </div>
     </div>
   );

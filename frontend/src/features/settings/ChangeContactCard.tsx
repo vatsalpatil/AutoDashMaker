@@ -16,7 +16,9 @@ export function ChangeContactCard({ channel, v }: { channel: Channel; v: Verific
   const isEmail = channel === 'email';
   const Icon = isEmail ? Mail : Smartphone;
   const current = isEmail ? s.email_masked : s.phone_masked;
-  const proofLabel = isEmail ? 'mobile number' : 'email';
+  const phoneOn = s.channels.phone;
+  const proofLabel = isEmail ? (phoneOn ? 'mobile number' : 'email') : 'email';
+  const canChange = s.email_verified && (!phoneOn || s.phone_verified);
   const [value, setValue] = useState(isEmail ? '' : '+91');
   const [started, setStarted] = useState<ContactChangeStarted | null>(null);
   const [open, setOpen] = useState(false);
@@ -42,9 +44,9 @@ export function ChangeContactCard({ channel, v }: { channel: Channel; v: Verific
         {(isEmail ? s.email_verified : s.phone_verified) && <Badge variant="success" label="Verified" className="ml-auto" />}
       </div>
       <p className="text-sm text-muted-foreground">{current || 'Not set'}</p>
-      {!open && (s.email_verified && s.phone_verified
+      {!open && (canChange
         ? <Button className="self-start" label={isEmail ? 'Change email' : 'Change number'} onClick={() => setOpen(true)} />
-        : <p className="text-xs text-muted-foreground">Verify both your email and mobile number to be able to change them.</p>)}
+        : <p className="text-xs text-muted-foreground">Verify your account first to be able to change this.</p>)}
       {open && (
         <div className="flex flex-col gap-3">
           <TextInput label={isEmail ? 'New email address' : 'New mobile number with country code'} value={value} onChange={setValue}
