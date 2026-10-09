@@ -1,11 +1,12 @@
 """Public auth bootstrap: tells the browser whether to show login and how to reach Supabase."""
 from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import RedirectResponse
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
 
 from app.core.auth import require_user
 from app.core.config import settings
-from app.services import gotrue, password_reset, throttle
+from app.services import gotrue, password_reset, signup, throttle
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -90,3 +91,30 @@ def _why_failed(email: str) -> str:
     if providers and "email" not in providers:
         return "This account signs in with Google. Use Continue with Google."
     return "Wrong email or password."
+
+
+class SignupIn(BaseModel):
+    email: str
+    password: str
+
+
+class ResendIn(BaseModel):
+    email: str
+
+
+@router.post("/signup")
+async def sign_up(body: SignupIn, request: Request):
+    """Create an unconfirmed account and email the branded confirmation link. Same answer for new and existing addresses."""
+    return await run_in_threadpool(signup.sign_up, body.email, body.password, _client_ip(request))
+
+
+@router.post("/signup/resend")
+async def sign_up_resend(body: ResendIn, request: Request):
+    return await run_in_threadpool(signup.resend, body.email, _client_ip(request))
+
+
+@router.get("/confirm")
+async def confirm_email(t: str = ""):
+    """The link in the confirmation email: confirm, then send the browser to the login page."""
+    ok = await run_in_threadpool(signup.confirm, t)
+    return RedirectResponse(f"{signup.app_url()}/?confirmed=1" + ("" if ok else "#error=invalid_link"), status_code=303)

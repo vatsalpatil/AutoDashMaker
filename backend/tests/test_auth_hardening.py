@@ -285,4 +285,57 @@ settings.supabase_service_key = ""                                       # witho
 assert why("nobody@x.com") == "Wrong email or password."
 settings.supabase_service_key = "service-key"
 
+# --- 12. our own sign-up: unconfirmed account + branded link email (no code), link -> confirmed -> login page
+from app.services import signup  # noqa: E402
+
+accounts12, confirmed_ids = {}, []
+
+
+def fake_create(email, pw):
+    if email in accounts12:
+        return None
+    accounts12[email] = {"id": "id_" + email.split("@")[0], "email": email, "email_confirmed_at": None}
+    return accounts12[email]["id"]
+
+
+def fake_confirm(uid):
+    confirmed_ids.append(uid)
+    for u in accounts12.values():
+        if u["id"] == uid:
+            u["email_confirmed_at"] = "now"
+
+
+gotrue.create_user, gotrue.find_user, gotrue.confirm_email = fake_create, accounts12.get, fake_confirm
+settings.supabase_service_key = "service-key"
+mails.clear()
+now[0] += 5000
+r = c.post("/api/auth/signup", json={"email": "New@X.com", "password": "password123"})
+assert r.status_code == 200 and r.json() == {"sent": True}, r.text
+assert len(mails) == 1 and mails[0][0] == "new@x.com" and "Confirm email address" in mails[0][3], mails
+assert not re.search(r"\b\d{6}\b", mails[0][2]), "a link email must not contain a code nobody can type anywhere"
+assert c.post("/api/auth/signup", json={"email": "bad", "password": "password123"}).status_code == 400
+assert c.post("/api/auth/signup", json={"email": "x@x.com", "password": "short"}).status_code == 400
+link = re.search(r"/api/auth/confirm\?t=(\S+)", mails[0][2]).group(1)
+
+bad = c.get("/api/auth/confirm", params={"t": link[:-3] + "xyz"}, follow_redirects=False)       # forged / damaged
+assert bad.status_code == 303 and "invalid_link" in bad.headers["location"] and confirmed_ids == []
+signup.VALID_HOURS = -1
+expired = signup.make_token("id_x", "x@x.com")
+signup.VALID_HOURS = 24
+assert "invalid_link" in c.get("/api/auth/confirm", params={"t": expired}, follow_redirects=False).headers["location"]
+assert confirmed_ids == [], "a bad link must never confirm anyone"
+ok = c.get("/api/auth/confirm", params={"t": link}, follow_redirects=False)
+assert ok.status_code == 303 and ok.headers["location"].endswith("/?confirmed=1") and confirmed_ids == ["id_new"], (ok.headers, confirmed_ids)
+
+now[0] += 100                                                                                      # past the resend cooldown
+again = c.post("/api/auth/signup", json={"email": "new@x.com", "password": "password123"})        # already confirmed: same answer, no mail
+assert again.json() == {"sent": True} and len(mails) == 1
+c.post("/api/auth/signup", json={"email": "late@x.com", "password": "password123"})
+assert len(mails) == 2
+now[0] += 100
+c.post("/api/auth/signup", json={"email": "late@x.com", "password": "password123"})              # unconfirmed: the link is sent again
+assert len(mails) == 3
+now[0] += 100
+assert c.post("/api/auth/signup/resend", json={"email": "ghost@x.com"}).json() == {"sent": True} and len(mails) == 3
+
 print("auth hardening tests OK")

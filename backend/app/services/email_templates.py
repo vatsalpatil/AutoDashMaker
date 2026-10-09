@@ -68,3 +68,19 @@ def notice_email(title: str, message: str) -> tuple[str, str, str]:
     text = f"{title}\n\n{message}\n\n{BRAND}"
     body = f"""<tr><td style="padding:6px 32px 22px 32px;font-size:15px;line-height:1.6;color:{MUTED};">{escape(message)}</td></tr>"""
     return f"{BRAND}: {title}", text, _frame(title, body, ACCENT)
+
+
+def link_email(heading: str, intro: str, button: str, url: str, note: str, valid_hours: int) -> tuple[str, str, str]:
+    """(subject, plain text, html) for an email whose job is one big button, e.g. 'Confirm your email'."""
+    text = f"{heading}\n\n{intro}\n\n{button}: {url}\n\nThis link works for {valid_hours} hours.\n\n{note}\n\n{BRAND}"
+    safe = escape(url, quote=True)
+    body = f"""<tr><td style="padding:6px 32px 0 32px;font-size:15px;line-height:1.6;color:{MUTED};">{escape(intro)}</td></tr>
+<tr><td align="center" style="padding:26px 32px 8px 32px;">
+<table role="presentation" cellpadding="0" cellspacing="0"><tr><td style="background:{ACCENT};border-radius:10px;">
+<a href="{safe}" style="display:inline-block;padding:14px 30px;font-size:16px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:10px;">{escape(button)}</a>
+</td></tr></table></td></tr>
+<tr><td align="center" style="padding:6px 32px 20px 32px;font-size:13px;color:{MUTED};">This link works for <b>{valid_hours} hours</b>.</td></tr>
+<tr><td style="padding:0 32px 8px 32px;font-size:12px;line-height:1.6;color:{MUTED};">If the button doesn't work, copy this address into your browser:<br>
+<a href="{safe}" style="color:{ACCENT};word-break:break-all;">{escape(url)}</a></td></tr>
+<tr><td style="padding:12px 32px 20px 32px;"><div style="background:{PAGE};border-radius:10px;padding:12px 14px;font-size:13px;line-height:1.6;color:{MUTED};">{escape(note)}</div></td></tr>"""
+    return f"{BRAND}: {heading}", text, _frame(heading, body, ACCENT)

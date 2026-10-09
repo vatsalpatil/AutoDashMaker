@@ -39,6 +39,7 @@ class Settings(BaseSettings):
     result_cache_entries: int = 128
     result_cache_ttl_s: int = 300
     result_cache_max_rows: int = 1000  # don't cache huge results
+    app_url: str = ""  # public address of the site (links in emails point here); empty = the first CORS origin
     cors_origins: list[str] = [
         "http://localhost:5174", "http://127.0.0.1:5174",
         "http://localhost:5173", "http://127.0.0.1:5173",

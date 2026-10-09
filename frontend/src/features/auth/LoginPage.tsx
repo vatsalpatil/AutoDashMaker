@@ -11,7 +11,6 @@ type Mode = 'signin' | 'signup' | 'reset' | 'reset-code' | 'check-email';
 const TITLES: Record<Mode, string> = {
   signin: 'Sign in', signup: 'Create account', reset: 'Reset password', 'reset-code': 'Choose a new password', 'check-email': 'Check your email',
 };
-const confirmLink = () => `${window.location.origin}/?confirmed=1`; // the emailed link comes back here, then the app shows Sign in
 
 /**
  * New user:      Create account -> "Check your email" -> click the link -> Sign in -> Home.
@@ -41,9 +40,9 @@ export function LoginPage({ notice = null }: { notice?: string | null }) {
         throw e;
       }
     } else if (mode === 'signup') {
-      const { data, error } = await auth.signUp({ email, password, options: { emailRedirectTo: confirmLink() } });
-      if (error) throw new Error(error.message);
-      if (!data.session) setMode('check-email'); // no session = the email still has to be confirmed
+      // our backend creates the account (unconfirmed) and sends the branded confirmation email; nobody is signed in by this
+      await api.post('/auth/signup', { email, password });
+      setMode('check-email');
     } else if (mode === 'reset') {
       await api.post('/auth/password/forgot', { email }); // always answers the same, whether or not the address has an account
       setMode('reset-code');
@@ -59,8 +58,7 @@ export function LoginPage({ notice = null }: { notice?: string | null }) {
     setInfo('Sent again. It can take a minute; check your spam folder too.');
   });
   const [resend, { busy: resending, error: resendError, setError: setResendError }] = useAsyncAction(async () => {
-    const { error } = await supabase().auth.resend({ type: 'signup', email, options: { emailRedirectTo: confirmLink() } });
-    if (error) throw new Error(error.message);
+    await api.post('/auth/signup/resend', { email });
     setInfo('Sent again. It can take a minute; check your spam folder too.');
   });
   /** Switch screen: every message from the previous screen goes away (errors, notices, the resend hint). */

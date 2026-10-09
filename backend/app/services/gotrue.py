@@ -103,3 +103,30 @@ def autoconfirm_on() -> bool:
     except (httpx.HTTPError, ValueError):
         _autoconfirm.update(at=now - 270, on=True)  # retry in 30 s
     return _autoconfirm["on"]
+
+
+def create_user(email: str, password: str) -> str | None:
+    """Create a password account that is NOT yet confirmed (so it can't sign in until the emailed link is used).
+    Returns the new id, or None when the email already has an account."""
+    try:
+        r = httpx.post(f"{_base()}/admin/users", json={"email": email, "password": password, "email_confirm": False},
+                       headers=_admin_headers(), timeout=15)
+    except httpx.HTTPError as e:
+        raise HTTPException(502, "Could not reach the sign-in service. Please try again.") from e
+    if r.status_code < 300:
+        return r.json()["id"]
+    code = (r.json() if r.headers.get("content-type", "").startswith("application/json") else {}).get("error_code", "")
+    if code in ("email_exists", "user_already_exists"):
+        return None
+    if code == "weak_password" or r.status_code == 422:
+        raise HTTPException(400, "That password was not accepted. Try a longer or less common one.")
+    raise HTTPException(502, "The account could not be created. Please try again.")
+
+
+def confirm_email(user_id: str) -> None:
+    try:
+        r = httpx.put(f"{_base()}/admin/users/{user_id}", json={"email_confirm": True}, headers=_admin_headers(), timeout=15)
+    except httpx.HTTPError as e:
+        raise HTTPException(502, "Could not reach the sign-in service. Please try again.") from e
+    if r.status_code >= 300:
+        raise HTTPException(502, "The email could not be confirmed. Please try again.")
