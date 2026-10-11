@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Badge, Button, Card, Tab, TabList } from '@/components/ui/kit';
+import { Badge, Button, Tab, TabList } from '@/components/ui/kit';
 import { Link2, Wand2 } from 'lucide-react';
 import { api } from '@/lib/api';
-import type { Dataset, DatasetSchema, GenerateResponse, PreviewResult, QualityRun } from '@/lib/types';
+import type { Dataset, DatasetSchema, GenerateResponse, PreviewResult } from '@/lib/types';
 import { DataGrid } from '@/components/common/DataGrid';
 import { ErrorBanner } from '@/components/common/ErrorBanner';
 import { Loading } from '@/components/common/Loading';
@@ -11,7 +11,7 @@ import { SchemaGrid } from '@/components/SchemaGrid';
 import { FreshnessStrip } from '@/components/FreshnessStrip';
 import { WhyPanel } from '@/components/WhyPanel';
 import { TransformPanel } from '@/components/TransformPanel';
-import { QualityBadge } from '@/pages/QualityBadge';
+import { QualityPanel } from '@/features/quality/QualityPanel';
 
 export default function DatasetDetailPage() {
   const { id } = useParams();
@@ -19,10 +19,8 @@ export default function DatasetDetailPage() {
   const [dataset, setDataset] = useState<Dataset | null>(null);
   const [schema, setSchema] = useState<DatasetSchema | null>(null);
   const [preview, setPreview] = useState<PreviewResult | null>(null);
-  const [quality, setQuality] = useState<QualityRun | null>(null);
   const [tab, setTab] = useState('schema');
   const [error, setError] = useState<string | null>(null);
-  const [runningQ, setRunningQ] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [linking, setLinking] = useState(false);
 
@@ -41,7 +39,6 @@ export default function DatasetDetailPage() {
   }, [id]);
   useEffect(() => {
     loadDataset();
-    loadQuality();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
@@ -54,23 +51,6 @@ export default function DatasetDetailPage() {
     } catch (e) {
       setError((e as Error).message);
       setGenerating(false);
-    }
-  }
-
-  const loadQuality = useCallback(() => {
-    api.get<QualityRun>(`/quality/dataset/${id}`).then(setQuality).catch(() => setQuality(null));
-  }, [id]);
-  useEffect(loadQuality, [loadQuality]);
-
-  async function runQuality() {
-    setRunningQ(true);
-    try {
-      await api.post(`/quality/run/${id}`);
-      loadQuality();
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setRunningQ(false);
     }
   }
 
@@ -125,40 +105,7 @@ export default function DatasetDetailPage() {
 
       {tab === 'transform' && <TransformPanel baseDataset={dataset} />}
 
-      {tab === 'quality' && (
-        <Card padding={4}>
-          <div className="flex items-center justify-between">
-            <h3 className="font-semibold">Data quality</h3>
-            <Button variant="primary" label={runningQ ? 'Running…' : 'Run check'} onClick={runQuality} isDisabled={runningQ} />
-          </div>
-          {!quality ? (
-            <p className="mt-3 text-sm text-muted-foreground">No quality run yet for this dataset.</p>
-          ) : (
-            <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3">
-              {(['completeness', 'uniqueness', 'validity'] as const).map((k) => (
-                <div key={k} className="rounded-lg border border-border p-3">
-                  <div className="text-xs uppercase text-muted-foreground">{k}</div>
-                  <div className="mt-1">
-                    <QualityBadge value={quality[k]} />
-                  </div>
-                </div>
-              ))}
-              <div className="rounded-lg border border-border p-3">
-                <div className="text-xs uppercase text-muted-foreground">Duplicates</div>
-                <div className="mt-1 text-lg font-semibold">{quality.duplicate_pct ?? '—'}%</div>
-              </div>
-              <div className="rounded-lg border border-border p-3">
-                <div className="text-xs uppercase text-muted-foreground">Freshness</div>
-                <div className="mt-1 text-lg font-semibold">{String(quality.freshness ?? '—')}</div>
-              </div>
-              <div className="rounded-lg border border-border p-3">
-                <div className="text-xs uppercase text-muted-foreground">Rows</div>
-                <div className="mt-1 text-lg font-semibold">{quality.row_count?.toLocaleString() ?? '—'}</div>
-              </div>
-            </div>
-          )}
-        </Card>
-      )}
+      {tab === 'quality' && <QualityPanel datasetId={id!} />}
     </div>
   );
 }
