@@ -1,7 +1,7 @@
 """Start completely clean: delete every user and all data. YOU run this; nothing else ever calls it.
 
-    backend\\.venv\\Scripts\\python.exe scripts\\reset_everything.py              (dry run: only lists what would go)
-    backend\\.venv\\Scripts\\python.exe scripts\\reset_everything.py --execute    (asks you to type a phrase first)
+    backend\\.venv\\Scripts\\python.exe Scripts\\reset_everything.py              (dry run: only lists what would go)
+    backend\\.venv\\Scripts\\python.exe Scripts\\reset_everything.py --execute    (asks you to type a phrase first)
 
 What it removes (run it on the machine whose backend you want to reset; it reads backend/.env):
   1. every Supabase sign-in account (GoTrue admin API; needs SUPABASE_URL + SUPABASE_SERVICE_KEY)   [skip: --keep-accounts]

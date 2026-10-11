@@ -1,7 +1,7 @@
 """File-size guard: keep hand-written files small enough to understand and edit in one sitting.
 
-    python scripts/check_file_sizes.py            # report files over budget
-    python scripts/check_file_sizes.py --strict   # also exit 1 if any file is over the HARD limit
+    python Scripts/check_file_sizes.py            # report files over budget
+    python Scripts/check_file_sizes.py --strict   # also exit 1 if any file is over the HARD limit
 
 Budget: WARN above 250 lines, HARD limit 400. Split by responsibility (component / hook / model / service),
 not by arbitrary line count. Generated code is excluded: shadcn (components/ui) and ReUI (components/reui).

@@ -80,4 +80,4 @@ Common cols: `id TEXT PK`, `workspace_id`, `created_at`. Look at `SCHEMA` for ex
 - **Brand:** `lib/brand.ts` name (Dashtor) · `lib/logo.ts` D path · `components/common/LogoIcon` (theme gradient) · `lib/favicon.ts` redraws the tab icon from `--primary` on every theme change (static `public/favicon.svg` = fallback).
 - **Theme:** `index.css` tokens derive from `--adm-*`; `--chart-1..8`; `--sidebar-accent` tinted by primary; Inter font. Status colours are tokens (`text-destructive/success/warning`), not `red-600`.
 - Dev: port 5174 (user's, restart after config changes), proxy `/api` → 8000.
-- Over-budget files (run `python scripts/check_file_sizes.py`): backend services/ai.py, core/store.py, AiSettings, a few 260-280-line pages/dialogs; legacy flat `components/` (BlendDialog, TransformPanel, …) move into `features/` when touched.
+- Over-budget files (run `python Scripts/check_file_sizes.py`): backend services/ai.py, core/store.py, AiSettings, a few 260-280-line pages/dialogs; legacy flat `components/` (BlendDialog, TransformPanel, …) move into `features/` when touched.

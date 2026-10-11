@@ -6,6 +6,6 @@ if not exist "backend\.venv\Scripts\python.exe" (
   pause
   exit /b 1
 )
-"backend\.venv\Scripts\python.exe" scripts\verify.py %*
+"backend\.venv\Scripts\python.exe" Scripts\verify.py %*
 echo.
 pause

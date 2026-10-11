@@ -1,7 +1,7 @@
 """One command to check everything before anything goes to the server.
 
-    backend\\.venv\\Scripts\\python.exe scripts\\verify.py            (Windows, or run verify.bat)
-    python scripts/verify.py [--skip test_remote,...] [--quick]
+    backend\\.venv\\Scripts\\python.exe Scripts\\verify.py            (Windows, or run verify.bat)
+    python Scripts/verify.py [--skip test_remote,...] [--quick]
 
 Runs: every backend test in a throwaway database (never your real data), the multi-user isolation test (login ON), the
 frontend tests, the production frontend build (the exact step the server runs) and the file-size rule.

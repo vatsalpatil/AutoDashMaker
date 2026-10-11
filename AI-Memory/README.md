@@ -1,4 +1,4 @@
-# ai-memory — index, routing and update rules
+# AI-Memory — index, routing and update rules
 
 Purpose: give any AI the full project picture in the fewest tokens. Entry point is `../AI.md`.
 

@@ -16,7 +16,7 @@ better source connectivity. Research basis: DuckDB OOM/tuning guide (set `thread
 - [x] M2 Connectivity: auto-refresh scheduler (by `expected_interval_minutes`), `/api/sources/health`, retry on network connectors
 - [x] M3 Audit log (§58): table + middleware-free logging of query runs/ingests + `/api/audit`
 - [x] M4 North-star: `/api/attention` aggregator (stale data, triggered alerts, low quality, brief findings) + UI panel on Ask page
-- [x] M5 Review pass: simplify, code-review, security-review skills; fix findings; update PROGRESS.md + ai-memory
+- [x] M5 Review pass: simplify, code-review, security-review skills; fix findings; update PROGRESS.md + AI-Memory
 - [x] M6 Final verification: backend boot, API smoke tests, `npm run build`
 
 ## Rules for this run

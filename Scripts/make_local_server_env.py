@@ -1,6 +1,6 @@
 """Build backend/.env.local-server (git-ignored): the live server's settings, adapted so localhost behaves like a real user's visit.
 
-    backend\\.venv\\Scripts\\python.exe scripts\\make_local_server_env.py
+    backend\\.venv\\Scripts\\python.exe Scripts\\make_local_server_env.py
 
 Reads backend/.env.dokploy (the paste-ready copy of the server's environment) and changes only what must differ on a PC:
 the site address (links in emails point at localhost), CORS, and the disk limit. Secrets are copied, never printed.
@@ -22,7 +22,7 @@ def main() -> int:
         print(f"{SRC.name} is missing; it holds the server's settings this file is built from.")
         return 1
     seen: set[str] = set()
-    lines = ["# Local run with the server's settings (git-ignored). Built by scripts/make_local_server_env.py"]
+    lines = ["# Local run with the server's settings (git-ignored). Built by Scripts/make_local_server_env.py"]
     for raw in SRC.read_text(encoding="utf-8").splitlines():
         if "=" not in raw or raw.lstrip().startswith("#"):
             continue

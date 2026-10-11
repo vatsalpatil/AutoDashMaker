@@ -1,6 +1,6 @@
 """Render the social-share preview (frontend/public/og-image.png, 1200x630) from the Dashtor "D" logo geometry.
 
-Run (needs Pillow):  python scripts/make_og_image.py
+Run (needs Pillow):  python Scripts/make_og_image.py
 The geometry mirrors frontend/src/lib/logo.ts (24x24 viewBox); change both together.
 """
 from pathlib import Path

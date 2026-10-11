@@ -36,7 +36,7 @@ API docs: http://127.0.0.1:8000/docs (or your uvicorn port)/docs · UI: http://l
 - Explanations/confidence/"why" are deterministic (rule-based), not LLM-generated — keeps answers auditable.
 
 ## Git workflow + release gate (standing instruction from the user, 2026-10-08)
-- Work ONLY on `Dashtor_First` (the staging/working branch). After each task: run `python scripts/verify.py --quick` (full: without --quick), commit, push to `origin Dashtor_First` without asking. Pushing it NEVER changes the server: Dokploy follows the separate `production` branch.
+- Work ONLY on `Dashtor_First` (the staging/working branch). After each task: run `python Scripts/verify.py --quick` (full: without --quick), commit, push to `origin Dashtor_First` without asking. Pushing it NEVER changes the server: Dokploy follows the separate `production` branch.
 - The user verifies on their PC (localhost) first: `start-local.bat` (local mode) or `start-local-server.bat` (server-like: login ON, per-user data; needs git-ignored `backend/.env`), and `verify.bat` (all tests + production build). The assistant runs in a cloud container and cannot touch the user's PC; only a session started on their PC can.
 - NOTHING reaches the server until the user says "deploy". Then: run the full verify, and only if green fast-forward `production` to `Dashtor_First` (`git push origin Dashtor_First:production`); the user presses Deploy in Dokploy (backend first). Never push `production` on our own, never open a PR unless asked, never commit keys/secrets (`.env`, `backend/OrcaleFiles/`).
 
@@ -44,15 +44,15 @@ API docs: http://127.0.0.1:8000/docs (or your uvicorn port)/docs · UI: http://l
 Goal: **do more with less code.** Reuse before writing; keep files small and focused.
 1. **Reuse first.** Before writing UI or logic, look in `hooks/`, `components/common/`, `components/ui/` (shadcn), `components/reui/`, `features/*`, `lib/`. Compose or extend what exists. When a pattern would appear a second time, extract it instead of copying.
 2. **Frontend layout (`frontend/src`):** `hooks/` reusable hooks (`useApi` GET + loading/error, `useAsyncAction` mutations + busy/error, `useLocalStorage`, `useResizableWidth` in common/ResizeHandle) · `components/ui/` shadcn primitives (GENERATED, don't hand-edit; add with `npx shadcn@latest add <name>`) · `components/reui/` ReUI primitives (GENERATED: `npx shadcn@latest add @reui/<name>`) · `components/ui/kit.tsx` label/variant wrappers (Button, Badge, Card, TextInput, Dialog…) over those · `components/common/` app-wide pieces (DataGrid, ResizeHandle, AsyncView, PageHeader, ErrorBanner, Loading…) · `features/<name>/` feature code (workbench, ai, settings) · `pages/` THIN route components that only compose features · `lib/` api client, theme, types, utils.
-3. **Size budget:** hand-written files ≤ 250 lines (hard limit 400); pages ≤ ~100. Run `python scripts/check_file_sizes.py` (add `--strict` to fail). Generated `components/ui` + `components/reui` are exempt.
+3. **Size budget:** hand-written files ≤ 250 lines (hard limit 400); pages ≤ ~100. Run `python Scripts/check_file_sizes.py` (add `--strict` to fail). Generated `components/ui` + `components/reui` are exempt.
 4. **Split by responsibility:** state/logic → `use*.ts` hook or `*Model.ts` (pure helpers); visuals → small components; fetching → `useApi`/`AsyncView`; mutations → `useAsyncAction`; persistence → `useLocalStorage`. Don't split by arbitrary line count.
 5. **Backend the same:** routers = thin HTTP only → `services/` = logic (one concern per module: compose, dialects, assist, audit, attention…) → `core/`. Shared helpers go in `services/`, never copied between routers.
 6. **Theming:** colours only via shadcn tokens (`bg-card`, `text-muted-foreground`, `border`…), never hard-coded `slate-*`/`white` — presets in `lib/theme.ts` drive the tokens in `index.css`.
 
 ## Repo top level
-`AI.md` (entry) · `ai-memory/` (this memory) · `PROGRESS.md` (feature checklist vs spec) · `README.md` (human intro) ·
+`AI.md` (entry) · `AI-Memory/` (this memory) · `PROGRESS.md` (feature checklist vs spec) · `README.md` (human intro) ·
 `backend/` · `frontend/` · `Plan/` (spec + unrelated exes) · `.vscode/`
 
 ## Local run profiles (2026-10-11)
 - `start-local.bat` = local mode: no login, reads `backend/.env` (minimal; the tests read it too, so keep SMTP/real keys OUT of it).
-- `start-local-server.bat` = what a real user sees: login ON, real Supabase + Brevo emails. Reads `backend/.env.local-server` (git-ignored; rebuild with `scripts/make_local_server_env.py` from `backend/.env.dokploy`). Needs this PC's IP authorized in Brevo (Security > Authorized IPs). It touches REAL accounts: Delete account / Change email act on real users.
+- `start-local-server.bat` = what a real user sees: login ON, real Supabase + Brevo emails. Reads `backend/.env.local-server` (git-ignored; rebuild with `Scripts/make_local_server_env.py` from `backend/.env.dokploy`). Needs this PC's IP authorized in Brevo (Security > Authorized IPs). It touches REAL accounts: Delete account / Change email act on real users.
