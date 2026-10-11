@@ -7,7 +7,7 @@
  * `@/components/ui/*` and `@/components/reui/*` directly.
  */
 import * as React from 'react';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Eye, EyeOff } from 'lucide-react';
 
 import { Badge as ReBadge } from '@/components/reui/badge';
 import { Button as ShButton } from '@/components/ui/button';
@@ -94,11 +94,25 @@ export function TextInput({ label, value, onChange, isDisabled, className, ...re
   isDisabled?: boolean;
 } & Omit<React.ComponentProps<'input'>, 'value' | 'onChange' | 'label'>) {
   const id = React.useId();
+  const [shown, setShown] = React.useState(false);
+  const isPassword = rest.type === 'password';
+  const input = (
+    <Input id={id} value={value} disabled={isDisabled ?? rest.disabled} className={cn(className, isPassword && 'pr-10')}
+      onChange={(e) => onChange?.(e.target.value)} {...rest} type={isPassword && shown ? 'text' : rest.type} />
+  );
   return (
     <div className="flex flex-col gap-1.5">
       {label ? <Label htmlFor={id}>{label}</Label> : null}
-      <Input id={id} value={value} disabled={isDisabled ?? rest.disabled} className={className}
-        onChange={(e) => onChange?.(e.target.value)} {...rest} />
+      {isPassword ? (
+        // every password box in the app gets the eye button that shows / hides what was typed
+        <div className="relative">
+          {input}
+          <button type="button" onClick={() => setShown((s) => !s)} aria-label={shown ? 'Hide password' : 'Show password'} aria-pressed={shown}
+            className="absolute inset-y-0 right-0 flex w-10 items-center justify-center rounded-r-md text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            {shown ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+          </button>
+        </div>
+      ) : input}
     </div>
   );
 }
