@@ -4,6 +4,7 @@ Single-user local mode for now; every entity carries organization_id /
 workspace_id / created_by columns so auth + multi-tenancy can be layered on
 without a schema migration.
 """
+import os
 from pathlib import Path
 
 from pydantic_settings import BaseSettings
@@ -80,7 +81,9 @@ class Settings(BaseSettings):
     twilio_from: str = ""                  # your Twilio number or messaging service sender
 
     class Config:
-        env_file = str(BACKEND_ROOT / ".env")
+        # DASHTOR_ENV_FILE lets start-local-server.bat run with the production-like settings file (backend/.env.local-server)
+        # while the tests and a plain local start keep reading backend/.env.
+        env_file = os.environ.get("DASHTOR_ENV_FILE") or str(BACKEND_ROOT / ".env")
         extra = "ignore"
 
 

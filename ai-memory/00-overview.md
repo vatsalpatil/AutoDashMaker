@@ -52,3 +52,7 @@ Goal: **do more with less code.** Reuse before writing; keep files small and foc
 ## Repo top level
 `AI.md` (entry) · `ai-memory/` (this memory) · `PROGRESS.md` (feature checklist vs spec) · `README.md` (human intro) ·
 `backend/` · `frontend/` · `Plan/` (spec + unrelated exes) · `.vscode/`
+
+## Local run profiles (2026-10-11)
+- `start-local.bat` = local mode: no login, reads `backend/.env` (minimal; the tests read it too, so keep SMTP/real keys OUT of it).
+- `start-local-server.bat` = what a real user sees: login ON, real Supabase + Brevo emails. Reads `backend/.env.local-server` (git-ignored; rebuild with `scripts/make_local_server_env.py` from `backend/.env.dokploy`). Needs this PC's IP authorized in Brevo (Security > Authorized IPs). It touches REAL accounts: Delete account / Change email act on real users.

@@ -1,14 +1,16 @@
 @echo off
-rem Server-like local run: login ON with your real Supabase, per-user data, strict SQL rules - exactly the server's behaviour.
-rem Needs backend\.env (git-ignored) with SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_JWT_SECRET (see backend\.env.example).
+rem Server-like local run: exactly what a real user sees on the live site (login page, email confirmation, Home), per-user data,
+rem strict SQL rules, using your real Supabase. Settings come from backend\.env.local-server (git-ignored).
+rem Create or refresh that file with:  backend\.venv\Scripts\python.exe scripts\make_local_server_env.py
 cd /d "%~dp0"
-findstr /b /c:"SUPABASE_JWT_SECRET=" "backend\.env" >nul 2>&1
-if errorlevel 1 (
-  echo backend\.env is missing or has no SUPABASE_JWT_SECRET. Copy backend\.env.example to backend\.env and fill in your Supabase values.
-  echo Never paste those values anywhere else.
+if not exist "backend\.env.local-server" (
+  echo backend\.env.local-server is missing. Create it with:
+  echo    backend\.venv\Scripts\python.exe scripts\make_local_server_env.py
+  echo It is built from backend\.env.dokploy. Never paste those values anywhere else.
   pause
   exit /b 1
 )
+set DASHTOR_ENV_FILE=%~dp0backend\.env.local-server
 set AUTH_ENABLED=true
 set ALLOW_USER_PYTHON=false
 call "%~dp0start-local.bat"
