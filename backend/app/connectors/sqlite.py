@@ -4,7 +4,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from .base import DataConnector, ConnectorError
+from .base import DataConnector, ConnectorError, redact
 from ..core.netguard import NetworkBlocked, confine_path
 
 
@@ -29,7 +29,7 @@ class SQLiteConnector(DataConnector):
             con.close()
             return {"ok": True, "detail": "connected"}
         except Exception as e:
-            return {"ok": False, "detail": str(e)}
+            return {"ok": False, "detail": redact(str(e))}
 
     def discover(self) -> list[dict[str, Any]]:
         import duckdb

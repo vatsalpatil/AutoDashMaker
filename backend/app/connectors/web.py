@@ -15,7 +15,7 @@ from typing import Any
 import httpx
 
 from ..core.config import settings
-from .base import DataConnector, ConnectorError, http_retry
+from .base import DataConnector, ConnectorError, http_retry, redact
 from .files import FileConnector
 from ..core import tenant
 from ..core.netguard import safe_client
@@ -72,7 +72,7 @@ class UrlConnector(DataConnector):
             p = self._download()
             return {"ok": True, "detail": f"downloaded {p.name} ({p.stat().st_size:,} bytes)"}
         except ConnectorError as e:
-            return {"ok": False, "detail": str(e)}
+            return {"ok": False, "detail": redact(str(e))}
 
     def discover(self) -> list[dict[str, Any]]:
         return self._file_connector().discover()

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from .base import DataConnector, ConnectorError
+from .base import DataConnector, ConnectorError, redact
 from .tls import postgres_ssl, sql_escape
 from ..core.netguard import NetworkBlocked, ensure_public_host
 
@@ -44,7 +44,7 @@ class PostgresConnector(DataConnector):
             con.close()
             return {"ok": True, "detail": "connected"}
         except Exception as e:
-            return {"ok": False, "detail": str(e)}
+            return {"ok": False, "detail": redact(str(e))}
 
     def discover(self) -> list[dict[str, Any]]:
         import duckdb

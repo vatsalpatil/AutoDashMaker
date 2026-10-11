@@ -8,7 +8,7 @@ from typing import Any
 
 import httpx
 
-from .base import DataConnector, ConnectorError, http_retry
+from .base import DataConnector, ConnectorError, http_retry, redact
 from ..core.netguard import safe_client
 
 
@@ -92,7 +92,7 @@ class RestConnector(DataConnector):
             detail = f"request succeeded; found {len(found[1])} records" + (f" at '{found[0]}'" if found and found[0] else "") if found else "request succeeded"
             return {"ok": True, "detail": detail}
         except ConnectorError as e:
-            return {"ok": False, "detail": str(e)}
+            return {"ok": False, "detail": redact(str(e))}
 
     def discover(self) -> list[dict[str, Any]]:
         return [{"name": self.config.get("name", "api"), "kind": "api"}]

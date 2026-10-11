@@ -1,12 +1,23 @@
 """Connector interface — every data source implements this contract."""
 from __future__ import annotations
 
+import re
 from abc import ABC, abstractmethod
 from typing import Any
 
+_SECRET_PAIR = re.compile(r"""(?i)((?:password|passwd|pwd|secret|token|api[_-]?key)\s*[=:]\s*)("[^"]*"|'[^']*'|\S+)""")
+_URL_PASSWORD = re.compile(r"(://[^:/\s@]+:)[^@\s]+(@)")
+
+
+def redact(text: str) -> str:
+    """Hide passwords/keys in an error message. Database drivers echo the whole connection string (password included)
+    into their errors, and these messages are shown in the browser and written to logs."""
+    return _URL_PASSWORD.sub(r"\1***\2", _SECRET_PAIR.sub(r"\1***", text))
+
 
 class ConnectorError(Exception):
-    pass
+    def __init__(self, message: object = "", *args: object):
+        super().__init__(redact(str(message)), *args)  # every connector error is scrubbed once, here
 
 
 class DataConnector(ABC):
