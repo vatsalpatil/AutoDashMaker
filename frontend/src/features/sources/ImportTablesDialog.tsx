@@ -20,10 +20,19 @@ export function ImportTablesDialog({ source, onClose, onImported }: { source: So
   const [chosen, setMode] = useState<'link' | 'copy'>('link');
   const mode = linkable ? chosen : 'copy';
 
-  useEffect(() => { setPicked(new Set()); setFilter(''); setProgress({}); }, [source?.id]);
+  useEffect(() => { setPicked(new Set()); setFilter(''); setProgress({}); setDbs(null); }, [source?.id]);
 
   const items = data?.items ?? [];
-  const shown = useMemo(() => items.filter((i) => i.name.toLowerCase().includes(filter.trim().toLowerCase())), [items, filter]);
+  const groupOf = (n: string) => (n.includes('.') ? n.split('.')[0] : '');
+  const groups = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const i of items) m.set(groupOf(i.name), (m.get(groupOf(i.name)) ?? 0) + 1);
+    return m.size > 1 ? [...m] : [];   // only worth showing when tables live in 2+ databases
+  }, [items]);
+  const [dbs, setDbs] = useState<Set<string> | null>(null);   // null = every database
+  const active = (g: string) => dbs === null || dbs.has(g);
+  const toggleDb = (g: string) => setDbs((d) => { const n = new Set(d ?? groups.map(([k]) => k)); if (n.has(g)) n.delete(g); else n.add(g); return n.size === groups.length ? null : n; });
+  const shown = useMemo(() => items.filter((i) => active(groupOf(i.name)) && i.name.toLowerCase().includes(filter.trim().toLowerCase())), [items, filter, dbs]);
   const toggle = (name: string) => setPicked((p) => { const n = new Set(p); if (n.has(name)) n.delete(name); else n.add(name); return n; });
 
   async function run() {
@@ -65,6 +74,24 @@ export function ImportTablesDialog({ source, onClose, onImported }: { source: So
               <span className="block text-xs text-muted-foreground">{text}</span>
             </button>
           ))}
+        </div>}
+        {groups.length > 0 && <div>
+          <div className="mb-1 flex items-center justify-between text-xs font-medium">
+            <span>1. Choose {source?.type === 'mysql' ? 'database(s)' : 'schema(s)'}</span>
+            <span className="flex gap-3 text-primary">
+              <button type="button" onClick={() => setDbs(null)}>All</button>
+              <button type="button" onClick={() => setDbs(new Set())}>None</button>
+            </span>
+          </div>
+          <div className="flex max-h-24 flex-wrap gap-1.5 overflow-y-auto">
+            {groups.map(([g, n]) => (
+              <button key={g} type="button" aria-pressed={active(g)} onClick={() => toggleDb(g)} disabled={busy}
+                className={cn('rounded-full border px-2.5 py-1 text-xs', active(g) ? 'border-primary bg-primary/10' : 'text-muted-foreground hover:bg-accent')}>
+                {g || '(default)'} <span className="text-muted-foreground">{n}</span>
+              </button>
+            ))}
+          </div>
+          <p className="mt-2 text-xs font-medium">2. Choose tables</p>
         </div>}
         <div className="relative">
           <Search className="pointer-events-none absolute left-2.5 top-2 size-4 text-muted-foreground" />

@@ -89,7 +89,7 @@ class MySQLConnector(DataConnector):
             alias = self._attach(con)
             dbs = self._databases()
             if dbs == ["*"]:
-                cond = "table_schema NOT IN (" + ", ".join(f"'{d}'" for d in SYSTEM_DBS) + ")"
+                cond = "LOWER(table_schema) NOT IN (" + ", ".join(f"'{d}'" for d in SYSTEM_DBS) + ")"
             else:
                 cond = "table_schema IN (" + ", ".join(f"'{sql_escape(d)}'" for d in dbs) + ")"
             try:
