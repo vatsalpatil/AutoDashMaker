@@ -8,7 +8,27 @@ from .tls import mysql_ssl, sql_escape
 from ..core.netguard import NetworkBlocked, ensure_public_host
 
 
+SYSTEM_DBS = ("information_schema", "mysql", "performance_schema", "sys", "metrics_schema", "inspection_schema")
+
+
+def _q(n: str) -> str:
+    return "`" + n.replace("`", "``") + "`"
+
+
 class MySQLConnector(DataConnector):
+    def _databases(self) -> list[str]:
+        """The configured database field: one name, several separated by commas, or * for every database."""
+        return [d.strip() for d in str(self.config.get("database", "")).split(",") if d.strip()]
+
+    def _qualified(self, name: str) -> str:
+        """`db`.`table` for a 'db.table' name (several databases), `table` for a plain one."""
+        return ".".join(_q(p) for p in (name.split(".", 1) if self._multi else [name]))
+
+    @property
+    def _multi(self) -> bool:
+        dbs = self._databases()
+        return len(dbs) > 1 or dbs == ["*"]
+
     def _attach(self, con, alias: str = "mysql_src") -> str:
         c = self.config
         try:
@@ -18,7 +38,7 @@ class MySQLConnector(DataConnector):
         con.execute("INSTALL mysql; LOAD mysql;")
         dsn = (
             f"host={sql_escape(c['host'])} port={c.get('port', 3306)} "
-            f"database={sql_escape(c['database'])} user={sql_escape(c['user'])} "
+            f"database={sql_escape(self._default_db())} user={sql_escape(c['user'])} "
             f"password={sql_escape(c.get('password', ''))}{mysql_ssl(c)}"
         )
         try:
@@ -36,15 +56,19 @@ class MySQLConnector(DataConnector):
             con.execute(f"ATTACH '{dsn}' AS {alias} (TYPE mysql)")
         return alias
 
+    def _default_db(self) -> str:
+        dbs = self._databases()
+        return dbs[0] if dbs and dbs[0] != "*" else "information_schema"  # '*': connect anywhere, then list every database
+
     def count_rows(self, con, alias: str, view_name: str, name: str) -> int:
         # DuckDB's MySQL scanner fails (internal binder error) on a bare COUNT(*) over a remote table: count remotely
-        table = "`" + name.replace("`", "``") + "`"
+        table = self._qualified(name)
         return int(con.execute("SELECT * FROM mysql_query(?, ?)", [alias, f"SELECT COUNT(*) FROM {table}"]).fetchone()[0])
 
     def remote_profile(self, con, alias: str, name: str, columns: list[str]) -> dict[str, tuple[int, int]] | None:
-        q = lambda n: "`" + n.replace("`", "``") + "`"
+        q = _q
         aggs = ", ".join(f"COUNT(*) - COUNT({q(c)}), COUNT(DISTINCT {q(c)})" for c in columns)
-        row = con.execute("SELECT * FROM mysql_query(?, ?)", [alias, f"SELECT {aggs} FROM {q(name)}"]).fetchone()
+        row = con.execute("SELECT * FROM mysql_query(?, ?)", [alias, f"SELECT {aggs} FROM {self._qualified(name)}"]).fetchone()
         return {c: (int(row[2 * i]), int(row[2 * i + 1])) for i, c in enumerate(columns)}
 
     def test_connection(self) -> dict[str, Any]:
@@ -63,14 +87,21 @@ class MySQLConnector(DataConnector):
         con = duckdb.connect()
         try:
             alias = self._attach(con)
+            dbs = self._databases()
+            if dbs == ["*"]:
+                cond = "table_schema NOT IN (" + ", ".join(f"'{d}'" for d in SYSTEM_DBS) + ")"
+            else:
+                cond = "table_schema IN (" + ", ".join(f"'{sql_escape(d)}'" for d in dbs) + ")"
             try:
-                # only the configured database's own tables (SHOW TABLES also lists information_schema & friends)
-                sql = ("SELECT table_name FROM information_schema.tables "
-                       f"WHERE table_schema = '{sql_escape(self.config['database'])}' ORDER BY table_name")
+                # only the chosen databases' tables (SHOW TABLES also lists information_schema & friends)
+                sql = f"SELECT table_schema, table_name FROM information_schema.tables WHERE {cond} ORDER BY table_schema, table_name"
                 rows = con.execute("SELECT * FROM mysql_query(?, ?)", [alias, sql]).fetchall()
             except Exception:
-                rows = con.execute(f"SHOW TABLES FROM {alias}").fetchall()
-            return [{"name": r[0], "kind": "table"} for r in rows]
+                if self._multi:
+                    raise
+                rows = [(None, r[0]) for r in con.execute(f"SHOW TABLES FROM {alias}").fetchall()]
+            # several databases: 'db.table' so equal table names stay apart; one database keeps plain names
+            return [{"name": f"{s}.{t}" if self._multi else t, "kind": "table"} for s, t in rows]
         except Exception as e:
             raise ConnectorError(str(e)) from e
         finally:
@@ -78,9 +109,8 @@ class MySQLConnector(DataConnector):
 
     def ingest(self, name: str, target_table: str, analytics_con) -> dict[str, Any]:
         alias = self._attach(analytics_con)
-        analytics_con.execute(
-            f'CREATE OR REPLACE TABLE {target_table} AS SELECT * FROM {alias}."{name.replace(chr(34), chr(34) * 2)}"'
-        )
+        ref = ".".join('"' + p.replace('"', '""') + '"' for p in (name.split(".", 1) if self._multi else [name]))
+        analytics_con.execute(f"CREATE OR REPLACE TABLE {target_table} AS SELECT * FROM {alias}.{ref}")
         info = analytics_con.execute(f"PRAGMA table_info('{target_table}')").fetchall()
         count = analytics_con.execute(f"SELECT COUNT(*) FROM {target_table}").fetchone()[0]
         return {

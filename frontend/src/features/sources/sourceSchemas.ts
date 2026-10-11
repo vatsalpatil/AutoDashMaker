@@ -46,11 +46,14 @@ const SSL_KEYS = ['ssl_mode', 'ssl_ca', 'ssl_cert', 'ssl_key'] as const;
 
 const database = (id: string, label: string, port: string, badge: BadgeKind): SourceSchema => ({
   id, label, badge, grid: true,
+  hint: id === 'mysql' ? 'Database(s): one name, several separated by commas, or * for every database on the server. With several, tables are listed as database.table.' : undefined,
   fields: [
     nameField,
     { key: 'host', label: 'Host', default: 'localhost' },
     { key: 'port', label: 'Port', default: port },
-    { key: 'database', label: 'Database' },
+    id === 'mysql'
+      ? { key: 'database', label: 'Database(s)', placeholder: 'sales, marketing  or  *  for all' }
+      : { key: 'database', label: 'Database' },
     { key: 'user', label: 'User' },
     { key: 'password', label: 'Password', kind: 'password' },
     { key: 'ssl_mode', label: 'SSL mode (blank = server default)', kind: 'select', options: SSL_MODES[id], advanced: true },
