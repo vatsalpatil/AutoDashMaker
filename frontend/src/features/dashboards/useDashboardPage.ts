@@ -50,6 +50,11 @@ export function useDashboardPage(id: string | undefined) {
     return [{ id: 'main', name: 'Overview' }];
   }, [dashboard]);
 
+  // a dashboard whose pages are not called 'main' (AI-generated: overview, breakdown...) opens on its first page, not on an empty one
+  useEffect(() => {
+    if (!pages.some((p) => p.id === activePage)) setActivePage(pages[0].id);
+  }, [pages, activePage]);
+
   const widgets = useMemo(() => {
     const all = dashboard?.widgets ?? [];
     return all.filter((w) => (w.page ?? 'main') === activePage);

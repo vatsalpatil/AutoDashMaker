@@ -43,6 +43,7 @@ def clean_title(title: Any) -> str:
     t = re.sub(r"\s+", " ", str(title or "").replace("_", " ")).strip(" -:")
     if t and (t == t.lower() or t == t.upper()):
         t = " ".join(w if (i and w.lower() in _SMALL) else w.capitalize() for i, w in enumerate(t.lower().split()))
+    t = re.sub(r"\b(\w+)(?: \1\b)+", r"\1", t, flags=re.I)   # "Total Total Profit" -> "Total Profit"
     return t[:60] or "Untitled"
 
 

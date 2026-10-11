@@ -46,7 +46,7 @@ export function KpiCard({ spec, result, o, height }: { spec: ChartSpec; result: 
 
   return (
     <div ref={boxRef} className={`relative flex h-full flex-col justify-center gap-1 overflow-hidden p-6 ${align}`} style={{ minHeight: height }}>
-      {o.showLabel !== false && <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{String(o.chartTitle || y || x)}</div>}
+      {o.showLabel !== false && <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{String(o.chartTitle || y || x).replace(/_/g, ' ')}</div>}
       <Tooltip>
         <TooltipTrigger render={<div className={`cursor-default font-semibold tabular-nums leading-tight ${color ? '' : 'text-foreground'}`} style={{ fontSize, color }} />}>
           {shown}

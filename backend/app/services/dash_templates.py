@@ -91,6 +91,7 @@ SQL_RULES = """Query rules (queries are checked and run; slow or invalid ones ar
 - Use the exact table name given. Quote odd column names with double quotes. Give EVERY output column a short snake_case alias.
 - Divide only with NULLIF(denominator, 0); ROUND money and percentages to 1-2 decimals. Exclude NULL dimension values with WHERE col IS NOT NULL when ranking.
 - Time series: DATE_TRUNC at the suggested grain, first column = the period, ORDER BY the period.
+- Growth / period-over-period KPIs: compare the last two COMPLETE periods; if the data ends part-way through a period (see the time range), leave that period out. ROUND every KPI and money value to at most 2 decimals.
 - Chart fit: kpi = one numeric value; line/area = period first then measures; bar/pie/funnel/treemap = category first then ONE measure, ORDER BY measure DESC; scatter = two numeric columns; table/pivot = readable named columns.
 - Big tables: prefer APPROX_COUNT_DISTINCT over COUNT(DISTINCT) beyond ~1M rows, and sample scatter data with USING SAMPLE 2000 ROWS."""
 

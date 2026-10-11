@@ -108,6 +108,11 @@ def _ask(system: str, user: str, provider_id: str | None) -> dict[str, Any]:
     return parse_json(ai_svc.chat(messages, provider_id=provider_id, max_tokens=6000))
 
 
+def _tidy(rows: list) -> list:
+    """Rows with floats rounded to 2 decimals (what the insights/suggestions models are shown)."""
+    return [{k: (round(v, 2) if isinstance(v, float) else v) for k, v in r.items()} if isinstance(r, dict) else r for r in rows]
+
+
 def _materialize(spec: dict[str, Any], context: str, provider_id: str | None) -> dict[str, Any]:
     """Validated, executed widget: {title, sql, chart: {type, encoding, options}}. Raises ValueError with the reason."""
     title = str(spec.get("title") or "Untitled").strip()[:80]
@@ -131,7 +136,7 @@ def _materialize(spec: dict[str, Any], context: str, provider_id: str | None) ->
     chart = {"type": ctype, "encoding": encode(ctype, cols, rows), "options": suggested["options"] if ctype == suggested["type"] else {}}
     if ctype == "kpi":
         chart["options"] = {"numberFormat": "compact"}
-    return {"title": title, "sql": result["sql"], "chart": chart, "columns": cols, "preview": rows[:6], "ms": result.get("duration_ms")}
+    return {"title": title, "sql": result["sql"], "chart": chart, "columns": cols, "preview": _tidy(rows[:6]), "all_rows": _tidy(rows[:400]), "ms": result.get("duration_ms")}
 
 
 def _store_widget(dash_id: str, widget: dict[str, Any], position: dict[str, int], dataset_id: str | None, page: str = "main") -> dict[str, Any]:
@@ -158,8 +163,9 @@ def _layout(widgets: list[dict[str, Any]], start_y: int = 0) -> list[dict[str, i
         if w["chart"]["type"] in WIDE:
             if half:
                 y, half = y + 4, 0
-            pos[i] = {"x": 0, "y": y, "w": 12, "h": 4}
-            y += 4
+            h = 7 if w["chart"]["type"] in ("table", "pivot") else 4   # tables need room for rows
+            pos[i] = {"x": 0, "y": y, "w": 12, "h": h}
+            y += h
         else:
             pos[i] = {"x": 6 * half, "y": y, "w": 6, "h": 4}
             half += 1

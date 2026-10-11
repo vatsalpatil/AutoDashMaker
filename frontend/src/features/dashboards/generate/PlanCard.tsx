@@ -4,10 +4,11 @@ import { Checkbox } from '@/components/ui/checkbox';
 import type { Plan } from './useGenerateSession';
 
 /** Step 3: the proposed pages and widgets. Untick what you do not want, or tell the AI what to change and it revises the plan. */
-export function PlanCard({ plan, busy, onRevise, onBuild }: { plan: Plan; busy: boolean; onRevise: (feedback: string) => void; onBuild: (keep: Set<number>) => void }) {
+export function PlanCard({ plan, status, onRevise, onBuild }: { plan: Plan; status: 'idle' | 'revising' | 'building' | 'locked'; onRevise: (feedback: string) => void; onBuild: (keep: Set<number>) => void }) {
   const [keep, setKeep] = useState<Set<number>>(new Set());
   const [feedback, setFeedback] = useState('');
   useEffect(() => { setKeep(new Set(plan.widgets.map((w) => w.idx))); setFeedback(''); }, [plan]);
+  const busy = status !== 'idle';
   const flip = (i: number) => setKeep((k) => { const n = new Set(k); if (n.has(i)) n.delete(i); else n.add(i); return n; });
 
   return (
@@ -38,8 +39,8 @@ export function PlanCard({ plan, busy, onRevise, onBuild }: { plan: Plan; busy: 
         ))}
         <TextArea label="Want something different? Tell the AI" value={feedback} onChange={setFeedback} rows={2} placeholder="e.g. add a profit margin KPI, drop the pie chart, split regions by month" />
         <div className="flex flex-wrap justify-end gap-2">
-          <Button variant="secondary" label={busy ? 'Revising…' : 'Revise the plan'} onClick={() => onRevise(feedback)} isDisabled={busy || !feedback.trim()} />
-          <Button variant="primary" label={`Build ${keep.size} widget${keep.size === 1 ? '' : 's'}`} onClick={() => onBuild(keep)} isDisabled={busy || keep.size === 0} />
+          <Button variant="secondary" label={status === 'revising' ? 'Revising…' : 'Revise the plan'} onClick={() => onRevise(feedback)} isDisabled={busy || !feedback.trim()} />
+          <Button variant="primary" label={status === 'building' ? 'Building…' : status === 'locked' ? 'Built' : `Build ${keep.size} widget${keep.size === 1 ? '' : 's'}`} onClick={() => onBuild(keep)} isDisabled={busy || keep.size === 0} />
         </div>
       </div>
     </Card>

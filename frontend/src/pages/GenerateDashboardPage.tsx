@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Sparkles } from 'lucide-react';
 import { PageHeader } from '@/components/common/PageHeader';
@@ -14,6 +15,11 @@ import { useGenerateSession } from '@/features/dashboards/generate/useGenerateSe
 export default function GenerateDashboardPage() {
   const [params] = useSearchParams();
   const s = useGenerateSession();
+  // bring the card that needs your attention into view whenever the session moves on
+  useEffect(() => {
+    const id = { questions: 'gen-questions', plan: 'gen-plan', done: 'gen-result' }[s.phase as 'questions' | 'plan' | 'done'];
+    if (id) document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [s.phase]);
   const showUnderstanding = s.evidence || s.understanding;
 
   return (
@@ -24,9 +30,9 @@ export default function GenerateDashboardPage() {
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="flex min-w-0 flex-col gap-4">
           <SetupCard initialDataset={params.get('dataset') ?? undefined} locked={s.setup} onStart={s.start} />
-          {showUnderstanding && <UnderstandingCard evidence={s.evidence} understanding={s.understanding} busy={s.phase !== 'questions'} onContinue={(a) => s.makePlan(a)} />}
-          {s.plan && s.phase !== 'questions' && s.phase !== 'understanding' && <PlanCard plan={s.plan} busy={s.busy || s.phase === 'done'} onRevise={(f) => s.makePlan(s.answers, f)} onBuild={s.build} />}
-          {s.result && s.phase === 'done' && <ResultCard result={s.result} onRestart={s.restart} />}
+          {showUnderstanding && <div id="gen-questions" className="scroll-mt-4"><UnderstandingCard evidence={s.evidence} understanding={s.understanding} busy={s.phase !== 'questions'} onContinue={(a) => s.makePlan(a)} /></div>}
+          {s.plan && s.phase !== 'questions' && s.phase !== 'understanding' && <div id="gen-plan" className="scroll-mt-4"><PlanCard plan={s.plan} status={s.phase === 'planning' ? 'revising' : s.phase === 'building' ? 'building' : s.phase === 'done' ? 'locked' : 'idle'} onRevise={(f) => s.makePlan(s.answers, f)} onBuild={s.build} /></div>}
+          {s.result && s.phase === 'done' && <div id="gen-result" className="scroll-mt-4"><ResultCard result={s.result} onRestart={s.restart} /></div>}
           {s.error && (
             <p className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
               {s.error.noProvider ? <>No AI provider is set up. Add one in <Link to="/settings" className="underline">Settings</Link> to generate dashboards.</> : s.error.message}

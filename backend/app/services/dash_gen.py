@@ -16,27 +16,51 @@ from .dash_plan import ask_json, clean_title, plan as plan_phase, understand
 from .dash_profile import profile
 
 
-def _insights(name: str, built: list[dict[str, Any]], provider_id: str | None) -> str | None:
-    """Grounded insights: the model sees the real result rows and may only state what they show."""
-    facts = "\n".join(f"{w['title']} | columns {', '.join(w['columns'])} | first rows {w['preview']}" for w in built if w["chart"]["type"] != "scatter")[:9000]
+def _summary(w: dict[str, Any]) -> str:
+    """What the insights model is told about one widget: every row when short, else count / first / last / min / max."""
+    rows, cols = w["all_rows"], w["columns"]
+    head = f"{w['title']} ({w['chart']['type']}; columns {', '.join(cols)}; {len(rows)} rows)"
+    if len(rows) <= 12:
+        return f"{head}: {rows}"
+    nums = [c for c in cols if isinstance(rows[0].get(c), (int, float)) and not isinstance(rows[0].get(c), bool)]
+    spread = ""
+    if nums:
+        vals = [r[nums[-1]] for r in rows if isinstance(r.get(nums[-1]), (int, float))]
+        spread = f"; {nums[-1]} min {min(vals)}, max {max(vals)}"
+    return f"{head}: first {rows[:3]}, last {rows[-3:]}{spread}"
+
+
+def _context(prof: dict[str, Any]) -> str:
+    """Dataset header + every time range, so claims about periods can only come from real dates."""
+    return "\n".join(l for l in prof["text"].splitlines() if l.startswith("Table") or "[time]" in l)[:800]
+
+
+def _insights(name: str, built: list[dict[str, Any]], prof: dict[str, Any], provider_id: str | None) -> str | None:
+    """Grounded insights: the model sees the real results and may only state what they show."""
+    facts = "\n".join(_summary(w) for w in built if w["chart"]["type"] != "scatter")[:10000]
     messages = [
-        {"role": "system", "content": "You are a data analyst. Write 5 to 7 short markdown bullets of insights from the widget results below. "
-         "Every bullet must quote concrete numbers that appear in the results; never invent figures. Lead each bullet with a bold "
-         "label (e.g. **Top region:**). Finish with one bullet starting **Look next:** suggesting a follow-up question. Reply with the bullets only."},
-        {"role": "user", "content": f"Dashboard: {name}\n\n{facts}"},
+        {"role": "system", "content": "You are a data analyst. Write 5 to 7 short markdown bullets of insights from the dashboard results below. "
+         "Every bullet must quote concrete numbers that appear in the results; never invent figures, periods or causes. Use the dataset "
+         "context for the time span and do not treat a partial latest period as a real drop. Format numbers for people (thousands separators, "
+         "at most 2 decimals, currency or % where obvious). Lead each bullet with a bold label (e.g. **Top region:**). Finish with one "
+         "bullet starting **Look next:** suggesting a follow-up question the data can answer. Reply with the bullets only."},
+        {"role": "user", "content": f"Dataset context:\n{_context(prof)}\n\nDashboard: {name}\n\n{facts}"},
     ]
     try:
-        text = ai_svc._THINK.sub("", ai_svc._ANSI.sub("", ai_svc.chat(messages, provider_id=provider_id, max_tokens=1200))).strip()
+        text = ai_svc._THINK.sub("", ai_svc._ANSI.sub("", ai_svc.chat(messages, provider_id=provider_id, max_tokens=1500))).strip()
     except Exception:
         return None  # insights are a bonus: the dashboard is still complete without them
     return text or None
 
 
-def _suggestions(name: str, built: list[dict[str, Any]], insights: str | None, provider_id: str | None) -> list[str]:
+def _suggestions(name: str, built: list[dict[str, Any]], insights: str | None, prof: dict[str, Any], provider_id: str | None) -> list[str]:
     """Improvements the user can accept with one click (each is an instruction for the dashboard chat)."""
     system = ('You review a freshly built dashboard. Suggest 3 to 5 concrete improvements as short instructions the user could give, '
-              'e.g. "Add profit margin by region". Reply with ONLY JSON: {"suggestions": [strings]}.')
-    user = f"Dashboard: {name}\nWidgets: {', '.join(w['title'] for w in built)}\nInsights:\n{insights or '(none)'}"
+              'e.g. "Add profit margin by region". Each must be doable by adding, changing or removing ONE chart, KPI or table using ONLY the '
+              'columns listed (no filters, drill-downs, targets or data that is not there). Do not repeat widgets that already exist. '
+              'Reply with ONLY JSON: {"suggestions": [strings]}.')
+    columns = ", ".join(f"{c['name']} ({c['role']})" for c in prof["columns"])
+    user = f"Dashboard: {name}\nColumns: {columns}\nExisting widgets: {', '.join(w['title'] for w in built)}\nInsights:\n{insights or '(none)'}"
     try:
         raw = ask_json(system, user, provider_id, "suggestions").get("suggestions")
     except Exception:
@@ -75,8 +99,8 @@ def build(dataset_id: str, name: str, pages: list[dict[str, str]], widgets: list
 
     dash_name = clean_title(name)
     yield {"type": "step", "n": 5, "title": "Writing insights", "detail": "The AI reads the real results and may only quote numbers that appear in them."}
-    insights = _insights(dash_name, built, provider_id)
-    suggestions = _suggestions(dash_name, built, insights, provider_id)
+    insights = _insights(dash_name, built, prof, provider_id)
+    suggestions = _suggestions(dash_name, built, insights, prof, provider_id)
     yield {"type": "step", "n": 5, "title": "Writing insights", "done": True,
            "detail": "Insights page added." if insights else "Skipped (the model did not return insights)."}
 

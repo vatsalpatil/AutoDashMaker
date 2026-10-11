@@ -15,7 +15,7 @@ export function EvidenceTabs({ evidence }: { evidence: Evidence }) {
         <Tab value="rows" label={`Top ${evidence.sample.rows.length} rows`} />
         <Tab value="corr" label="Correlations" />
       </TabList>
-      {tab === 'describe' && <DataGrid columns={DESCRIBE_COLS} rows={evidence.describe as unknown as Record<string, unknown>[]} maxHeight="22rem" leftAlign expandable={false} />}
+      {tab === 'describe' && <DataGrid columns={DESCRIBE_COLS} rows={evidence.describe.map((r) => Object.fromEntries(Object.entries(r).map(([k, v]) => [k, v ?? '']))) as Record<string, unknown>[]} maxHeight="22rem" leftAlign expandable={false} />}
       {tab === 'rows' && <DataGrid columns={evidence.sample.columns} rows={evidence.sample.rows} maxHeight="22rem" expandable={false} />}
       {tab === 'corr' && (
         evidence.correlations.length === 0
