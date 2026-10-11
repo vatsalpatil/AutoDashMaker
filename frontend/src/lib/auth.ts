@@ -6,7 +6,13 @@ export interface AuthConfig { enabled: boolean; supabase_url: string; supabase_a
 
 let client: SupabaseClient | null = null;
 
-export async function initAuth(): Promise<{ enabled: boolean; session: Session | null; notice: string | null }> {
+type AuthInit = { enabled: boolean; session: Session | null; notice: string | null };
+let started: Promise<AuthInit> | null = null;
+
+/** Runs once per page load (React StrictMode calls effects twice; a second Supabase client would fight over the same storage). */
+export const initAuth = (): Promise<AuthInit> => (started ??= startAuth());
+
+async function startAuth(): Promise<AuthInit> {
   const res = await fetch('/api/auth/config');
   const cfg = (await res.json()) as AuthConfig;
   if (!cfg.enabled) return { enabled: false, session: null, notice: null };  // loaded only when login is on: local single-user mode never downloads the Supabase client
