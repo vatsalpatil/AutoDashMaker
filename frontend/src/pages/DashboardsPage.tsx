@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ExternalLink, Plus, Sparkles, Star, Trash2, Wand2 } from 'lucide-react';
 import { ErrorBanner } from '@/components/common/ErrorBanner';
 import { IconButton } from '@/components/common/IconButton';
@@ -11,7 +11,6 @@ import { ResourceList, type ListColumn } from '@/components/common/ResourceList'
 import { useFieldFilters, type FieldDef } from '@/components/common/useFieldFilters';
 import { Badge, Button, Card, TextInput } from '@/components/ui/kit';
 import { AiDashboardDialog } from '@/features/dashboards/AiDashboardDialog';
-import { GenerateDashboardDialog } from '@/features/dashboards/GenerateDashboardDialog';
 import { useApi } from '@/hooks/useApi';
 import { useAsyncAction } from '@/hooks/useAsyncAction';
 import { useFavorites } from '@/hooks/useFavorites';
@@ -37,7 +36,7 @@ export default function DashboardsPage() {
   const favs = useFavorites('dashboards');
   const [quick, setQuick] = useState<Quick>('all');
   const [name, setName] = useState('');
-  const [genOpen, setGenOpen] = useState(false);
+  const navigate = useNavigate();
   const [aiOpen, setAiOpen] = useState(false);
   const [extraError, setExtraError] = useState<string | null>(null);
 
@@ -77,7 +76,7 @@ export default function DashboardsPage() {
     <div className="flex flex-col gap-4">
       <PageHeader title="Dashboards" description="Interactive multi-widget analytics dashboards with layout persistence."
         actions={<>
-          <Button variant="secondary" label="Generate from dataset" icon={<Wand2 className="size-4" />} onClick={() => setGenOpen(true)} />
+          <Button variant="secondary" label="Generate from dataset" icon={<Wand2 className="size-4" />} onClick={() => navigate('/dashboards/generate')} />
           <Button variant="primary" label="Create with AI" icon={<Sparkles className="size-4" />} onClick={() => setAiOpen(true)} />
         </>} />
       <ErrorBanner message={createError ?? extraError} onDismiss={() => setExtraError(null)} />
@@ -113,7 +112,6 @@ export default function DashboardsPage() {
         )} />
 
       <AiDashboardDialog open={aiOpen} onClose={() => setAiOpen(false)} />
-      <GenerateDashboardDialog open={genOpen} onClose={() => setGenOpen(false)} onError={setExtraError} />
     </div>
   );
 }

@@ -26,7 +26,7 @@ export const GROUPS: NavItem['group'][] = ['Work', 'Govern', 'Help'];
 
 export const CRUMB_LABELS: Record<string, string> = {
   ask: 'Ask', sources: 'Data Sources', datasets: 'Data Sources', workbench: 'Workbench', builder: 'Query Builder', metrics: 'Metrics', charts: 'Charts',
-  dashboards: 'Dashboards', alerts: 'Alerts', reports: 'Reports', quality: 'Quality', activity: 'Activity', settings: 'Settings', guide: 'Guide', new: 'New', studio: 'API Studio',
+  dashboards: 'Dashboards', alerts: 'Alerts', reports: 'Reports', quality: 'Quality', activity: 'Activity', settings: 'Settings', guide: 'Guide', new: 'New', generate: 'Generate with AI', studio: 'API Studio',
 };
 
 /** Pages that own the whole viewport (their own scroll regions) instead of scrolling as a document. */

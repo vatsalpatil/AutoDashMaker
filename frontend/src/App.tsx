@@ -15,6 +15,7 @@ const MetricsPage = lazy(() => import('@/pages/MetricsPage'));
 const ChartsPage = lazy(() => import('@/pages/ChartsPage'));
 const ChartDetailPage = lazy(() => import('@/pages/ChartDetailPage'));
 const DashboardsPage = lazy(() => import('@/pages/DashboardsPage'));
+const GenerateDashboardPage = lazy(() => import('@/pages/GenerateDashboardPage'));
 const DashboardDetailPage = lazy(() => import('@/pages/DashboardDetailPage'));
 const ReportsPage = lazy(() => import('@/pages/ReportsPage'));
 const AlertsPage = lazy(() => import('@/pages/AlertsPage'));
@@ -46,6 +47,7 @@ export default function App() {
         <Route path="/charts/new" element={<ChartDetailPage />} />
         <Route path="/charts/:id" element={<ChartDetailPage />} />
         <Route path="/dashboards" element={<DashboardsPage />} />
+        <Route path="/dashboards/generate" element={<GenerateDashboardPage />} />
         <Route path="/dashboards/:id" element={<DashboardDetailPage />} />
         <Route path="/alerts" element={<AlertsPage />} />
         <Route path="/reports" element={<ReportsPage />} />

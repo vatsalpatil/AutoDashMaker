@@ -12,7 +12,7 @@ os.environ["METADATA_DB"] = os.path.join(tmp, "metadata.duckdb")
 os.environ["DUCKDB_TEMP_DIR"] = os.path.join(tmp, "spill")
 
 from app.core.store import store
-from app.services import ai as ai_svc, dash_gen
+from app.services import ai as ai_svc, dash_gen, dash_plan
 from app.services.dash_profile import profile
 from app.services.engine import engine
 
@@ -38,38 +38,66 @@ PLAN = {
         {"page": "regions", "title": "Broken", "type": "bar", "sql": "SELECT missing_col FROM sales"},
     ],
 }
-dash_gen._ask = lambda system, user, provider: (assert_ctx(user), PLAN)[1]
+seen_prompts = {}
 
 
-def assert_ctx(user: str) -> None:
-    assert "Table `sales`" in user and "[measure]" in user and "Blueprint" in user
+def fake_ask_json(system, user, provider, key):
+    seen_prompts[key] = user
+    if key == "understanding":
+        return {"understanding": "Each row is an order.", "thinking": ["Main measure: amount"],
+                "questions": [{"id": "q1", "question": "Which measure is the main KPI?", "options": ["amount", "orders"], "multi": False}, {"nope": 1}],
+                "ideas": ["Regional performance"]}
+    if key == "suggestions":
+        return {"suggestions": ["Add average order value by region"]}
+    return PLAN
 
 
+dash_plan.ask_json = fake_ask_json
+dash_gen.ask_json = fake_ask_json
 ai_svc.chat = lambda messages, provider_id=None, max_tokens=0: "- **Top region:** N leads."
 
-events = list(dash_gen.run(ds["id"], "executive", "", None))
-steps = [e["n"] for e in events if e["type"] == "step" and e.get("done")]
-assert steps == [1, 2, 3, 4, 5, 6], steps
-widgets = [e for e in events if e["type"] == "widget"]
+# phase 1: statistics + top rows reach the model, the user gets facts + questions
+ev1 = list(dash_plan.understand(ds["id"], "executive", "", None))
+types = [e["type"] for e in ev1]
+assert types.count("profile") == 1 and types[-1] == "understanding", types
+prof_ev = [e for e in ev1 if e["type"] == "profile"][0]
+amount = [r for r in prof_ev["describe"] if r["column"] == "amount"][0]
+assert amount["median"] and amount["std"] is not None and len(prof_ev["sample"]["rows"]) == 100, amount
+assert "median" in seen_prompts["understanding"] and "First 12 of the top 100 rows" in seen_prompts["understanding"]
+und = ev1[-1]
+assert [q["id"] for q in und["questions"]] == ["q1"] and und["questions"][0]["options"] == ["amount", "orders"], und["questions"]
+
+# phase 2: answers + feedback shape the plan prompt; names are cleaned, titles unique
+ev2 = list(dash_plan.plan(ds["id"], "executive", "", und["understanding"], {"Which measure is the main KPI?": "amount"}, "add a table", ["Total Amount"], None))
+assert "The user answered" in seen_prompts["widgets"] and "add a table" in seen_prompts["widgets"] and "Each row is an order" in seen_prompts["widgets"]
+planned = ev2[-1]
+assert planned["type"] == "plan" and planned["name"] == "Sales Overview", planned["name"]
+titles = [w["title"] for w in planned["widgets"]]
+assert len(set(t.lower() for t in titles)) == len(titles) and "Total Amount" in titles, titles
+
+# phase 3: build the plan (the user may have dropped a widget)
+kept = [w for w in planned["widgets"] if w["title"] != "Broken"]
+ev3 = list(dash_gen.build(ds["id"], planned["name"], planned["pages"], planned["widgets"], None))
+widgets = [e for e in ev3 if e["type"] == "widget"]
 assert [w["status"] for w in widgets].count("skipped") == 1 and sum(w["status"] == "ok" for w in widgets) == 4
-done = events[-1]
-assert done["type"] == "done" and done["name"] == "Sales Overview", done["name"]
-assert done["pages"] == ["Overview", "Regions", "Insights"], done["pages"]
-titles = [w["title"] for w in done["widgets"]]
-assert "Total Amount" in titles and "Monthly Amount Trend" in titles and "Key Insights" in titles, titles
-assert len(set(t.lower() for t in titles)) == len(titles), titles  # duplicate "Top Regions" was made unique
-assert done["skipped"][0]["title"] == "Broken"
+done = ev3[-1]
+assert done["type"] == "done" and done["pages"] == ["Overview", "Regions", "Insights"], done["pages"]
+assert done["suggestions"] == ["Add average order value by region"] and done["skipped"][0]["title"] == "Broken"
+steps = [e["n"] for e in ev3 if e["type"] == "step" and e.get("done")]
+assert steps == [4, 5, 6], steps
 
 dash = store.get("dashboards", done["dashboard_id"])
 assert [p["id"] for p in dash["pages"]] == ["overview", "regions", "insights"], dash["pages"]
 rows = store.list("dashboard_widgets", where="dashboard_id = ?", params=[dash["id"]], order=None)
 assert {r["page"] for r in rows} == {"overview", "regions", "insights"}
-text = [r for r in rows if r["kind"] == "text"][0]
-assert "Top region" in text["settings"]["content"]
+assert "Top region" in [r for r in rows if r["kind"] == "text"][0]["settings"]["content"]
 for r in rows:
     if r.get("chart_id"):
         ch = store.get("charts", r["chart_id"])
         assert engine.execute(store.get("queries", ch["query_id"])["sql"])["row_count"] >= 1
 
-assert dash_gen.clean_title("revenue_by_region") == "Revenue By Region".replace("By", "by")
+# the non-interactive shortcut runs all three phases
+auto = dash_gen.generate(ds["id"], "auto", "", None)
+assert auto["type"] == "done" and auto["pages"][-1] == "Insights"
+assert dash_plan.clean_title("revenue_by_region") == "Revenue by Region"
 print("dash_gen tests OK")

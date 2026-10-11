@@ -6,7 +6,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from ..core.security import UnsafeQueryError
-from ..services import ai as ai_svc, audit, dash_ai, dash_gen
+from ..services import ai as ai_svc, audit, dash_ai, dash_gen, dash_plan
 from ..services.dash_templates import template_list
 
 router = APIRouter(prefix="/api/dashboards", tags=["dashboards-ai"])
@@ -86,17 +86,57 @@ def generate(body: GenerateIn):
     return {"status": "ok", **out}
 
 
-@router.post("/generate/stream")
-def generate_stream(body: GenerateIn):
-    """Same as /generate, but the process is streamed as Server-Sent Events: step, widget, done, error."""
+def _sse(events, on_done=None):
+    """Server-Sent Events over a phase generator; always ends with a done/error-style event so the UI never hangs."""
     def stream():
         try:
-            for ev in dash_gen.run(body.dataset_id, body.template, body.focus, body.provider_id, body.name):
-                if ev["type"] == "done":
-                    audit.record("dashboard.ai", entity_type="dashboard", entity_id=ev["dashboard_id"], detail=f"generated ({body.template}) from dataset {body.dataset_id}")
+            for ev in events():
+                if ev["type"] == "done" and on_done:
+                    on_done(ev)
                 yield f"data: {json.dumps(ev, default=str)}\n\n"
-        except Exception as e:  # the UI needs a terminal event, whatever went wrong
+        except Exception as e:
             kind = "no_provider" if "No AI provider" in str(e) else "error"
             yield f"data: {json.dumps({'type': 'error', 'kind': kind, 'message': str(e)[:400]})}\n\n"
-
     return StreamingResponse(stream(), media_type="text/event-stream", headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
+class UnderstandIn(BaseModel):
+    dataset_id: str
+    template: str = "auto"
+    focus: str = ""
+    provider_id: str | None = None
+
+
+class PlanIn(UnderstandIn):
+    understanding: str = ""
+    answers: dict[str, str] = {}      # question text -> the user's answer
+    feedback: str = ""                # revise the previous plan
+    previous: list[str] = []          # titles of the previous plan
+    name: str | None = None
+
+
+class BuildIn(BaseModel):
+    dataset_id: str
+    name: str
+    pages: list[dict[str, str]]
+    widgets: list[dict]               # the plan's widgets the user kept
+    provider_id: str | None = None
+
+
+@router.post("/generate/understand")
+def generate_understand(body: UnderstandIn):
+    """Phase 1 (SSE): profile + statistics + top rows -> what the AI understood and the questions it wants answered."""
+    return _sse(lambda: dash_plan.understand(body.dataset_id, body.template, body.focus, body.provider_id))
+
+
+@router.post("/generate/plan")
+def generate_plan(body: PlanIn):
+    """Phase 2 (SSE): the widget plan from the understanding, the user's answers and optional feedback."""
+    return _sse(lambda: dash_plan.plan(body.dataset_id, body.template, body.focus, body.understanding, body.answers, body.feedback, body.previous, body.provider_id, body.name))
+
+
+@router.post("/generate/build")
+def generate_build(body: BuildIn):
+    """Phase 3 (SSE): validate, run and save the plan; ends with `done` (dashboard id, insights, suggested improvements)."""
+    return _sse(lambda: dash_gen.build(body.dataset_id, body.name, body.pages, body.widgets, body.provider_id),
+                lambda ev: audit.record("dashboard.ai", entity_type="dashboard", entity_id=ev["dashboard_id"], detail=f"generated from dataset {body.dataset_id}"))

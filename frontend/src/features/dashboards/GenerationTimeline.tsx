@@ -1,6 +1,6 @@
 import { AlertTriangle, Check, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { GenStep, GenWidget } from './useGenerateDashboard';
+import type { GenStep, GenWidget } from './generate/useGenerateSession';
 
 export const STEP_TITLES = ['Reading the data', 'Understanding the data', 'Planning the dashboard', 'Building and checking each widget', 'Writing insights', 'Saving the dashboard'];
 const ENTER = 'animate-in fade-in slide-in-from-bottom-2 duration-300 fill-mode-both';
