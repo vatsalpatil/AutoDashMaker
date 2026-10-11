@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { Badge, Button, Tab, TabList } from '@/components/ui/kit';
-import { Link2, Wand2 } from 'lucide-react';
+import { Link2 } from 'lucide-react';
 import { api } from '@/lib/api';
-import type { Dataset, DatasetSchema, GenerateResponse, PreviewResult } from '@/lib/types';
+import type { Dataset, DatasetSchema, PreviewResult } from '@/lib/types';
 import { DataGrid } from '@/components/common/DataGrid';
 import { ErrorBanner } from '@/components/common/ErrorBanner';
 import { Loading } from '@/components/common/Loading';
@@ -15,13 +15,11 @@ import { QualityPanel } from '@/features/quality/QualityPanel';
 
 export default function DatasetDetailPage() {
   const { id } = useParams();
-  const navigate = useNavigate();
   const [dataset, setDataset] = useState<Dataset | null>(null);
   const [schema, setSchema] = useState<DatasetSchema | null>(null);
   const [preview, setPreview] = useState<PreviewResult | null>(null);
   const [tab, setTab] = useState('schema');
   const [error, setError] = useState<string | null>(null);
-  const [generating, setGenerating] = useState(false);
   const [linking, setLinking] = useState(false);
 
   /** Drop the stored copy of a database table; only schema + stats stay, queries run live against the source. */
@@ -42,18 +40,6 @@ export default function DatasetDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  async function generateDashboard() {
-    setGenerating(true);
-    setError(null);
-    try {
-      const r = await api.post<GenerateResponse>('/dashboards/generate', { dataset_id: id });
-      navigate(`/dashboards/${r.dashboard_id}`);
-    } catch (e) {
-      setError((e as Error).message);
-      setGenerating(false);
-    }
-  }
-
   if (!dataset) return <Loading />;
 
   return (
@@ -70,13 +56,6 @@ export default function DatasetDetailPage() {
           {!dataset.remote_table && dataset.source_id && ["mysql", "postgres", "sqlite"].includes(dataset.kind ?? "") && (
             <Button variant="secondary" label={linking ? "Switching…" : "Keep only stats"} icon={<Link2 className="h-4 w-4" />} onClick={keepOnlyStats} isDisabled={linking} />
           )}
-        <Button
-          variant="primary"
-          label={generating ? 'Generating…' : 'Generate dashboard'}
-          icon={<Wand2 className="h-4 w-4" />}
-          onClick={generateDashboard}
-          isDisabled={generating}
-        />
         </div>
       </div>
       <ErrorBanner message={error} />
