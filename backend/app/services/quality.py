@@ -4,6 +4,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any
 
+from . import remote
 from .engine import engine
 from ..core.store import store
 
@@ -13,9 +14,9 @@ def run_quality_check(dataset: dict[str, Any]) -> dict[str, Any]:
     schema = engine.describe_table(table)
     n = schema["row_count"]
 
-    with engine.connect(read_only=True) as con:
+    with engine.connect(read_only=True, hint=table) as con:  # hint attaches the source of a linked (live) dataset
         total, distinct_n = con.execute(
-            f"WITH s AS (SELECT * FROM {table} LIMIT 100000) "
+            f"WITH s AS (SELECT * FROM {remote.table_ref(table)} LIMIT 100000) "
             f"SELECT (SELECT COUNT(*) FROM s), "
             f"(SELECT COUNT(*) FROM (SELECT DISTINCT * FROM s) d)"
         ).fetchone() if n else (0, 0)

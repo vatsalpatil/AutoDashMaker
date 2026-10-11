@@ -201,3 +201,4 @@ Format: `YYYY-MM-DD · tool · files · what + why`
 2026-10-11 · frontend features/settings/{ThemeSettings,PreviewSelect}.tsx · Appearance: Theme + Accent colour in one row, Density + Corner radius in one row (wrap on narrow screens); Density reuses Segmented
 2026-10-11 · production · fast-forwarded production to e89090c (password show/hide eye, Appearance rows, localhost-like-server config change that touches no server file); user presses Deploy on the frontend (backend unchanged apart from config.py)
 - 2026-10-11 · ImportTablesDialog.tsx, connectors/mysql.py · import dialog: step 1 pick database chips, step 2 tables; system DB filter now case-insensitive (TiDB uppercase)
+- 2026-10-12 · services/quality.py · quality check on a linked (live) dataset 500'd: now attaches the source + reads via remote.table_ref
