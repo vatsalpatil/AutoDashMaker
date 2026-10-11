@@ -199,3 +199,4 @@ Format: `YYYY-MM-DD · tool · files · what + why`
 2026-10-11 · backend/app/core/config.py (_env_file), backend/.env now = server settings, removed start-local.bat + start-local-server.bat + Scripts/make_local_server_env.py, docs (D30): localhost behaves like the live server; user runs Main.py + npm run dev by hand
 2026-10-11 · frontend components/ui/kit.tsx (TextInput) · every type=password field gets an eye button to show/hide what was typed (login, new password, API keys...)
 2026-10-11 · frontend features/settings/{ThemeSettings,PreviewSelect}.tsx · Appearance: Theme + Accent colour in one row, Density + Corner radius in one row (wrap on narrow screens); Density reuses Segmented
+2026-10-11 · production · fast-forwarded production to e89090c (password show/hide eye, Appearance rows, localhost-like-server config change that touches no server file); user presses Deploy on the frontend (backend unchanged apart from config.py)
