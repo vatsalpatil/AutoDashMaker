@@ -5,16 +5,17 @@ export interface PreviewOption { value: string; label: string; swatch?: ReactNod
 export interface PreviewGroup { label?: string; options: PreviewOption[] }
 
 /** Dropdown that previews each option on the whole page while hovering/arrowing through it (`onPreview(null)` = back to the saved value). */
-export function PreviewSelect({ label, value, groups, onChange, onPreview }: {
+export function PreviewSelect({ label, value, groups, onChange, onPreview, className = 'mt-6' }: {
   label: string;
   value: string;
   groups: PreviewGroup[];
   onChange: (value: string) => void;
   onPreview: (value: string | null) => void;
+  className?: string;
 }) {
   const current = groups.flatMap((g) => g.options).find((o) => o.value === value);
   return (
-    <div className="mt-6">
+    <div className={className}>
       <label className="block text-sm font-medium text-foreground">{label}</label>
       <div className="mt-2">
         <div className="w-56">

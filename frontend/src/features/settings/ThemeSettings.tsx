@@ -109,55 +109,39 @@ export default function ThemeSettings() {
         </div>
       </div>
 
-      <PreviewSelect
-        label="Theme"
-        value={familyOf(prefs.preset)?.id ?? ''}
-        groups={[{ options: FAMILIES.map((f) => ({ value: f.id, label: f.name, swatch: <Dots colors={[swatchOf(f.light, 0), swatchOf(f.light, 1), swatchOf(f.dark, 0)]} /> })) }]}
-        onChange={(id) => { const f = FAMILIES.find((x) => x.id === id); if (f) update({ preset: f.light }); }}
-        onPreview={(id) => { const f = FAMILIES.find((x) => x.id === id); applyPrefs(f ? { ...prefsRef.current, preset: f.light } : prefsRef.current); }}
-      />
-
-      <PreviewSelect
-        label="Accent color"
-        value={prefs.accent}
-        groups={[{ options: ACCENTS.map((a) => ({ value: a.name, label: a.name[0].toUpperCase() + a.name.slice(1), swatch: <Dots colors={[a.hex]} /> })) }]}
-        onChange={(name) => update({ accent: name as ThemePrefs['accent'] })}
-        onPreview={(name) => applyPrefs(name ? { ...prefsRef.current, accent: name as ThemePrefs['accent'] } : prefsRef.current)}
-      />
-
-      {/* Density */}
-      <div className="mt-6">
-        <label className="block text-sm font-medium text-foreground">Density</label>
-        <div className="mt-2 inline-flex rounded-lg border border-border bg-muted p-1 ">
-          {(['comfortable', 'compact'] as const).map((d) => {
-            const active = prefs.density === d;
-            return (
-              <button
-                key={d}
-                type="button"
-                onClick={() => update({ density: d })}
-                className={`rounded-md px-3 py-1.5 text-sm font-medium capitalize transition-colors ${
-                  active
-                    ? 'bg-card text-foreground shadow-xs '
-                    : 'text-muted-foreground hover:text-foreground '
-                }`}
-              >
-                {d}
-              </button>
-            );
-          })}
-        </div>
+      {/* Theme + Accent colour share one row (they wrap onto two lines on a narrow screen) */}
+      <div className="mt-6 flex flex-wrap items-start gap-x-10 gap-y-6">
+        <PreviewSelect
+          className=""
+          label="Theme"
+          value={familyOf(prefs.preset)?.id ?? ''}
+          groups={[{ options: FAMILIES.map((f) => ({ value: f.id, label: f.name, swatch: <Dots colors={[swatchOf(f.light, 0), swatchOf(f.light, 1), swatchOf(f.dark, 0)]} /> })) }]}
+          onChange={(id) => { const f = FAMILIES.find((x) => x.id === id); if (f) update({ preset: f.light }); }}
+          onPreview={(id) => { const f = FAMILIES.find((x) => x.id === id); applyPrefs(f ? { ...prefsRef.current, preset: f.light } : prefsRef.current); }}
+        />
+        <PreviewSelect
+          className=""
+          label="Accent color"
+          value={prefs.accent}
+          groups={[{ options: ACCENTS.map((a) => ({ value: a.name, label: a.name[0].toUpperCase() + a.name.slice(1), swatch: <Dots colors={[a.hex]} /> })) }]}
+          onChange={(name) => update({ accent: name as ThemePrefs['accent'] })}
+          onPreview={(name) => applyPrefs(name ? { ...prefsRef.current, accent: name as ThemePrefs['accent'] } : prefsRef.current)}
+        />
       </div>
 
-      <Segmented label="Corner radius" value={prefs.radius} options={['sharp', 'rounded', 'round']} onChange={(radius) => update({ radius })} />
+      {/* Density + Corner radius share one row too */}
+      <div className="mt-6 flex flex-wrap items-start gap-x-10 gap-y-6">
+        <Segmented className="" label="Density" value={prefs.density} options={['comfortable', 'compact'] as const} onChange={(density) => update({ density })} />
+        <Segmented className="" label="Corner radius" value={prefs.radius} options={['sharp', 'rounded', 'round'] as const} onChange={(radius) => update({ radius })} />
+      </div>
     </section>
   );
 }
 
 /** Labelled single-choice pill toggle. */
-function Segmented<T extends string>({ label, value, options, labels, onChange }: { label: string; value: T; options: readonly T[]; labels?: Record<string, string>; onChange: (v: T) => void }) {
+function Segmented<T extends string>({ label, value, options, labels, onChange, className = 'mt-6' }: { label: string; value: T; options: readonly T[]; labels?: Record<string, string>; onChange: (v: T) => void; className?: string }) {
   return (
-    <div className="mt-6">
+    <div className={className}>
       <label className="block text-sm font-medium text-foreground">{label}</label>
       <div className="mt-2 inline-flex max-w-full flex-wrap rounded-lg border border-border bg-muted p-1">
         {options.map((o) => (
