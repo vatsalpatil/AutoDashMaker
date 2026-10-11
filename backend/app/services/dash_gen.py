@@ -7,6 +7,7 @@ without pausing for the user (API use and tests).
 """
 from __future__ import annotations
 
+import time
 from typing import Any, Iterator
 
 from ..core.store import store
@@ -46,11 +47,20 @@ def _insights(name: str, built: list[dict[str, Any]], prof: dict[str, Any], prov
          "bullet starting **Look next:** suggesting a follow-up question the data can answer. Reply with the bullets only."},
         {"role": "user", "content": f"Dataset context:\n{_context(prof)}\n\nDashboard: {name}\n\n{facts}"},
     ]
-    try:
-        text = ai_svc._THINK.sub("", ai_svc._ANSI.sub("", ai_svc.chat(messages, provider_id=provider_id, max_tokens=1500))).strip()
-    except Exception:
-        return None  # insights are a bonus: the dashboard is still complete without them
-    return text or None
+    tokens = 1500
+    for attempt in range(3):   # rate limit -> pause; reasoning model with an empty answer -> bigger budget
+        try:
+            text = ai_svc._THINK.sub("", ai_svc._ANSI.sub("", ai_svc.chat(messages, provider_id=provider_id, max_tokens=tokens, timeout=180))).strip()
+            return text or None
+        except Exception as e:
+            msg = str(e)
+            if "empty content" in msg:
+                tokens = 8000
+            elif "429" in msg or "rate" in msg.lower():
+                time.sleep(5 * (attempt + 1))
+            else:
+                break
+    return None  # insights are a bonus: the dashboard is still complete without them
 
 
 def _suggestions(name: str, built: list[dict[str, Any]], insights: str | None, prof: dict[str, Any], provider_id: str | None) -> list[str]:

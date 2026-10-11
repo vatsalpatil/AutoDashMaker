@@ -71,6 +71,9 @@ def ask_json(system: str, user: str, provider_id: str | None, key: str) -> dict[
             if "empty content" in msg and tokens < 16000:
                 tokens = 16000
                 continue
+            if "empty content" in msg:
+                raise ai_svc.AIError("This model spent its whole answer budget thinking and returned nothing. Pick a different model in Settings "
+                                     "(a non-reasoning or smaller reasoning model works best for dashboards).") from None
             if "429" in msg or "rate-limit" in msg.lower():
                 raise ai_svc.AIError("The AI provider is rate-limiting requests right now (free models have per-minute and daily limits). "
                                      "Wait a minute and try again, or pick another model in Settings.") from None

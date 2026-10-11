@@ -64,7 +64,10 @@ export function useGenerateSession() {
       failed = true;
       if ((e as Error).name !== 'AbortError') setError({ message: (e as Error).message, noProvider: false });
     }
-    if (failed) setPhase(back);
+    if (failed) {
+      setSteps((st) => st.map((x) => (x.done ? x : { ...x, detail: 'Stopped before it finished.' })));   // no stale 'studying…' text
+      setPhase(back);
+    }
     return failed;
   }, [handle]);
 

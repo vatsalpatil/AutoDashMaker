@@ -56,7 +56,7 @@ def fake_ask_json(system, user, provider, key):
 
 dash_plan.ask_json = fake_ask_json
 dash_gen.ask_json = fake_ask_json
-ai_svc.chat = lambda messages, provider_id=None, max_tokens=0: "- **Top region:** N leads."
+ai_svc.chat = lambda messages, provider_id=None, max_tokens=0, timeout=0: "- **Top region:** N leads."
 
 # phase 1: statistics + top rows reach the model, the user gets facts + questions
 ev1 = list(dash_plan.understand(ds["id"], "executive", "", None))
