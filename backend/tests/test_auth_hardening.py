@@ -19,7 +19,7 @@ import jwt  # noqa: E402
 from fastapi import HTTPException  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 
-import main  # noqa: E402
+import Main as main  # noqa: E402
 from app.core.config import settings  # noqa: E402
 from app.core.store import store  # noqa: E402
 from app.services import gotrue, throttle  # noqa: E402

@@ -13,7 +13,7 @@ os.environ["DUCKDB_TEMP_DIR"] = os.path.join(tmp, "spill")
 os.environ["UPLOAD_DIR"] = os.path.join(tmp, "uploads")
 
 from fastapi.testclient import TestClient
-from main import app
+from Main import app
 from app.core.store import store
 from app.services.reports import KEEP_RUNS
 

@@ -11,7 +11,7 @@ lineage, and a pluggable AI provider layer (Gemini free tier as default).
 ```bash
 # Backend (port 8001)
 cd backend
-.venv/Scripts/python.exe -m uvicorn main:app --port 8001
+.venv/Scripts/python.exe -m uvicorn Main:app --port 8001
 
 # Frontend (port 5174)
 cd frontend
@@ -24,7 +24,7 @@ Open http://localhost:5174 — API docs at http://127.0.0.1:8001/docs
 
 ```
 backend/
-  main.py                  FastAPI entrypoint
+  Main.py                  FastAPI entrypoint
   app/
     core/      config.py · store.py (DuckDB metadata store) · security.py (read-only SQL guard)
     connectors/ base · files (CSV/Excel/Parquet/JSON) · postgres · rest

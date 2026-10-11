@@ -1,9 +1,9 @@
 # 04 — Gotchas (symptom → cause → fix)
 
-- `ModuleNotFoundError: pydantic_settings` when running `python backend/main.py` in VS Code → VS Code used global `C:/Python314`, not `backend/.venv` →
+- `ModuleNotFoundError: pydantic_settings` when running `python backend/Main.py` in VS Code → VS Code used global `C:/Python314`, not `backend/.venv` →
   use `backend\.venv\Scripts\python.exe` (select it as the VS Code interpreter) or `pip install -r backend/requirements.txt`.
   (Installing globally downgraded global fastapi 0.131→0.115 and starlette 0.52→0.38 because of pins.)
-- Frontend gets 500s on /api → backend port != vite proxy target. Proxy default is now 8000 (`python backend/main.py`); for uvicorn on 8001 run `API_TARGET=http://127.0.0.1:8001 npm run dev`.
+- Frontend gets 500s on /api → backend port != vite proxy target. Proxy default is now 8000 (`python backend/Main.py`); for uvicorn on 8001 run `API_TARGET=http://127.0.0.1:8001 npm run dev`.
 - Alert fails every poll with "cannot access local variable 'value'" → was a bug in `evaluate_alert` (read `value` before assignment); fixed by taking first col of first row from `engine.execute` result. Failures are only logged (`log.warning`) → check `backend/server_err.log` (grep, don't read whole).
 - `engine.execute()` returns rows as **list of dicts** keyed by column name (not tuples) — index with `result["columns"][0]`.
 - New DB column on an existing table → add an idempotent `ALTER TABLE` to `MIGRATIONS` in `core/store.py`; editing `SCHEMA` alone does not alter existing DB files.
@@ -61,7 +61,7 @@ Never add `caddy` to `nixPkgs` when the app has a Caddyfile: Nixpacks adds it it
 - Backend 'ModuleNotFoundError' on start (e.g. jwt): you launched the GLOBAL Python (C:/Program Files/Python312). Use backend\.venv\Scripts\python.exe, or in VS Code pick that interpreter; after pulling new code run 'backend\.venv\Scripts\python.exe -m pip install -r backend\requirements.txt'.
 - **Never run a 2nd backend on the same `backend/data/*.duckdb`** (e.g. a test server on :8010 next to the user's :8000): DuckDB file locks make the new one return 500s/empty lists, and it can disturb the user's server. Test perf/behaviour against the user's server, or copy `backend/data` to a scratch dir and point `ANALYTICS_DB`/`METADATA_DB` there.
 - **Windows `curl localhost:PORT` adds ~0.2 s** (tries IPv6 `::1` first). Time the API with `127.0.0.1`; the real backend answers metadata endpoints in 2-35 ms. The Vite proxy already targets 127.0.0.1.
-- `python backend/main.py` runs uvicorn with reload, but a worker can miss edits (seen once): if a code change does not show up, restart the backend terminal.
+- `python backend/Main.py` runs uvicorn with reload, but a worker can miss edits (seen once): if a code change does not show up, restart the backend terminal.
 - **Legacy rows had `workspace_id = NULL`** (charts, dashboards, queries created before per-user workspaces): the workspace filter hid them as soon as new code ran (looked like "all my charts vanished"). `Store._init` now backfills NULL -> `ws_default` on every start; keep that when adding tables.
 - `@theme inline` in index.css bakes values into utilities: overriding `--font-sans` at runtime does nothing; set the property directly (see theme-effects.css font rules).
 - **Datasets are VIEWs over Parquet (D24).** Drop with `columnar.drop_relation` (DROP TABLE on a view raises CatalogException) and delete the file with `columnar.remove`. The view stores the ABSOLUTE parquet path, so moving `data/` breaks existing datasets until they are refreshed. Datasets ingested before D24 stay DuckDB tables (still work; no migration yet). Hosted file datasets cannot be refreshed (original deleted) - the user re-uploads.

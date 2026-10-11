@@ -30,7 +30,7 @@ pushd frontend
 call npm install --no-audit --no-fund || goto :fail
 popd
 
-start "Dashtor backend" cmd /k "cd /d "%~dp0backend" && .venv\Scripts\python.exe main.py"
+start "Dashtor backend" cmd /k "cd /d "%~dp0backend" && .venv\Scripts\python.exe Main.py"
 start "Dashtor frontend" cmd /k "cd /d "%~dp0frontend" && npm run dev"
 echo.
 echo Started. Open http://localhost:5174 (first start may take a few seconds).

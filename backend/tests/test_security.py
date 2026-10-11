@@ -28,7 +28,7 @@ assert [c["name"] for c in d["columns"]] == ['a"b', "x"] and d["row_count"] == 2
 
 # uploads cannot escape the upload directory
 from starlette.testclient import TestClient
-import main
+import Main as main
 client = TestClient(main.app)
 r = client.post("/api/datasets/upload", files={"file": ("../../evil.csv", b"a,b\n1,2\n", "text/csv")})
 assert r.status_code == 200, r.text

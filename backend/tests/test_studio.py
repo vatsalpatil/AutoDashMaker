@@ -102,7 +102,7 @@ assert not bad["ok"] and "Cannot query field boom" in bad["detail"], bad
 ds = ingest_source(store.insert("datasources", {"name": "api", "type": "rest", "config": src["config"]}), "api_items")
 assert ds["row_count"] == 5, ds
 from fastapi.testclient import TestClient
-from main import app
+from Main import app
 c = TestClient(app)
 res = c.post("/api/studio/records-to-dataset", json={"name": "my records", "records": ITEMS})
 assert res.status_code == 200, res.text

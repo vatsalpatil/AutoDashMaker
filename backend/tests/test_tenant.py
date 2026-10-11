@@ -16,7 +16,7 @@ os.makedirs(f"{TMP}/uploads", exist_ok=True)
 import jwt  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 
-import main  # noqa: E402
+import Main as main  # noqa: E402
 from app.core import tenant  # noqa: E402
 from app.core.store import store  # noqa: E402
 

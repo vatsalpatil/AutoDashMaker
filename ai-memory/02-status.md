@@ -37,7 +37,7 @@ persist refresh backoff across restarts · persistent engine connection / Store 
 ## Known bugs / risks
 - (fixed 2026-10-01) `services/alerts.py::evaluate_alert` crashed with "cannot access local variable 'value'" — see changelog.
 - OPEN (needs user decision): `backend/data/*.duckdb` are tracked in git history (baseline + M1-M5b commits) and `metadata.duckdb` holds an AI provider API key. No remote exists, so nothing has leaked; purge history before ever pushing (a history rewrite was declined by the permission system, so it was left for the user).
-- (fixed 2026-10-02) vite proxy now defaults to 8000 to match `python backend/main.py`; override with API_TARGET.
+- (fixed 2026-10-02) vite proxy now defaults to 8000 to match `python backend/Main.py`; override with API_TARGET.
 - Git repo exists since 2026-10-02 (branch improve/autonomous, tag baseline-before-improvements). Tests are plain scripts in backend/tests/ (no pytest, no CI).
 
 ## Deployed (2026-10-07)

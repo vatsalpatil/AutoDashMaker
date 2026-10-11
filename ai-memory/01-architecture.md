@@ -7,10 +7,10 @@ Line counts are approximate (as of 2026-10-01) — use them to judge cost before
 + `datasets`/`columns_meta` rows in `metadata.duckdb` → `queries` (SQL, run via `services/engine.py` after
 `core/security.validate_readonly`) → `charts` (declarative spec JSON + query) → `dashboards`/`dashboard_widgets`.
 Side systems: semantic layer (metrics/dimensions/definitions/synonyms/verified_queries) feeds AI "ask" prompts;
-alerts scheduler (`services/alerts.py::scheduler_loop`, started in `main.py` lifespan, polls every 60s).
+alerts scheduler (`services/alerts.py::scheduler_loop`, started in `Main.py` lifespan, polls every 60s).
 
 ## Backend (`backend/`)
-- `main.py` (47) — FastAPI app, CORS, mounts all routers, starts alert scheduler, `/api/health`.
+- `Main.py` (47) — FastAPI app, CORS, mounts all routers, starts alert scheduler, `/api/health`.
 - `requirements.txt` — pinned deps. `.env` (optional) loaded by `core/config.py`.
 ### core/
 - `config.py` (43) — `settings` (paths, row limit 10k, timeout, CORS origins, default AI provider gemini-2.0-flash).

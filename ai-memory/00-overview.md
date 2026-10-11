@@ -15,9 +15,9 @@ Spec: `Plan/smart-data-platform-requirements.md` (huge; `§N` refs). Feature che
 
 ## Run (Windows)
 ```
-# backend (port 8001 via uvicorn; or `python backend/main.py` = port 8000, the proxy default)
+# backend (port 8001 via uvicorn; or `python backend/Main.py` = port 8000, the proxy default)
 cd backend
-.venv\Scripts\python.exe -m uvicorn main:app --port 8001
+.venv\Scripts\python.exe -m uvicorn Main:app --port 8001
 # frontend (port 5174; proxies /api -> 127.0.0.1:8000, override: API_TARGET=http://127.0.0.1:8001 npm run dev)
 cd frontend
 npm run dev
@@ -25,7 +25,7 @@ npm run dev
 **One click on Windows: double-click `start-local.bat`** (git pull on Dashtor_First, venv + pip + npm install, starts backend :8000 and frontend :5174; stops if you have uncommitted tracked changes).
 Local screen on the LIVE server's data (sign in with your account): `cd frontend && npm run dev:online` (API_TARGET in `frontend/.env.online`).
 API docs: http://127.0.0.1:8000/docs (or your uvicorn port)/docs · UI: http://localhost:5174
-`python backend/main.py` uses port 8000 (reload=True) = the proxy default; uvicorn examples use 8001, so set `API_TARGET` when using them.
+`python backend/Main.py` uses port 8000 (reload=True) = the proxy default; uvicorn examples use 8001, so set `API_TARGET` when using them.
 
 ## Conventions
 - Backend layering: `routers/` (HTTP, thin) → `services/` (logic) → `core/store.py` (metadata CRUD) / `services/engine.py` (analytics queries) ; `connectors/` for ingestion.

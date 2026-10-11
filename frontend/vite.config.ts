@@ -3,7 +3,7 @@ import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 
-// Backend started with `python backend/main.py` listens on 8000.
+// Backend started with `python backend/Main.py` listens on 8000.
 // Override when using uvicorn on another port: API_TARGET=http://127.0.0.1:8001 npm run dev
 // `npm run dev:online` (mode "online", see .env.online) points this local screen at the live server instead,
 // so you sign in and see your online account's data.
