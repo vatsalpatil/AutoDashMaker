@@ -5,6 +5,7 @@ workspace_id / created_by columns so auth + multi-tenancy can be layered on
 without a schema migration.
 """
 import os
+import sys
 from pathlib import Path
 
 from pydantic_settings import BaseSettings
@@ -13,6 +14,17 @@ from pydantic_settings import BaseSettings
 BACKEND_ROOT = Path(__file__).resolve().parents[2]
 DATA_DIR = BACKEND_ROOT / "data"
 UPLOAD_DIR = BACKEND_ROOT / "uploads"
+
+
+def _env_file() -> str | None:
+    """backend/.env holds the real settings (the same ones the live server has), so `python Main.py` behaves like the server.
+    Test scripts (tests/test_*.py) never read it: they must not touch real accounts or send real emails.
+    DASHTOR_ENV_FILE overrides the choice ('' = read no file)."""
+    if "DASHTOR_ENV_FILE" in os.environ:
+        return os.environ["DASHTOR_ENV_FILE"] or None
+    if Path(sys.argv[0]).name.startswith("test_"):
+        return None
+    return str(BACKEND_ROOT / ".env")
 
 
 class Settings(BaseSettings):
@@ -81,9 +93,7 @@ class Settings(BaseSettings):
     twilio_from: str = ""                  # your Twilio number or messaging service sender
 
     class Config:
-        # DASHTOR_ENV_FILE lets start-local-server.bat run with the production-like settings file (backend/.env.local-server)
-        # while the tests and a plain local start keep reading backend/.env.
-        env_file = os.environ.get("DASHTOR_ENV_FILE") or str(BACKEND_ROOT / ".env")
+        env_file = _env_file()
         extra = "ignore"
 
 

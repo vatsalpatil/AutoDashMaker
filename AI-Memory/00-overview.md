@@ -13,16 +13,16 @@ Spec: `Plan/smart-data-platform-requirements.md` (huge; `§N` refs). Feature che
 - Frontend: Vite + React 19 + TypeScript, react-router v6, **Tailwind v4**, **shadcn/ui (Base UI flavour, preset `base-nova`) + ReUI registry** (`@reui`), Recharts, react-grid-layout, lucide-react. (Astryx was removed 2026-10-02.)
 - AI providers: Gemini (default), OpenAI, Anthropic, Groq, OpenRouter, Ollama — keys stored in DB table `ai_providers`, set via Settings page.
 
-## Run (Windows)
+## Run (Windows) - NO bat launchers; the user runs these two commands in the IDE (Antigravity) terminals
 ```
-# backend (port 8001 via uvicorn; or `python backend/Main.py` = port 8000, the proxy default)
+# terminal 1 - backend (port 8000, the proxy default; reload on)
 cd backend
-.venv\Scripts\python.exe -m uvicorn Main:app --port 8001
-# frontend (port 5174; proxies /api -> 127.0.0.1:8000, override: API_TARGET=http://127.0.0.1:8001 npm run dev)
+.venv\Scripts\python.exe Main.py
+# terminal 2 - frontend (port 5174; proxies /api -> 127.0.0.1:8000, override: API_TARGET=http://127.0.0.1:8001 npm run dev)
 cd frontend
 npm run dev
 ```
-**One click on Windows: double-click `start-local.bat`** (git pull on Dashtor_First, venv + pip + npm install, starts backend :8000 and frontend :5174; stops if you have uncommitted tracked changes).
+`backend/.env` (git-ignored) holds the SAME settings as the live server (login ON, real Supabase + Brevo, link-confirmed sign-up, mobile off), except `APP_URL=http://localhost:5174` and `DISK_USAGE_LIMIT_PCT=95`. So localhost = a real user's experience: login page -> Home. It uses the REAL Supabase: Delete account / Change email act on real accounts. This PC's IP must be authorized in Brevo (Security > Authorized IPs) for emails to send. Tests never read `.env` (`config._env_file`: scripts named `test_*` skip it).
 Local screen on the LIVE server's data (sign in with your account): `cd frontend && npm run dev:online` (API_TARGET in `frontend/.env.online`).
 API docs: http://127.0.0.1:8000/docs (or your uvicorn port)/docs · UI: http://localhost:5174
 `python backend/Main.py` uses port 8000 (reload=True) = the proxy default; uvicorn examples use 8001, so set `API_TARGET` when using them.
@@ -37,7 +37,7 @@ API docs: http://127.0.0.1:8000/docs (or your uvicorn port)/docs · UI: http://l
 
 ## Git workflow + release gate (standing instruction from the user, 2026-10-08)
 - Work ONLY on `Dashtor_First` (the staging/working branch). After each task: run `python Scripts/verify.py --quick` (full: without --quick), commit, push to `origin Dashtor_First` without asking. Pushing it NEVER changes the server: Dokploy follows the separate `production` branch.
-- The user verifies on their PC (localhost) first: `start-local.bat` (local mode) or `start-local-server.bat` (server-like: login ON, per-user data; needs git-ignored `backend/.env`), and `verify.bat` (all tests + production build). The assistant runs in a cloud container and cannot touch the user's PC; only a session started on their PC can.
+- The user verifies on their PC (localhost) first by running `Main.py` and `npm run dev` themselves (see Run; localhost behaves like the server), and `verify.bat` / `python Scripts/verify.py` (all tests + production build). The assistant runs in a cloud container and cannot touch the user's PC; only a session started on their PC can.
 - NOTHING reaches the server until the user says "deploy". Then: run the full verify, and only if green fast-forward `production` to `Dashtor_First` (`git push origin Dashtor_First:production`); the user presses Deploy in Dokploy (backend first). Never push `production` on our own, never open a PR unless asked, never commit keys/secrets (`.env`, `backend/OrcaleFiles/`).
 
 ## Code structure & reuse rules (standing instruction from the user — follow them)
@@ -53,6 +53,5 @@ Goal: **do more with less code.** Reuse before writing; keep files small and foc
 `AI.md` (entry) · `AI-Memory/` (this memory) · `PROGRESS.md` (feature checklist vs spec) · `README.md` (human intro) ·
 `backend/` · `frontend/` · `Plan/` (spec + unrelated exes) · `.vscode/`
 
-## Local run profiles (2026-10-11)
-- `start-local.bat` = local mode: no login, reads `backend/.env` (minimal; the tests read it too, so keep SMTP/real keys OUT of it).
-- `start-local-server.bat` = what a real user sees: login ON, real Supabase + Brevo emails. Reads `backend/.env.local-server` (git-ignored; rebuild with `Scripts/make_local_server_env.py` from `backend/.env.dokploy`). Needs this PC's IP authorized in Brevo (Security > Authorized IPs). It touches REAL accounts: Delete account / Change email act on real users.
+## Local = server (2026-10-11)
+One config for both: `backend/.env` mirrors the server environment (`backend/.env.dokploy` is the paste-ready copy for Dokploy). The only intended differences: `APP_URL`, `DISK_USAGE_LIMIT_PCT`, CORS (built-in localhost origins). If you change a setting for the server, change it in `.env` too so behaviour stays identical.
