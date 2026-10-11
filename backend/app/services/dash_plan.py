@@ -7,7 +7,10 @@ multi-page widget plan. Nothing is saved or executed against user data here exce
 from __future__ import annotations
 
 import re
+import time
 from typing import Any, Iterator
+
+import httpx
 
 from . import ai as ai_svc
 from .dash_ai import CHART_TYPES, json_objects, widgets_of
@@ -24,7 +27,7 @@ UNDERSTAND_SYSTEM = (
     'prose, no markdown: {"understanding": 2-4 sentences: what one row is, what the data is about, the main measures, dimensions, time '
     'column and anything notable (skew, outliers, empty columns, correlations), "thinking": [3 to 6 short strings, each a finding or '
     'decision with its reason], "questions": [2 to 4 objects {"id": "q1", "question": string, "why": one sentence, "options": [2 to 6 short '
-    'answers built from the real columns/values], "multi": boolean}] — ask only what you cannot decide alone and that changes the '
+    'answers built from the real columns/values], "multi": boolean}] — ask only about the user\'s intent and preferences, never a question the data itself answers (so not "which region sells most?"): the main KPI measure, the primary dimension, the audience, what to compare, what matters most — each answer must change the '
     'dashboard (the main KPI measure, the primary dimension, the audience, the time grain, what to compare), "ideas": [2 to 4 dashboard '
     'ideas worth building for this data]}.\n\n' + DATA_BASICS)
 
@@ -48,16 +51,37 @@ def clean_title(title: Any) -> str:
 
 
 def ask_json(system: str, user: str, provider_id: str | None, key: str) -> dict[str, Any]:
-    """One model call that must return a JSON object holding `key`; one insistent retry (reasoning models often waste the first)."""
+    """One model call that must return a JSON object holding `key`.
+
+    Handles what free/reasoning models do in practice: temporary rate limits (retry after a pause), a reasoning transcript that eats
+    the whole token budget and leaves no answer (retry with a bigger budget), slow replies (long timeout), and replies that are not
+    JSON (one insistent retry)."""
     messages = [{"role": "system", "content": system}, {"role": "user", "content": user}]
-    for attempt in range(2):
-        text = ai_svc.chat(messages, provider_id=provider_id, max_tokens=6000)
+    tokens, nudged, waits = 6000, False, [5, 15]
+    while True:
+        try:
+            text = ai_svc.chat(messages, provider_id=provider_id, max_tokens=tokens, timeout=180)
+        except httpx.TimeoutException:
+            raise ai_svc.AIError("The AI model took too long to answer. Try again, or pick a faster model in Settings.") from None
+        except ai_svc.AIError as e:
+            msg = str(e)
+            if ("429" in msg or "rate" in msg.lower()) and waits:
+                time.sleep(waits.pop(0))
+                continue
+            if "empty content" in msg and tokens < 16000:
+                tokens = 16000
+                continue
+            if "429" in msg or "rate-limit" in msg.lower():
+                raise ai_svc.AIError("The AI provider is rate-limiting requests right now (free models have per-minute and daily limits). "
+                                     "Wait a minute and try again, or pick another model in Settings.") from None
+            raise
         found = [o for o in json_objects(text) if key in o]
         if found:
             return found[-1]
-        if attempt == 0:
-            messages.append({"role": "user", "content": "Reply with ONLY the JSON object, nothing else."})
-    raise ai_svc.AIError("The model did not return a usable answer. Try again or pick a non-reasoning model in Settings.")
+        if nudged:
+            raise ai_svc.AIError("The model did not return a usable answer. Try again or pick a non-reasoning model in Settings.")
+        nudged = True
+        messages.append({"role": "user", "content": "Reply with ONLY the JSON object, nothing else."})
 
 
 def _facts(prof: dict[str, Any]) -> str:

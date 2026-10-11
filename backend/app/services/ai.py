@@ -51,7 +51,7 @@ NOT_A_QUERY_RULE = (
 
 
 def _call_openai_compatible(base_url: str, api_key: str, model: str,
-                            messages: list[dict], max_tokens: int = 2048) -> str:
+                            messages: list[dict], max_tokens: int = 2048, timeout: float = 60) -> str:
     payload: dict[str, Any] = {"model": model, "messages": messages, "max_tokens": max_tokens}
     if "openrouter.ai" in base_url:
         # Reasoning models otherwise spend most of the time (and tokens) "thinking"; SQL needs little of it.
@@ -60,7 +60,7 @@ def _call_openai_compatible(base_url: str, api_key: str, model: str,
         f"{base_url.rstrip('/')}/chat/completions",
         headers={"Authorization": f"Bearer {api_key or 'none'}"},
         json=payload,
-        timeout=60,
+        timeout=timeout,
     )
     if resp.status_code >= 400:
         raise AIError(f"{resp.status_code}: {resp.text[:300]}")
@@ -79,7 +79,7 @@ def _call_openai_compatible(base_url: str, api_key: str, model: str,
 
 
 def _call_anthropic(api_key: str, model: str, messages: list[dict],
-                    max_tokens: int = 2048) -> str:
+                    max_tokens: int = 2048, timeout: float = 60) -> str:
     system = "\n".join(m["content"] for m in messages if m["role"] == "system")
     user_msgs = [m for m in messages if m["role"] != "system"]
     resp = httpx.post(
@@ -88,7 +88,7 @@ def _call_anthropic(api_key: str, model: str, messages: list[dict],
                  "content-type": "application/json"},
         json={"model": model, "max_tokens": max_tokens, "system": system,
               "messages": user_msgs},
-        timeout=60,
+        timeout=timeout,
     )
     if resp.status_code >= 400:
         raise AIError(f"{resp.status_code}: {resp.text[:300]}")
@@ -138,7 +138,7 @@ def resolve_provider(provider_id: str | None = None) -> dict[str, Any] | None:
 
 
 def chat(messages: list[dict], provider_id: str | None = None,
-         max_tokens: int = 2048) -> str:
+         max_tokens: int = 2048, timeout: float = 60) -> str:
     cfg = resolve_provider(provider_id)
     if not cfg:
         raise AIError(
@@ -147,14 +147,14 @@ def chat(messages: list[dict], provider_id: str | None = None,
         )
     kind = cfg["provider"]
     if kind == "anthropic":
-        return _call_anthropic(cfg["api_key"], cfg["model"], messages, max_tokens)
+        return _call_anthropic(cfg["api_key"], cfg["model"], messages, max_tokens, timeout)
     if kind == "gemini":
         return _call_gemini(cfg["api_key"], cfg["model"], messages, max_tokens)
     base_url = cfg.get("base_url") or OPENAI_COMPATIBLE_DEFAULTS.get(kind)
     if not base_url:
         raise AIError(f"unknown provider: {kind}")
     return _call_openai_compatible(base_url, cfg["api_key"], cfg["model"],
-                                   messages, max_tokens)
+                                   messages, max_tokens, timeout)
 
 
 from .sql_extract import (  # noqa: F401  (re-exported: other modules reach these through `ai`)

@@ -1,5 +1,8 @@
 """AI dashboards: create one from a description, or edit an existing one by chatting."""
+import contextvars
 import json
+import queue
+import threading
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
@@ -8,6 +11,8 @@ from pydantic import BaseModel
 from ..core.security import UnsafeQueryError
 from ..services import ai as ai_svc, audit, dash_ai, dash_gen, dash_plan
 from ..services.dash_templates import template_list
+
+PING_SECONDS = 8
 
 router = APIRouter(prefix="/api/dashboards", tags=["dashboards-ai"])
 
@@ -87,16 +92,37 @@ def generate(body: GenerateIn):
 
 
 def _sse(events, on_done=None):
-    """Server-Sent Events over a phase generator; always ends with a done/error-style event so the UI never hangs."""
-    def stream():
+    """Server-Sent Events over a phase generator.
+
+    The generator runs in a worker thread (with this request's context, so the per-user workspace holds) and the response
+    sends a `: ping` comment every few seconds while the model is thinking, so proxies do not drop a silent connection.
+    Always ends with a done/error event so the UI never hangs."""
+    ctx = contextvars.copy_context()
+    q: queue.Queue = queue.Queue()
+
+    def work():
         try:
             for ev in events():
                 if ev["type"] == "done" and on_done:
                     on_done(ev)
-                yield f"data: {json.dumps(ev, default=str)}\n\n"
+                q.put(ev)
         except Exception as e:
             kind = "no_provider" if "No AI provider" in str(e) else "error"
-            yield f"data: {json.dumps({'type': 'error', 'kind': kind, 'message': str(e)[:400]})}\n\n"
+            q.put({"type": "error", "kind": kind, "message": str(e)[:400]})
+        q.put(None)
+
+    threading.Thread(target=lambda: ctx.run(work), daemon=True).start()
+
+    def stream():
+        while True:
+            try:
+                ev = q.get(timeout=PING_SECONDS)
+            except queue.Empty:
+                yield ": ping\n\n"
+                continue
+            if ev is None:
+                return
+            yield f"data: {json.dumps(ev, default=str)}\n\n"
     return StreamingResponse(stream(), media_type="text/event-stream", headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
 

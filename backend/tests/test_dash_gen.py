@@ -14,6 +14,7 @@ os.environ["DUCKDB_TEMP_DIR"] = os.path.join(tmp, "spill")
 from app.core.store import store
 from app.services import ai as ai_svc, dash_gen, dash_plan
 from app.services.dash_profile import profile
+from app.services.dash_ai import _tidy as dash_ai_tidy
 from app.services.engine import engine
 
 with engine.writer() as con:
@@ -38,6 +39,7 @@ PLAN = {
         {"page": "regions", "title": "Broken", "type": "bar", "sql": "SELECT missing_col FROM sales"},
     ],
 }
+real_ask_json = dash_plan.ask_json
 seen_prompts = {}
 
 
@@ -100,4 +102,47 @@ for r in rows:
 auto = dash_gen.generate(ds["id"], "auto", "", None)
 assert auto["type"] == "done" and auto["pages"][-1] == "Insights"
 assert dash_plan.clean_title("revenue_by_region") == "Revenue by Region"
+# result summaries given to the insights model: short results in full, long ones as first/last/min/max (rounded)
+long_rows = [{"month": f"2024-{i:02d}", "total": 100.123456 + i} for i in range(1, 25)]
+summ = dash_gen._summary({"title": "Trend", "chart": {"type": "line"}, "columns": ["month", "total"], "all_rows": dash_ai_tidy(long_rows)})
+assert "24 rows" in summ and "first" in summ and "last" in summ and "min 101.12" in summ and "max 124.12" in summ, summ
+assert "100.123456" not in summ
+short = dash_gen._summary({"title": "Top", "chart": {"type": "bar"}, "columns": ["r"], "all_rows": [{"r": "N"}]})
+assert "[{'r': 'N'}]" in short
+assert dash_plan.clean_title("Total Total Profit") == "Total Profit"
+# ask_json copes with what real (free / reasoning) models do
+import time as _time
+_time.sleep = lambda *_: None
+script = []
+
+
+def scripted_chat(messages, provider_id=None, max_tokens=0, timeout=0):
+    step = script.pop(0)
+    scripted_chat.tokens.append(max_tokens)
+    if isinstance(step, Exception):
+        raise step
+    return step
+
+
+scripted_chat.tokens = []
+ai_svc.chat = scripted_chat
+script[:] = [ai_svc.AIError("429: provider rate-limited"), ai_svc.AIError("429: again"), '<think>x</think> ```json {"understanding": "ok"} ```']
+assert real_ask_json("s", "u", None, "understanding") == {"understanding": "ok"}      # two rate limits, then an answer
+script[:] = [ai_svc.AIError("empty content from model (finish_reason=length)"), '{"understanding": "big budget"}']
+scripted_chat.tokens.clear()
+assert real_ask_json("s", "u", None, "understanding")["understanding"] == "big budget" and scripted_chat.tokens == [6000, 16000]
+script[:] = ["Sorry, I cannot.", '{"understanding": "second try"}']
+assert real_ask_json("s", "u", None, "understanding")["understanding"] == "second try"   # one insistent retry for non-JSON
+script[:] = ["no json", "still no json"]
+try:
+    real_ask_json("s", "u", None, "understanding")
+    raise SystemExit("expected AIError")
+except ai_svc.AIError as e:
+    assert "usable answer" in str(e)
+script[:] = [ai_svc.AIError("429: x")] * 3
+try:
+    real_ask_json("s", "u", None, "understanding")
+    raise SystemExit("expected AIError")
+except ai_svc.AIError as e:
+    assert "rate-limiting" in str(e), str(e)
 print("dash_gen tests OK")

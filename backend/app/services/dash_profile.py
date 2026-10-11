@@ -6,7 +6,7 @@ model (as text) and to the user (as tables), so both look at the same evidence.
 """
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from typing import Any
 
 from ..core.security import quote_ident
@@ -45,9 +45,31 @@ def _grain(lo: Any, hi: Any) -> str | None:
     return "day" if days <= 62 else "week" if days <= 240 else "month" if days <= 365 * 4 else "quarter" if days <= 365 * 12 else "year"
 
 
+def _partial_cutoff(lo: Any, hi: Any, grain: str | None) -> date | None:
+    """First day of the latest period when the data stops part-way through it (so that period must stay out of growth maths)."""
+    if not isinstance(hi, (date, datetime)) or grain not in ("month", "year", "day", "week", "quarter"):
+        return None
+    d = hi.date() if isinstance(hi, datetime) else hi
+    if grain in ("month", "quarter"):
+        last = (d.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
+        return d.replace(day=1) if d != last and grain == "month" else None
+    if grain == "year":
+        return d.replace(month=1, day=1) if (d.month, d.day) != (12, 31) else None
+    return None
+
+
 def _row(res: dict) -> list:
     r = res["rows"][0]
     return list(r.values()) if isinstance(r, dict) else list(r)
+
+
+LINKED_SAMPLE = 100_000
+
+
+def _source(table: str) -> str:
+    """What statistic queries read: the table itself, or for a live-linked remote table a 100k-row sample (never pull millions of rows)."""
+    from . import remote
+    return f"(SELECT * FROM {table} LIMIT {LINKED_SAMPLE}) AS sample_src" if remote.is_linked(table) else table
 
 
 def _describe(table: str, cols: list[dict]) -> dict[str, dict[str, Any]]:
@@ -64,7 +86,7 @@ def _describe(table: str, cols: list[dict]) -> dict[str, dict[str, Any]]:
                  else [f"MIN({q})", "NULL", "NULL", "NULL", f"MAX({q})", "NULL", "NULL"])
         parts += [f"{e} AS s{i}_{k}" for e, k in zip(exprs, keys)]   # unique aliases: result rows are dicts keyed by name
     try:
-        vals = _row(engine.execute(f"SELECT {', '.join(parts)} FROM {table}", 1))
+        vals = _row(engine.execute(f"SELECT {', '.join(parts)} FROM {_source(table)}", 1))
     except Exception:
         return {}  # the profile still works from the schema alone
     return {c["name"]: dict(zip(keys, vals[7 * i:7 * i + 7])) for i, c in enumerate(typed)}
@@ -76,7 +98,7 @@ def _correlations(table: str, measures: list[str]) -> list[dict[str, Any]]:
         return []
     sel = ", ".join(f"ROUND(CORR({quote_ident(a)}, {quote_ident(b)}), 2)" for a, b in pairs)
     try:
-        vals = _row(engine.execute(f"SELECT {sel} FROM {table}", 1))
+        vals = _row(engine.execute(f"SELECT {sel} FROM {_source(table)}", 1))
     except Exception:
         return []
     return [{"a": a, "b": b, "r": v} for (a, b), v in zip(pairs, vals) if v is not None]
@@ -87,7 +109,7 @@ def _top_values(table: str, cols: list[dict]) -> dict[str, list[str]]:
     for c in [c for c in cols if c["role"] == "dimension"][:5]:
         q = quote_ident(c["name"])
         try:
-            res = engine.execute(f"SELECT {q} AS v, COUNT(*) AS n FROM {table} WHERE {q} IS NOT NULL GROUP BY 1 ORDER BY 2 DESC LIMIT 6", 6)
+            res = engine.execute(f"SELECT {q} AS v, COUNT(*) AS n FROM {_source(table)} WHERE {q} IS NOT NULL GROUP BY 1 ORDER BY 2 DESC LIMIT 6", 6)
             tops[c["name"]] = [f"{r['v']} ({r['n']})" if isinstance(r, dict) else f"{r[0]} ({r[1]})" for r in res["rows"]]
         except Exception:
             pass
@@ -115,7 +137,7 @@ def profile(dataset: dict[str, Any]) -> dict[str, Any]:
     grain = next((_grain(stats[c["name"]]["min"], stats[c["name"]]["max"]) for c in cols if c["role"] == "time" and c["name"] in stats), None)
 
     lines = [f"Table `{table}` ({dataset.get('name', table)}): {rows:,} rows, {len(cols)} columns."
-             + (" (profile sampled: live source)" if schema.get("sampled") else "")]
+             + (f" Statistics come from a sample of the first {LINKED_SAMPLE:,} rows of this live source." if _source(table) != table else "")]
     for c in cols:
         bits = [f"{c['name']} {c['dtype']} [{c['role']}]", f"{c['null_pct']}% empty", f"{c['distinct_count']:,} distinct"]
         st = stats.get(c["name"])
@@ -132,6 +154,11 @@ def profile(dataset: dict[str, Any]) -> dict[str, Any]:
         lines.append("Correlations (Pearson r): " + ", ".join(f"{x['a']}~{x['b']} {x['r']}" for x in corr))
     if grain:
         lines.append(f"Suggested time grain for trends: {grain}.")
+        tcol = next(c["name"] for c in cols if c["role"] == "time" and c["name"] in stats)
+        cut = _partial_cutoff(stats[tcol]["min"], stats[tcol]["max"], grain)
+        if cut:
+            lines.append(f"INCOMPLETE LATEST PERIOD: the data ends on {stats[tcol]['max']}, part-way through the {grain} starting {cut}. For growth, "
+                         f"period-over-period and trend widgets leave that period out (filter {quote_ident(tcol)} < DATE '{cut}'); never present it as a real drop.")
     if sample["rows"]:
         head = sample["rows"][:PROMPT_ROWS]
         lines.append(f"First {len(head)} of the top {len(sample['rows'])} rows:")

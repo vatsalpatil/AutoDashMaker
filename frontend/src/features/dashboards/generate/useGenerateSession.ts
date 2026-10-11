@@ -65,11 +65,13 @@ export function useGenerateSession() {
       if ((e as Error).name !== 'AbortError') setError({ message: (e as Error).message, noProvider: false });
     }
     if (failed) setPhase(back);
+    return failed;
   }, [handle]);
 
   const start = useCallback((s: Setup) => {
     setSetup(s); setSteps([]); setEvidence(null); setUnderstanding(null); setAnswers({}); setPlan(null); setWidgets([]); setResult(null);
-    return run(`${BASE}/understand`, s, 'understanding', 'setup');
+    // a failed first step unlocks the setup card again, so the user can change the choices or simply retry
+    return run(`${BASE}/understand`, s, 'understanding', 'setup').then((failed) => { if (failed) setSetup(null); });
   }, [run]);
 
   const makePlan = useCallback((a: Record<string, string>, feedback = '') => {
