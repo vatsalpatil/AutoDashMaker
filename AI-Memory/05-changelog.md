@@ -202,3 +202,7 @@ Format: `YYYY-MM-DD · tool · files · what + why`
 2026-10-11 · production · fast-forwarded production to e89090c (password show/hide eye, Appearance rows, localhost-like-server config change that touches no server file); user presses Deploy on the frontend (backend unchanged apart from config.py)
 - 2026-10-11 · ImportTablesDialog.tsx, connectors/mysql.py · import dialog: step 1 pick database chips, step 2 tables; system DB filter now case-insensitive (TiDB uppercase)
 - 2026-10-12 · services/quality.py · quality check on a linked (live) dataset 500'd: now attaches the source + reads via remote.table_ref
+- 2026-10-12 · features/quality/QualityPanel.tsx, pages/DatasetDetailPage.tsx · Quality tab showed dashes: /quality/dataset/{id} returns a LIST (newest first) but page used it as one run. New QualityPanel: latest scores, change vs previous run, last-checked time, per-column empty%/distinct
+- 2026-10-12 · lib/auth.ts, main.tsx · console warnings: initAuth cached (StrictMode created 2 Supabase clients); React Router v7 future flags on
+- 2026-10-12 · pages/DatasetDetailPage.tsx · removed the 'Generate dashboard' button from the dataset page (user request)
+- 2026-10-12 · services/dash_gen|dash_profile|dash_templates.py, routers/dash_ai.py, features/dashboards/* · Generate-from-dataset is now AI only: templates, data profile, formula/SQL/naming rules, multi-page + Insights, streamed step-by-step process in the dialog; removed generate.py + test_generate (added tests/test_dash_gen.py). Untested with a real AI provider.

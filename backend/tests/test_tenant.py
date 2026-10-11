@@ -76,7 +76,8 @@ try:
     assert run(A, "SELECT SUM(qty) AS q FROM sales").json()["rows"][0]["q"] == 10
 
     # --- charts / dashboards / notifications / AI providers are per user
-    c.post("/api/dashboards/generate", headers=A, json={"dataset_id": ds["id"]})
+    c.post("/api/dashboards", headers=A, json={"name": "alice board"})
+    c.post("/api/charts", headers=A, json={"name": "alice chart", "dataset_id": ds["id"], "spec": {"type": "bar", "encoding": {"x": "a", "y": "b"}}})
     assert len(c.get("/api/dashboards", headers=A).json()) == 1 and c.get("/api/dashboards", headers=B).json() == []
     assert c.get("/api/charts", headers=B).json() == [] and len(c.get("/api/charts", headers=A).json()) >= 1
     c.post("/api/ai/providers", headers=A, json={"provider": "openai", "label": "mine", "api_key": "sk-secret-alice", "model": "m", "is_default": True})

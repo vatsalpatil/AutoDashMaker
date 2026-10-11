@@ -131,13 +131,13 @@ def _materialize(spec: dict[str, Any], context: str, provider_id: str | None) ->
     chart = {"type": ctype, "encoding": encode(ctype, cols, rows), "options": suggested["options"] if ctype == suggested["type"] else {}}
     if ctype == "kpi":
         chart["options"] = {"numberFormat": "compact"}
-    return {"title": title, "sql": result["sql"], "chart": chart}
+    return {"title": title, "sql": result["sql"], "chart": chart, "columns": cols, "preview": rows[:6], "ms": result.get("duration_ms")}
 
 
-def _store_widget(dash_id: str, widget: dict[str, Any], position: dict[str, int], dataset_id: str | None) -> dict[str, Any]:
+def _store_widget(dash_id: str, widget: dict[str, Any], position: dict[str, int], dataset_id: str | None, page: str = "main") -> dict[str, Any]:
     q = store.insert("queries", {"dataset_id": dataset_id, "name": widget["title"], "sql": widget["sql"], "status": "ok"})
     ch = store.insert("charts", {"query_id": q["id"], "dataset_id": dataset_id, "name": widget["title"], "spec": widget["chart"]})
-    row = store.insert("dashboard_widgets", {"dashboard_id": dash_id, "chart_id": ch["id"], "position": position, "page": "main"})
+    row = store.insert("dashboard_widgets", {"dashboard_id": dash_id, "chart_id": ch["id"], "position": position, "page": page})
     return {"id": row["id"], "title": widget["title"], "type": widget["chart"]["type"]}
 
 

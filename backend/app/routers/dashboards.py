@@ -6,25 +6,10 @@ from pydantic import BaseModel
 
 from ..core.store import store
 from ..services.lineage import dashboard_lineage
-from ..services.generate import generate_dashboard
 from ..services.brief import dashboard_brief
 
 
-class GenerateIn(BaseModel):
-    dataset_id: str
-    name: str | None = None
-
-
 router = APIRouter(prefix="/api/dashboards", tags=["dashboards"])
-
-
-@router.post("/generate")
-def generate(body: GenerateIn):
-    """One-click dashboard from a dataset's schema profile (§22)."""
-    ds = store.get("datasets", body.dataset_id)
-    if not ds:
-        raise HTTPException(404, "dataset not found")
-    return generate_dashboard(ds, body.name)
 
 
 class DashboardIn(BaseModel):
