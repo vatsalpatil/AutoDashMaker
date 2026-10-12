@@ -153,4 +153,5 @@ MIGRATIONS = [
     # per-user isolation: every table carries workspace_id (existing rows belong to the legacy default workspace)
     *[f"ALTER TABLE {t} ADD COLUMN workspace_id TEXT DEFAULT 'ws_default'"
       for t in ("columns_meta", "dashboard_widgets", "quality_runs", "ai_providers", "alert_runs", "report_runs")],
+    "DELETE FROM ai_providers WHERE provider = 'ollama'",  # self-hosted option removed 2026-10-13: drop leftover rows
 ]

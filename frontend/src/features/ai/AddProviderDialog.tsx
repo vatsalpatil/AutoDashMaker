@@ -76,14 +76,13 @@ export function AddProviderDialog({ open, catalog, connected, isFirst, onClose, 
               {entry.note && <p className="mt-1 text-sm text-muted-foreground">{entry.note}</p>}
             </div>
             <ErrorBanner message={error} onDismiss={() => setError(null)} />
-            {entry.id !== 'ollama' && <TextInput label="API key" type="password" value={apiKey} onChange={setApiKey} />}
-            <TextInput label={entry.id === 'ollama' ? 'Ollama URL (same machine: http://localhost:11434/v1 · Docker: http://<service-name>:11434/v1)' : 'Custom base URL (optional)'}
-              value={baseUrl} onChange={setBaseUrl} />
+            <TextInput label="API key" type="password" value={apiKey} onChange={setApiKey} />
+            <TextInput label="Custom base URL (optional)" value={baseUrl} onChange={setBaseUrl} />
             <p className="text-xs text-muted-foreground">The key is stored on this server only and is never shown again.</p>
             <div className="flex justify-between">
               <Button variant="ghost" label="Back" onClick={() => setEntry(null)} />
               <Button variant="primary" label={busy ? 'Testing…' : 'Test & connect'} onClick={connect}
-                isDisabled={busy || (entry.id !== 'ollama' && !apiKey.trim())} />
+                isDisabled={busy || !apiKey.trim()} />
             </div>
           </>
         )}

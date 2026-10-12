@@ -61,7 +61,7 @@ def ask_json(system: str, user: str, provider_id: str | None, key: str, step: in
     tokens, nudged, waits = 6000, False, [5, 15]
     while True:
         try:
-            text = ai_stream.chat_live(messages, provider_id=provider_id, max_tokens=tokens, timeout=ai_svc.request_timeout(provider_id, 180), step=step, lane=lane, label=label, json_mode=True)
+            text = ai_stream.chat_live(messages, provider_id=provider_id, max_tokens=tokens, timeout=180, step=step, lane=lane, label=label)
         except httpx.TimeoutException:
             raise ai_svc.AIError("The AI model took too long to answer. Try again, or pick a faster model in Settings.") from None
         except ai_svc.AIError as e:

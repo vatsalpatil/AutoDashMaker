@@ -1,7 +1,7 @@
 """AI provider registry.
 
 Users can connect any OpenAI-compatible service (OpenAI, Groq, OpenRouter,
-Ollama, custom base_url), Anthropic, or Gemini with their own API key.
+custom base_url), Anthropic, or Gemini with their own API key.
 
 Default fallback: Gemini free tier (free input/output tokens, fast flash
 models). If the user hasn't configured anything and no env key is present,
@@ -22,7 +22,6 @@ OPENAI_COMPATIBLE_DEFAULTS = {
     "openai": "https://api.openai.com/v1",
     "groq": "https://api.groq.com/openai/v1",
     "openrouter": "https://openrouter.ai/api/v1",
-    "ollama": "http://localhost:11434/v1",
 }
 
 
@@ -123,25 +122,13 @@ def _call_gemini(api_key: str, model: str, messages: list[dict],
     return "".join(p.get("text", "") for p in parts)
 
 
-def server_provider() -> dict[str, Any] | None:
-    """The model the administrator hosts for everyone (OLLAMA_URL + OLLAMA_MODEL), or None."""
-    if settings.ollama_url and settings.ollama_model:
-        return {"id": "server", "provider": "ollama", "model": settings.ollama_model, "base_url": settings.ollama_url, "api_key": "",
-                "label": "Server model (self-hosted)", "is_default": False, "managed": True}
-    return None
-
-
 def resolve_provider(provider_id: str | None = None) -> dict[str, Any] | None:
-    """Pick the requested provider, else the user's default, else the server's own model, else env default."""
-    if provider_id == "server":
-        return server_provider()
+    """Pick the requested provider, else the user's default, else env default."""
     if provider_id:
         return store.get("ai_providers", provider_id)
     defaults = store.list("ai_providers", where="is_default = TRUE", order=None)
     if defaults:
         return defaults[0]
-    if server_provider():
-        return server_provider()
     env_key = os.environ.get("GOOGLE_API_KEY") or os.environ.get("GEMINI_API_KEY")
     if env_key:
         return {"provider": "gemini", "model": settings.default_ai_model,
@@ -149,35 +136,31 @@ def resolve_provider(provider_id: str | None = None) -> dict[str, Any] | None:
     return None
 
 
-def is_local(provider_id: str | None = None) -> bool:
-    """A self-hosted model (Ollama): slow per token, so callers wait longer and run fewer calls at once."""
-    cfg = resolve_provider(provider_id)
-    return bool(cfg and cfg.get("provider") == "ollama")
-
-
-def request_timeout(provider_id: str | None, default: float) -> float:
-    return float(settings.local_ai_timeout_s) if is_local(provider_id) else default
-
-
 def chat(messages: list[dict], provider_id: str | None = None,
-         max_tokens: int = 2048, timeout: float = 60, json_mode: bool = False) -> str:
-    """`json_mode` asks a self-hosted model to constrain its output to valid JSON (other providers get it from the prompt)."""
+         max_tokens: int = 2048, timeout: float = 60) -> str:
+    """Call the requested (or active) provider. With no explicit provider, a failure falls back to the
+    user's other connected providers in turn, so one dead key or exhausted free quota doesn't stop the app."""
     cfg = resolve_provider(provider_id)
     if not cfg:
         raise AIError(
             "No AI provider configured. Add one in Settings → AI Providers "
             "(Gemini free tier needs only a free Google AI Studio key)."
         )
+    try:
+        return _call(cfg, messages, max_tokens, timeout)
+    except Exception:
+        if provider_id or not cfg.get("id"):
+            raise
+        for alt in store.list("ai_providers", where="is_default = FALSE", order=None):
+            try:
+                return _call(alt, messages, max_tokens, timeout)
+            except Exception:
+                continue
+        raise
+
+
+def _call(cfg: dict[str, Any], messages: list[dict], max_tokens: int, timeout: float = 60) -> str:
     kind = cfg["provider"]
-    if cfg.get("id") != "server":   # a user-added provider: its address must be one a hosted user may use
-        from .ai_urls import check_provider_url
-        try:
-            check_provider_url(kind, cfg.get("base_url"), OPENAI_COMPATIBLE_DEFAULTS)
-        except ValueError as e:
-            raise AIError(str(e)) from None
-    if kind == "ollama":
-        from . import ollama
-        return ollama.chat(cfg, messages, max_tokens, timeout, json_mode)
     if kind == "anthropic":
         return _call_anthropic(cfg["api_key"], cfg["model"], messages, max_tokens, timeout)
     if kind == "gemini":
@@ -260,11 +243,4 @@ def test_provider(cfg: dict[str, Any]) -> dict[str, Any]:
 
 
 def _chat_direct(cfg: dict[str, Any]) -> str:
-    msgs = [{"role": "user", "content": "Reply with the single word: ok"}]
-    kind = cfg["provider"]
-    if kind == "anthropic":
-        return _call_anthropic(cfg["api_key"], cfg["model"], msgs, 256)
-    if kind == "gemini":
-        return _call_gemini(cfg["api_key"], cfg["model"], msgs, 256)
-    base_url = cfg.get("base_url") or OPENAI_COMPATIBLE_DEFAULTS.get(kind)
-    return _call_openai_compatible(base_url, cfg["api_key"], cfg["model"], msgs, 256)
+    return _call(cfg, [{"role": "user", "content": "Reply with the single word: ok"}], 256)

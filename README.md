@@ -45,7 +45,7 @@ frontend/
 - **Charts** — declarative specs backed by saved queries, always re-executed fresh
 - **Dashboards** — 12-column grid widgets + full lineage view (dashboard → chart → query → dataset → source)
 - **Quality** — completeness / uniqueness / validity / duplicate % / freshness scoring
-- **Settings** — connect any AI provider (Gemini free default, OpenAI, Anthropic, Groq, OpenRouter, Ollama)
+- **Settings** — connect any AI provider (Gemini free default, OpenAI, Anthropic, Groq, OpenRouter)
 
 Auth is intentionally deferred; the metadata schema already carries
 organization_id / workspace_id / created_by for a clean multi-tenant upgrade.

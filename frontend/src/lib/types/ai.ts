@@ -42,6 +42,7 @@ export interface AiProvider {
   label: string;
   model?: string;
   base_url?: string;
+  api_key?: string; // masked, e.g. •••abcd
   is_default?: boolean;
   created_at?: string;
 }

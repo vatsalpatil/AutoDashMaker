@@ -28,6 +28,12 @@ class ProviderTestIn(BaseModel):
     base_url: str | None = None
 
 
+class ProviderEditIn(BaseModel):
+    label: str | None = None
+    api_key: str | None = None   # blank/None keeps the stored key
+    base_url: str | None = None  # "" clears a custom URL
+
+
 class ModelIn(BaseModel):
     model: str
     make_default: bool = True
@@ -38,17 +44,7 @@ def _make_default(provider_id: str) -> None:
     store.update("ai_providers", provider_id, {"is_default": True})
 
 
-def _check_url(kind: str, base_url: str | None) -> None:
-    from ..services.ai_urls import check_provider_url
-    try:
-        check_provider_url(kind, base_url, ai_svc.OPENAI_COMPATIBLE_DEFAULTS)
-    except ValueError as e:
-        raise HTTPException(400, str(e)) from None
-
-
 def _get_provider(provider_id: str) -> dict:
-    if provider_id == "server" and ai_svc.server_provider():
-        return ai_svc.server_provider()
     row = store.get("ai_providers", provider_id)
     if not row:
         raise HTTPException(404, "provider not found")
@@ -62,19 +58,15 @@ def catalog():
 
 @router.get("/providers")
 def list_providers():
-    rows = store.list("ai_providers")
+    supported = {c["id"] for c in ai_models.PROVIDER_CATALOG}
+    rows = [r for r in store.list("ai_providers") if r["provider"] in supported]
     for r in rows:
         r["api_key"] = ("•••" + r["api_key"][-4:]) if r.get("api_key") else ""
-    server = ai_svc.server_provider()
-    if server:   # the administrator's own model: listed first, used when you have not chosen another one
-        server["is_default"] = not any(r.get("is_default") for r in rows)
-        rows.insert(0, server)
     return rows
 
 
 @router.post("/providers")
 def add_provider(body: ProviderIn):
-    _check_url(body.provider, body.base_url)
     if body.is_default:
         store.execute("UPDATE ai_providers SET is_default = FALSE WHERE workspace_id = ?", [tenant.current()])
     return store.insert("ai_providers", body.model_dump())
@@ -82,8 +74,6 @@ def add_provider(body: ProviderIn):
 
 @router.post("/providers/test")
 def test_provider(body: ProviderTestIn):
-    if body.provider:
-        _check_url(body.provider, body.base_url)
     if body.id:  # saved provider: use the stored, unmasked key
         return ai_svc.test_provider(_get_provider(body.id))
     if not body.provider or not body.model:  # unsaved credentials from the "Add provider" form
@@ -135,6 +125,27 @@ def set_model(provider_id: str, body: ModelIn):
     if body.make_default:
         _make_default(provider_id)
     audit.record("ai.model", entity_type="provider", entity_id=provider_id, detail=f"{row['provider']} -> {body.model}")
+    return {"ok": True}
+
+
+@router.patch("/providers/{provider_id}")
+def edit_provider(provider_id: str, body: ProviderEditIn):
+    """Change a connected provider's name, API key or base URL; a new key/URL is tested before it is saved."""
+    row = _get_provider(provider_id)
+    patch: dict = {}
+    if body.label and body.label.strip():
+        patch["label"] = body.label.strip()
+    if body.api_key and body.api_key.strip():
+        patch["api_key"] = body.api_key.strip()
+    if body.base_url is not None:
+        patch["base_url"] = body.base_url.strip() or None
+    if "api_key" in patch or "base_url" in patch:
+        res = ai_svc.test_provider({**row, **patch, "id": None})
+        if res.get("ok") is False:
+            raise HTTPException(400, f"connection failed: {res.get('detail')}")
+    if patch:
+        store.update("ai_providers", provider_id, patch)
+        audit.record("ai.edit", entity_type="provider", entity_id=provider_id, detail=", ".join(patch))
     return {"ok": True}
 
 

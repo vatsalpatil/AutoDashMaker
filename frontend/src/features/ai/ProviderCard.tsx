@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Badge, Button, Card } from '@/components/ui/kit';
-import { ChevronDown, ChevronRight, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, Pencil, Trash2 } from 'lucide-react';
 import { api } from '@/lib/api';
 import type { AiProvider, AiProviderStats } from '@/lib/types';
 import { ModelList } from './ModelList';
@@ -15,13 +15,14 @@ export function StatChip({ label, value }: { label: string; value: string }) {
 }
 
 /** One connected provider: active model, Test connection (+ stats), and its available models. */
-export function ProviderCard({ p, label, expanded, onToggle, onCollapse, onChanged, onRemove }: {
+export function ProviderCard({ p, label, expanded, onToggle, onCollapse, onChanged, onEdit, onRemove }: {
   p: AiProvider;
   label: string;
   expanded: boolean;
   onToggle: () => void;
   onCollapse: () => void;
   onChanged: () => void;
+  onEdit: () => void;
   onRemove: () => void;
 }) {
   const [stats, setStats] = useState<AiProviderStats | 'testing' | { error: string } | null>(null);
@@ -66,6 +67,9 @@ export function ProviderCard({ p, label, expanded, onToggle, onCollapse, onChang
           <span className="mr-auto truncate font-mono text-xs text-muted-foreground">{p.model}</span>
           <Button variant="secondary" size="sm" label={stats === 'testing' ? 'Testing…' : 'Test connection'}
             isDisabled={stats === 'testing'} onClick={test} />
+          <button onClick={onEdit} className="p-1 text-muted-foreground/70 hover:text-foreground" aria-label={`Edit ${label}`}>
+            <Pencil className="h-4 w-4" />
+          </button>
           <button onClick={onRemove} className="p-1 text-muted-foreground/70 hover:text-destructive" aria-label={`Disconnect ${label}`}>
             <Trash2 className="h-4 w-4" />
           </button>

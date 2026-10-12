@@ -11,7 +11,6 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Iterator
 
 from . import ai as ai_svc
-from ..core.config import settings
 from .dash_ai import CHART_TYPES, widgets_of
 from .dash_plan import MAX_GENERATED, ask_json
 from .dash_templates import FORMULAS, NAMING_RULES, SQL_RULES, TEMPLATES
@@ -57,8 +56,7 @@ def plan_in_parallel(template: str, context: str, provider_id: str | None) -> It
     results: dict[int, list[dict[str, Any]]] = {}
     notes: list[str] = []
     errors: list[Exception] = []
-    workers = settings.local_ai_parallel if ai_svc.is_local(provider_id) else MAX_PARALLEL   # a CPU model batches a few requests, not many
-    with ThreadPoolExecutor(max_workers=max(1, min(workers, len(pages)))) as pool:
+    with ThreadPoolExecutor(max_workers=min(MAX_PARALLEL, len(pages))) as pool:
         futures = {pool.submit(contextvars.copy_context().run, _plan_page, context, pages, i, provider_id): i for i in range(len(pages))}
         for fut in as_completed(futures):
             i = futures[fut]

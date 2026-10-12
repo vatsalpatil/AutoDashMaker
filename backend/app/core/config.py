@@ -50,16 +50,6 @@ class Settings(BaseSettings):
     copy_memory_limit: str = "1GB"
     copy_threads: int = 2
     copy_timeout_s: int = 3600
-    # Self-hosted models (Ollama on the same server): CPU generation is slow, so calls wait longer and run a few at a time
-    ollama_num_ctx: int = 8192
-    ollama_keep_alive: str = "30m"
-    local_ai_parallel: int = 3
-    local_ai_timeout_s: int = 900
-    # A model hosted by the administrator for EVERY user (no personal key needed): its Ollama address and model tag.
-    ollama_url: str = ""
-    ollama_model: str = ""
-    # Hosts a user-added AI provider may use even though they are private (the self-hosted Ollama service name), comma separated.
-    allowed_ai_hosts: str = ""
     duckdb_threads: int = 3
     duckdb_temp_dir: str = str(DATA_DIR / "tmp")  # spill-to-disk location
     # In-process query-result cache (spec §53); invalidated on any data write

@@ -49,11 +49,6 @@ def _fetch_models(kind: str, api_key: str, base_url: str | None) -> list[dict[st
                  "free": True, "context": m.get("inputTokenLimit")}
                 for m in resp.json().get("models", [])
                 if "generateContent" in m.get("supportedGenerationMethods", [])]
-    if kind == "ollama":
-        root = (base_url or "http://localhost:11434/v1").rstrip("/").removesuffix("/v1")
-        resp = httpx.get(f"{root}/api/tags", timeout=5)
-        resp.raise_for_status()
-        return [{"id": m["name"], "name": m["name"], "free": True} for m in resp.json().get("models", [])]
     # OpenAI-compatible (openai, groq, custom): GET {base}/models
     base = base_url or OPENAI_COMPATIBLE_DEFAULTS.get(kind)
     if not base:
@@ -99,7 +94,4 @@ PROVIDER_CATALOG = [
      "models": ["llama-3.3-70b-versatile"], "note": "Free tier, very fast"},
     {"id": "openrouter", "label": "OpenRouter", "free": True,
      "models": ["openrouter/free"], "note": "Free models with :free suffix"},
-    {"id": "ollama", "label": "Ollama (self-hosted)", "free": True,
-     "models": ["qwen3.5:9b-q4_K_M", "qwen3.5:4b"],
-     "note": "No key needed. Same machine: http://localhost:11434/v1. In Docker/Dokploy use the Ollama service name, e.g. http://ollama:11434/v1"},
 ]

@@ -1,7 +1,7 @@
 """Model calls that show their work: stream the thinking and the answer into the live channel while still returning the full text.
 
 `chat_live()` behaves exactly like `ai.chat()` when nobody listens (no live sink, or no step number). When someone does, an
-OpenAI-compatible provider (OpenAI, OpenRouter, Groq, Ollama...) is called with `stream: true` and every chunk of reasoning /
+OpenAI-compatible provider (OpenAI, OpenRouter, Groq...) is called with `stream: true` and every chunk of reasoning /
 answer is pushed (batched, so a fast model does not flood the connection). Anthropic and Gemini fall back to one push at the end.
 """
 from __future__ import annotations
@@ -77,22 +77,14 @@ def _stream_openai(base_url: str, cfg: dict[str, Any], messages: list[dict], max
 
 
 def chat_live(messages: list[dict], provider_id: str | None = None, max_tokens: int = 2048, timeout: float = 60, step: int | None = None,
-              lane: str | None = None, label: str | None = None, json_mode: bool = False) -> str:
+              lane: str | None = None, label: str | None = None) -> str:
     if live.sink.get() is None or step is None:
-        return ai.chat(messages, provider_id=provider_id, max_tokens=max_tokens, timeout=timeout, json_mode=json_mode)
+        return ai.chat(messages, provider_id=provider_id, max_tokens=max_tokens, timeout=timeout)
     cfg = ai.resolve_provider(provider_id)
-    if cfg and cfg["provider"] == "ollama":   # native client: thinking off, valid-JSON decoding, streamed into the live view
-        from . import ollama
-        batch = _Batcher(step, lane, label)
-        live.push(step, "reset", "", lane, label)
-        try:
-            return ollama.chat(cfg, messages, max_tokens, timeout, json_mode, on_delta=batch.add)
-        finally:
-            batch.flush()
     if cfg and cfg["provider"] not in ("anthropic", "gemini"):
         base_url = cfg.get("base_url") or ai.OPENAI_COMPATIBLE_DEFAULTS.get(cfg["provider"])
         if base_url:
             return _stream_openai(base_url, cfg, messages, max_tokens, timeout, step, lane, label)
-    text = ai.chat(messages, provider_id=provider_id, max_tokens=max_tokens, timeout=timeout, json_mode=json_mode)
+    text = ai.chat(messages, provider_id=provider_id, max_tokens=max_tokens, timeout=timeout)
     live.push(step, "answer", text, lane, label)
     return text

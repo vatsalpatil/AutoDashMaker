@@ -29,7 +29,7 @@ Legend: ✅ done · 🔶 partial/stubbed · ⬜ not started
 - 🔶 Drag/resize grid, fullscreen widgets, table widgets, edit/view toggle (UI in progress)
 
 ## Phase 2 — AI (§16–18, §46, §51–52)
-- ✅ AI provider registry: Gemini (free default), OpenAI, Anthropic, Groq, OpenRouter, Ollama
+- ✅ AI provider registry: Gemini (free default), OpenAI, Anthropic, Groq, OpenRouter
 - ✅ NL → SQL ask endpoint with read-only validation of AI output
 - ✅ Semantic context injected into ask prompt (metrics/definitions/synonyms/verified queries)
 - ✅ Conversational follow-ups (conversation state: active dataset/filters/SQL history)

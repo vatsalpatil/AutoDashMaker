@@ -6,12 +6,14 @@ import type { AiCatalogEntry, AiProvider } from '@/lib/types';
 import { ErrorBanner } from '@/components/common/ErrorBanner';
 import { AddProviderDialog } from './AddProviderDialog';
 import { ProviderCard } from './ProviderCard';
+import { EditProviderDialog } from './EditProviderDialog';
 
 export default function AiSettings() {
   const [catalog, setCatalog] = useState<AiCatalogEntry[]>([]);
   const [providers, setProviders] = useState<AiProvider[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
+  const [editing, setEditing] = useState<AiProvider | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
 
   const load = useCallback(() => {
@@ -56,9 +58,15 @@ export default function AiSettings() {
       {providers.map((p) => (
         <ProviderCard key={p.id} p={p} label={nameOf(p)} expanded={expanded === p.id}
           onToggle={() => setExpanded(expanded === p.id ? null : p.id)}
-          onCollapse={() => setExpanded((cur) => (cur === p.id ? null : cur))} onChanged={load} onRemove={() => remove(p)} />
+          onCollapse={() => setExpanded((cur) => (cur === p.id ? null : cur))} onChanged={load} onEdit={() => setEditing(p)} onRemove={() => remove(p)} />
       ))}
 
+      {providers.length > 1 && (
+        <p className="text-xs text-muted-foreground">If the active model fails (bad key, quota used up, outage), Dashtor automatically retries with your other connected providers.</p>
+      )}
+
+      <EditProviderDialog provider={editing} name={editing ? nameOf(editing) : ''} onClose={() => setEditing(null)}
+        onSaved={() => { setEditing(null); load(); }} />
       <AddProviderDialog open={adding} catalog={catalog} connected={new Set(providers.map((p) => p.provider))}
         isFirst={providers.length === 0} onClose={() => setAdding(false)}
         onConnected={(id) => { setAdding(false); load(); setExpanded(id); }} />
