@@ -86,9 +86,9 @@ assert [p["name"] for p in planned["pages"]] == ["Overview", "Breakdown"], plann
 titles = [w["title"] for w in planned["widgets"]]
 assert titles == ["Total Amount", "Monthly Amount Trend", "Top Regions", "Broken"], titles   # page order, names cleaned
 
-# phase 2b: a revision with feedback is one call that sees the whole plan
+# phase 2b: a revision first decides the pages (one short call), then re-plans every page in parallel with the feedback
 ev2b = list(dash_plan.plan(ds["id"], "executive", "", und["understanding"], {"Which measure is the main KPI?": "amount"}, "add a table", ["Total Amount"], None))
-assert "add a table" in seen_prompts["widgets"] and "Your page:" not in seen_prompts["widgets"]
+assert "add a table" in seen_prompts["widgets"] and "Your page:" in seen_prompts["widgets"] and "add a table" in seen_prompts["pages"]
 titles_b = [w["title"] for w in ev2b[-1]["widgets"]]
 assert len(set(t.lower() for t in titles_b)) == len(titles_b), titles_b   # duplicate "Top Regions" made unique
 

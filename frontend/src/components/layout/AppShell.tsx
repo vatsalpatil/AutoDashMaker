@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { Loading } from '@/components/common/Loading';
 import { NotificationBell } from '@/components/NotificationBell';
+import { AiUsagePill } from '@/features/ai/usage/AiUsagePill';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
@@ -23,7 +24,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <header className="sticky top-0 z-20 flex h-10 shrink-0 items-center gap-2 border-b bg-background/80 pl-4 pr-3 backdrop-blur sm:pl-6 sm:pr-4">
             <SidebarTrigger aria-label="Toggle sidebar (Ctrl+B)" className="md:hidden" />
             <Breadcrumbs />
-            <div className="ml-auto"><NotificationBell /></div>
+            <div className="ml-auto flex items-center gap-2"><AiUsagePill /><NotificationBell /></div>
           </header>
           <div className={cn(bleed ? 'min-h-0 flex-1 overflow-hidden' : 'p-4 sm:p-6')}>
             <ErrorBoundary>

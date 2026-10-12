@@ -39,16 +39,35 @@ class _Batcher:
 
 
 def _stream_openai(base_url: str, cfg: dict[str, Any], messages: list[dict], max_tokens: int, timeout: float, step: int, lane: str | None, label: str | None) -> str:
-    payload: dict[str, Any] = {"model": cfg["model"], "messages": messages, "max_tokens": max_tokens, "stream": True}
+    from . import ai_limits
+    ai_limits.check(cfg)
+    t0 = time.perf_counter()
+    try:
+        text, usage, headers = _stream_body(base_url, cfg, messages, max_tokens, timeout, step, lane, label)
+    except ai.AIError as e:
+        hit = ai_limits.record(cfg, False, (time.perf_counter() - t0) * 1000, ai_limits.estimate_tokens(messages), e.status, str(e), e.headers)
+        if hit:
+            raise hit from None
+        raise
+    est = ai_limits.estimate_tokens(messages, text)
+    ai_limits.record(cfg, True, (time.perf_counter() - t0) * 1000, (usage.get("prompt_tokens") or est[0], usage.get("completion_tokens") or est[1]), 200, "", headers)
+    return text
+
+
+def _stream_body(base_url: str, cfg: dict[str, Any], messages: list[dict], max_tokens: int, timeout: float, step: int, lane: str | None,
+                 label: str | None) -> tuple[str, dict, Any]:
+    payload: dict[str, Any] = {"model": cfg["model"], "messages": messages, "max_tokens": max_tokens, "stream": True,
+                               "stream_options": {"include_usage": True}}
     if "openrouter.ai" in base_url:
         payload["reasoning"] = {"effort": "low"}
-    batch, parts, finish = _Batcher(step, lane, label), [], None
+    batch, parts, finish, usage, headers = _Batcher(step, lane, label), [], None, {}, None
     live.push(step, "reset", "", lane, label)
     with httpx.stream("POST", f"{base_url.rstrip('/')}/chat/completions", headers={"Authorization": f"Bearer {cfg.get('api_key') or 'none'}"},
                       json=payload, timeout=timeout) as resp:
+        headers = resp.headers
         if resp.status_code >= 400:
             resp.read()
-            raise ai.AIError(f"{resp.status_code}: {resp.text[:300]}")
+            raise ai.AIError(f"{resp.status_code}: {resp.text[:300]}", resp.status_code, resp.headers)
         for line in resp.iter_lines():
             if not line.startswith("data:"):   # blank keep-alives and ': OPENROUTER PROCESSING' comments
                 continue
@@ -60,7 +79,10 @@ def _stream_openai(base_url: str, cfg: dict[str, Any], messages: list[dict], max
             except ValueError:
                 continue
             if obj.get("error"):
-                raise ai.AIError(str(obj["error"])[:300])
+                err = obj["error"]
+                code = err.get("code") if isinstance(err, dict) else None
+                raise ai.AIError(str(err)[:300], code if isinstance(code, int) else None, headers)
+            usage = obj.get("usage") or usage
             choice = (obj.get("choices") or [{}])[0]
             delta = choice.get("delta") or {}
             finish = choice.get("finish_reason") or finish
@@ -73,7 +95,7 @@ def _stream_openai(base_url: str, cfg: dict[str, Any], messages: list[dict], max
     text = "".join(parts)
     if not text:
         raise ai.AIError(f"empty content from model (finish_reason={finish})")
-    return text
+    return text, usage, headers
 
 
 def chat_live(messages: list[dict], provider_id: str | None = None, max_tokens: int = 2048, timeout: float = 60, step: int | None = None,

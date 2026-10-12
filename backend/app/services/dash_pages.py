@@ -47,9 +47,37 @@ def _plan_page(context: str, pages: list[dict[str, str]], index: int, provider_i
     return [dict(w, page=page["id"]) for w in widgets_of(raw)[:PER_PAGE]]
 
 
-def plan_in_parallel(template: str, context: str, provider_id: str | None) -> Iterator[dict[str, Any]]:
+REVISE_PAGES_SYSTEM = (
+    "You restructure a dashboard's pages to satisfy the user's change request. Reply with ONLY JSON: "
+    '{"pages": [{"id": short snake_case id, "name": 1-3 word page name, "focus": one sentence: what this page shows}]}. '
+    "2 to 6 pages. Keep the existing pages unless the request changes them; when the user asks for a page/tab per audience, segment, region, "
+    "etc., make one page for each. The first page holds the headline KPIs.")
+
+
+def revise_pages(context: str, previous: list[str], feedback: str, template: str, provider_id: str | None) -> list[dict[str, str]]:
+    """One short model call: the pages the revised plan needs (falls back to the template's pages)."""
+    current = "; ".join(f"{p['name']} ({p['focus']})" for p in _pages(template)) or "(none fixed)"
+    user = (f"{context}\n\nCurrent pages: {current}\nCurrent widgets: {'; '.join(previous)[:900]}\n"
+            f"The user's change request: {feedback[:600]}")
+    try:
+        raw = ask_json(REVISE_PAGES_SYSTEM, user, provider_id, "pages", step=3, lane="pages", label="Pages")
+    except ai_svc.AIError:
+        return _pages(template)
+    out, seen = [], set()
+    for p in raw.get("pages") or []:
+        if not isinstance(p, dict) or not p.get("name"):
+            continue
+        pid = "".join(ch if ch.isalnum() else "_" for ch in str(p.get("id") or p["name"]).lower()).strip("_")[:24] or f"p{len(out)}"
+        if pid in seen:
+            continue
+        seen.add(pid)
+        out.append({"id": pid, "name": str(p["name"])[:40], "focus": str(p.get("focus") or "")[:300]})
+    return out[:6] or _pages(template)
+
+
+def plan_in_parallel(template: str, context: str, provider_id: str | None, pages: list[dict[str, str]] | None = None) -> Iterator[dict[str, Any]]:
     """Yields step-3 progress events, then one {type: 'specs', name, pages, specs, notes}."""
-    name, pages = None, _pages(template)
+    name, pages = None, pages or _pages(template)
     names = [p["name"] for p in pages]
     yield {"type": "step", "n": 3, "title": "Planning the dashboard",
            "detail": f"Planning {len(pages)} pages at the same time: {', '.join(names)}."}

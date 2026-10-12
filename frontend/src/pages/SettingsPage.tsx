@@ -2,6 +2,7 @@ import { Suspense } from 'react';
 import { Loading } from '@/components/common/Loading';
 import { Tab, TabList } from '@/components/ui/kit';
 import AiSettings from '@/features/ai/AiSettings';
+import AiUsagePanel from '@/features/ai/usage/AiUsagePanel';
 import { useAuth } from '@/features/auth/AuthProvider';
 import AccountSettings from '@/features/settings/AccountSettings';
 import ThemeSettings from '@/features/settings/ThemeSettings';
@@ -9,6 +10,7 @@ import { useLocalStorage } from '@/hooks/useLocalStorage';
 
 const TABS = [
   { id: 'ai', label: 'AI models' },
+  { id: 'usage', label: 'AI usage' },
   { id: 'appearance', label: 'Appearance' },
   { id: 'account', label: 'Account' },
 ] as const;
@@ -28,6 +30,7 @@ export default function SettingsPage() {
       </TabList>
       <Suspense fallback={<Loading />}>
         {active === 'ai' && <AiSettings />}
+        {active === 'usage' && <AiUsagePanel />}
         {active === 'appearance' && <ThemeSettings />}
         {active === 'account' && <AccountSettings />}
       </Suspense>

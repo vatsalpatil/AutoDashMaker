@@ -7,7 +7,14 @@ export async function streamPost<E>(path: string, body: unknown, onEvent: (ev: E
   const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
   let buf = '';
   for (;;) {
-    const { value, done } = await reader.read();
+    let chunk: ReadableStreamReadResult<string>;
+    try {
+      chunk = await reader.read();
+    } catch (e) {
+      if ((e as Error).name === 'AbortError') throw e;
+      throw new Error('The connection to the server dropped while the AI was working (the network or a proxy cut a long request). Nothing was lost — press the button again to retry.');
+    }
+    const { value, done } = chunk;
     if (done) return;
     buf += value;
     const parts = buf.split('\n\n');

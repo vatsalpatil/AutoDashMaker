@@ -52,6 +52,11 @@ CREATE TABLE IF NOT EXISTS ai_providers (
     api_key TEXT, base_url TEXT, is_default BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP
 );
+CREATE TABLE IF NOT EXISTS ai_usage (
+    id TEXT PRIMARY KEY, workspace_id TEXT, provider_id TEXT, provider TEXT, model TEXT,
+    feature TEXT, run_id TEXT, ok BOOLEAN, status INTEGER, tokens_in INTEGER, tokens_out INTEGER,
+    ms INTEGER, error TEXT, created_at TIMESTAMP
+);
 CREATE TABLE IF NOT EXISTS conversations (
     id TEXT PRIMARY KEY, workspace_id TEXT, state TEXT DEFAULT '{}',
     created_at TIMESTAMP
@@ -154,5 +159,12 @@ MIGRATIONS = [
     *[f"ALTER TABLE {t} ADD COLUMN workspace_id TEXT DEFAULT 'ws_default'"
       for t in ("columns_meta", "dashboard_widgets", "quality_runs", "ai_providers", "alert_runs", "report_runs")],
     "DELETE FROM ai_providers WHERE provider = 'ollama'",  # self-hosted option removed 2026-10-13: drop leftover rows
-    "ALTER TABLE dashboards ADD COLUMN ai_undo TEXT",  # snapshot before the last Edit-with-AI run (JSON), for one-click undo
+    "ALTER TABLE dashboards ADD COLUMN ai_undo TEXT",
+    # AI usage limits per connected provider: your own caps (NULL = automatic), the latest rate-limit headers, and a pause after a 429
+    "ALTER TABLE ai_providers ADD COLUMN limit_rpd INTEGER",
+    "ALTER TABLE ai_providers ADD COLUMN limit_rpm INTEGER",
+    "ALTER TABLE ai_providers ADD COLUMN limit_tpd INTEGER",
+    "ALTER TABLE ai_providers ADD COLUMN rate_headers TEXT",
+    "ALTER TABLE ai_providers ADD COLUMN blocked_until TIMESTAMP",
+    "ALTER TABLE ai_providers ADD COLUMN block_reason TEXT",  # snapshot before the last Edit-with-AI run (JSON), for one-click undo
 ]

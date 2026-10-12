@@ -13,6 +13,8 @@ import os
 import re
 from typing import Any
 
+import time
+
 import httpx
 
 from ..core.config import settings
@@ -26,7 +28,16 @@ OPENAI_COMPATIBLE_DEFAULTS = {
 
 
 class AIError(Exception):
-    pass
+    """A provider call failed; `status` and `headers` come from the HTTP reply when there was one."""
+
+    def __init__(self, message: str = "", status: int | None = None, headers: Any = None):
+        super().__init__(message)
+        self.status, self.headers = status, dict(headers or {})
+
+
+def _fail(resp: httpx.Response) -> None:
+    if resp.status_code >= 400:
+        raise AIError(f"{resp.status_code}: {resp.text[:300]}", resp.status_code, resp.headers)
 
 
 class NotAQuery(Exception):
@@ -50,7 +61,7 @@ NOT_A_QUERY_RULE = (
 
 
 def _call_openai_compatible(base_url: str, api_key: str, model: str,
-                            messages: list[dict], max_tokens: int = 2048, timeout: float = 60) -> str:
+                            messages: list[dict], max_tokens: int = 2048, timeout: float = 60, meta: dict | None = None) -> str:
     payload: dict[str, Any] = {"model": model, "messages": messages, "max_tokens": max_tokens}
     if "openrouter.ai" in base_url:
         # Reasoning models otherwise spend most of the time (and tokens) "thinking"; SQL needs little of it.
@@ -61,9 +72,11 @@ def _call_openai_compatible(base_url: str, api_key: str, model: str,
         json=payload,
         timeout=timeout,
     )
-    if resp.status_code >= 400:
-        raise AIError(f"{resp.status_code}: {resp.text[:300]}")
+    _fail(resp)
     data = resp.json()
+    if meta is not None:
+        u = data.get("usage") or {}
+        meta.update(headers=resp.headers, usage=(u.get("prompt_tokens"), u.get("completion_tokens")))
     choices = data.get("choices")
     if not choices:
         raise AIError(f"provider returned no choices: {str(data)[:300]}")
@@ -78,7 +91,7 @@ def _call_openai_compatible(base_url: str, api_key: str, model: str,
 
 
 def _call_anthropic(api_key: str, model: str, messages: list[dict],
-                    max_tokens: int = 2048, timeout: float = 60) -> str:
+                    max_tokens: int = 2048, timeout: float = 60, meta: dict | None = None) -> str:
     system = "\n".join(m["content"] for m in messages if m["role"] == "system")
     user_msgs = [m for m in messages if m["role"] != "system"]
     resp = httpx.post(
@@ -89,13 +102,16 @@ def _call_anthropic(api_key: str, model: str, messages: list[dict],
               "messages": user_msgs},
         timeout=timeout,
     )
-    if resp.status_code >= 400:
-        raise AIError(f"{resp.status_code}: {resp.text[:300]}")
-    return "".join(b["text"] for b in resp.json()["content"] if b["type"] == "text")
+    _fail(resp)
+    data = resp.json()
+    if meta is not None:
+        u = data.get("usage") or {}
+        meta.update(headers=resp.headers, usage=(u.get("input_tokens"), u.get("output_tokens")))
+    return "".join(b["text"] for b in data["content"] if b["type"] == "text")
 
 
 def _call_gemini(api_key: str, model: str, messages: list[dict],
-                 max_tokens: int = 2048) -> str:
+                 max_tokens: int = 2048, meta: dict | None = None) -> str:
     contents = [
         {"role": "user" if m["role"] != "assistant" else "model",
          "parts": [{"text": m["content"]}]}
@@ -110,7 +126,11 @@ def _call_gemini(api_key: str, model: str, messages: list[dict],
         f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
         params={"key": api_key}, json=body, timeout=60,
     )
+    _fail(resp)
     res = resp.json()
+    if meta is not None:
+        u = res.get("usageMetadata") or {}
+        meta.update(headers=resp.headers, usage=(u.get("promptTokenCount"), u.get("candidatesTokenCount")))
     candidates = res.get("candidates")
     if not candidates:
         raise AIError(f"Gemini returned no candidates: {res}")
@@ -160,16 +180,32 @@ def chat(messages: list[dict], provider_id: str | None = None,
 
 
 def _call(cfg: dict[str, Any], messages: list[dict], max_tokens: int, timeout: float = 60) -> str:
-    kind = cfg["provider"]
-    if kind == "anthropic":
-        return _call_anthropic(cfg["api_key"], cfg["model"], messages, max_tokens, timeout)
-    if kind == "gemini":
-        return _call_gemini(cfg["api_key"], cfg["model"], messages, max_tokens)
-    base_url = cfg.get("base_url") or OPENAI_COMPATIBLE_DEFAULTS.get(kind)
-    if not base_url:
-        raise AIError(f"unknown provider: {kind}")
-    return _call_openai_compatible(base_url, cfg["api_key"], cfg["model"],
-                                   messages, max_tokens, timeout)
+    """One provider call, checked against its usage limits first and logged after (tokens, time, errors, rate-limit headers)."""
+    from . import ai_limits   # lazy: ai_limits imports the store
+    ai_limits.check(cfg)
+    kind, meta, t0 = cfg["provider"], {}, time.perf_counter()
+    try:
+        if kind == "anthropic":
+            text = _call_anthropic(cfg["api_key"], cfg["model"], messages, max_tokens, timeout, meta)
+        elif kind == "gemini":
+            text = _call_gemini(cfg["api_key"], cfg["model"], messages, max_tokens, meta)
+        else:
+            base_url = cfg.get("base_url") or OPENAI_COMPATIBLE_DEFAULTS.get(kind)
+            if not base_url:
+                raise AIError(f"unknown provider: {kind}")
+            text = _call_openai_compatible(base_url, cfg["api_key"], cfg["model"], messages, max_tokens, timeout, meta)
+    except AIError as e:
+        hit = ai_limits.record(cfg, False, (time.perf_counter() - t0) * 1000, ai_limits.estimate_tokens(messages), e.status, str(e), e.headers)
+        if hit:
+            raise hit from None
+        raise
+    except Exception as e:
+        ai_limits.record(cfg, False, (time.perf_counter() - t0) * 1000, ai_limits.estimate_tokens(messages), None, str(e))
+        raise
+    est = ai_limits.estimate_tokens(messages, text)
+    used = meta.get("usage") or (None, None)
+    ai_limits.record(cfg, True, (time.perf_counter() - t0) * 1000, (used[0] or est[0], used[1] or est[1]), 200, "", meta.get("headers"))
+    return text
 
 
 from .sql_extract import (  # noqa: F401  (re-exported: other modules reach these through `ai`)

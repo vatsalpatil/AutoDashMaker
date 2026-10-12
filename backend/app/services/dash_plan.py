@@ -20,6 +20,7 @@ from .dash_templates import DATA_BASICS, FORMULAS, NAMING_RULES, SQL_RULES, TEMP
 from ..core.store import store
 
 MAX_GENERATED = 18
+SEP = chr(10) * 2
 _SMALL = {"a", "an", "and", "by", "for", "in", "of", "on", "or", "per", "the", "to", "vs"}
 
 UNDERSTAND_SYSTEM = (
@@ -186,26 +187,23 @@ def plan(dataset_id: str, template: str, focus: str, understanding: str, answers
     if focus.strip():
         context.append(f"The user's focus: {focus.strip()[:400]}")
 
+    from .dash_pages import plan_in_parallel, revise_pages   # lazy: dash_pages imports this module
+    page_list = None
     if feedback.strip():
-        # a revision changes the plan as a whole, so one call sees all of it
-        pages_hint = ", ".join(f"{i} = {n}" for i, n in tpl["pages"]) or "(you choose)"
-        parts = context + [f"Blueprint \"{tpl['name']}\" — pages: {pages_hint}\n{tpl['blueprint']}",
-                           f"The user reviewed the previous plan ({'; '.join(previous)[:900]}) and asks: {feedback.strip()[:600]}. Revise accordingly."]
-        raw = ask_json(PLAN_SYSTEM, "\n\n".join(parts), provider_id, "widgets", step=3)
-        specs = widgets_of(raw)[:MAX_GENERATED]
-        if not specs:
-            raise ai_svc.AIError("The model's plan had no widgets. Try again or pick another model in Settings.")
-        pages, thinking, model_name = clean_pages(raw.get("pages"), template), _strings(raw.get("thinking"), 6), raw.get("name")
-    else:
-        from .dash_pages import plan_in_parallel   # lazy: dash_pages imports this module
-        result: dict[str, Any] = {}
-        for ev in plan_in_parallel(template, "\n\n".join(context), provider_id):
-            if ev["type"] == "step":
-                yield ev
-            else:
-                result = ev
-        specs, pages, thinking = result["specs"], result["pages"], result["notes"]
-        model_name = f"{clean_title(ds['name'])} Dashboard" if template == "auto" else f"{clean_title(ds['name'])} {tpl['name']}"
+        # a revision: one short call decides the pages the change needs, then every page is re-planned in parallel (fast, and the
+        # stream never sits on one huge answer for minutes)
+        yield {"type": "step", "n": 3, "title": "Planning the dashboard", "detail": "Deciding which pages your change needs…"}
+        page_list = revise_pages(SEP.join(context), previous, feedback.strip(), template, provider_id)
+        context.append(f"The user reviewed the previous plan ({'; '.join(previous)[:900]}) and asks: {feedback.strip()[:600]}. "
+                       "Apply this to your page.")
+    result: dict[str, Any] = {}
+    for ev in plan_in_parallel(template, SEP.join(context), provider_id, page_list):
+        if ev["type"] == "step":
+            yield ev
+        else:
+            result = ev
+    specs, pages, thinking = result["specs"], result["pages"], result["notes"]
+    model_name = f"{clean_title(ds['name'])} Dashboard" if template == "auto" else f"{clean_title(ds['name'])} {tpl['name']}"
 
     page_name = {p["id"]: p["name"] for p in pages}
     seen: set[str] = set()

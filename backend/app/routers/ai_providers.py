@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from ..core.store import store
-from ..services import ai as ai_svc, ai_models, audit
+from ..services import ai as ai_svc, ai_models, ai_usage, audit
 
 router = APIRouter()
 
@@ -32,6 +32,12 @@ class ProviderEditIn(BaseModel):
     label: str | None = None
     api_key: str | None = None   # blank/None keeps the stored key
     base_url: str | None = None  # "" clears a custom URL
+
+
+class LimitsIn(BaseModel):
+    limit_rpd: int | None = None   # None = automatic (provider headers / known free tier)
+    limit_rpm: int | None = None
+    limit_tpd: int | None = None
 
 
 class ModelIn(BaseModel):
@@ -61,6 +67,7 @@ def list_providers():
     supported = {c["id"] for c in ai_models.PROVIDER_CATALOG}
     rows = [r for r in store.list("ai_providers") if r["provider"] in supported]
     for r in rows:
+        r.pop("rate_headers", None)
         r["api_key"] = ("•••" + r["api_key"][-4:]) if r.get("api_key") else ""
     return rows
 
@@ -158,4 +165,31 @@ def delete_provider(provider_id: str):
 @router.post("/providers/{provider_id}/default")
 def set_default(provider_id: str):
     _make_default(provider_id)
+    return {"ok": True}
+
+
+@router.get("/usage")
+def usage(days: int = 30):
+    """Usage for the period (requests, tokens, errors, per day / feature / model), and per provider what is left, resets and pauses."""
+    return ai_usage.report(days)
+
+
+@router.get("/usage/summary")
+def usage_summary():
+    return ai_usage.summary()
+
+
+@router.patch("/providers/{provider_id}/limits")
+def set_limits(provider_id: str, body: LimitsIn):
+    """Your own caps for a provider (requests a day / a minute, tokens a day); empty = automatic."""
+    _get_provider(provider_id)
+    store.update("ai_providers", provider_id, {k: (v if v and v > 0 else None) for k, v in body.model_dump().items()})
+    return {"ok": True}
+
+
+@router.post("/providers/{provider_id}/unblock")
+def unblock(provider_id: str):
+    """Try a paused provider again now (e.g. after adding credits)."""
+    _get_provider(provider_id)
+    store.update("ai_providers", provider_id, {"blocked_until": None, "block_reason": None})
     return {"ok": True}

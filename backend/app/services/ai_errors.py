@@ -9,7 +9,12 @@ def is_daily_limit(message: str) -> bool:
 
 
 def friendly(error: object) -> str:
+    from .ai_limits import LimitReached
+    if isinstance(error, LimitReached):   # already plain language, with the time it works again
+        return str(error)
     msg = str(error)
+    if "works again in" in msg:
+        return msg
     low = msg.lower()
     if is_daily_limit(msg):
         return ("Your AI provider's daily limit for free models is used up (OpenRouter allows about 50 free-model requests per day per account, "

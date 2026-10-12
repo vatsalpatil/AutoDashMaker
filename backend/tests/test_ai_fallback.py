@@ -17,7 +17,7 @@ b = store.insert("ai_providers", {"label": "o", "provider": "openai", "model": "
 store.insert("ai_providers", {"label": "x", "provider": "ollama", "model": "q", "api_key": "", "is_default": False})
 
 calls = []
-def fake(base_url, key, model, msgs, max_tokens, timeout=60):
+def fake(base_url, key, model, msgs, max_tokens, timeout=60, meta=None):
     calls.append(model)
     if model == "m1":
         raise ai.AIError("429 quota")
