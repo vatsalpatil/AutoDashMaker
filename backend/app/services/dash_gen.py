@@ -109,7 +109,7 @@ def build(dataset_id: str, name: str, pages: list[dict[str, str]], widgets: list
                 page = spec.get("page") if spec.get("page") in page_name else next(iter(page_name))
                 w["title"], w["page"] = title, page
                 done_by_idx[i] = w
-                yield {"type": "widget", "title": title, "status": "ok", "page": page_name[page], "chart": w["chart"]["type"], "ms": w.get("ms"),
+                yield {"type": "widget", "title": title, "status": "ok", "page": page_name[page], "chart": w["chart"]["type"], "ms": w.get("ms"), "fixed": w.get("fixed", 0),
                        "why": str(spec.get("why") or ""), "formula": str(spec.get("formula") or ""), "sql": w["sql"]}
             yield {"type": "step", "n": 4, "title": "Building and checking each widget",
                    "detail": f"Checked {len(done_by_idx) + len(skipped)} of {total} widgets (several at the same time)…"}

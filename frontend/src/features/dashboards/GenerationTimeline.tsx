@@ -49,6 +49,7 @@ export function GenerationTimeline({ steps, widgets, busy, live = {} }: { steps:
                         {w.status === 'ok' ? <Check className="size-3.5 shrink-0 text-success" /> : <AlertTriangle className="size-3.5 shrink-0 text-warning" />}
                         <span className="font-medium">{w.title}</span>
                         {w.status === 'ok' && <span className="text-xs text-muted-foreground">{w.chart} · {w.page}{w.ms ? ` · ${Math.round(w.ms)} ms` : ''}</span>}
+                        {w.fixed ? <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary" title="The first query failed; the AI repaired it automatically">auto-fixed ×{w.fixed}</span> : null}
                       </div>
                       {w.status === 'skipped' && <p className="mt-0.5 text-xs text-warning">Skipped: {w.detail}</p>}
                       {w.why && <p className="mt-0.5 text-xs text-muted-foreground">{w.why}{w.formula ? ` — ${w.formula}` : ''}</p>}

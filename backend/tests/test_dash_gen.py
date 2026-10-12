@@ -177,6 +177,63 @@ assert all(v["data"]["cached"] is False for v in dashboard_data(done["dashboard_
 from app.core.compression import STREAM_PATHS
 for path in ("/api/dashboards/generate/understand", "/api/dashboards/generate/plan", "/api/dashboards/generate/build", "/api/ai/agent"):
     assert path.startswith(STREAM_PATHS), path
+# automatic repair of a widget query: several rounds with the real error, a targeted hint, then a different simpler query
+from app.services import assist as _assist
+from app.services import dash_repair
+
+ctx = "Table `sales` (sales): 799 rows.\n- order_id BIGINT [id]; 0% empty\n- amount DOUBLE [measure]; 0% empty\n- region VARCHAR [dimension]; 0% empty"
+spec = {"title": "Revenue Growth vs Prior Month", "type": "kpi", "why": "growth", "formula": "last vs previous"}
+BAD = "WITH m AS (SELECT SUM(amount) AS rev FROM sales) SELECT ROUND(rev, 2) AS revenue_growth_pct FROM r"   # 'r' was never defined: the failure from the live run
+GOOD = "SELECT ROUND(SUM(amount), 2) AS revenue_growth_pct FROM sales"
+
+# the hint points at the real table and columns
+hint = dash_repair._hint('Catalog Error: Table with name r does not exist!', ctx)
+assert "`r` is not a table or a CTE" in hint and "`sales`" in hint, hint
+assert "amount" in dash_repair._hint("Binder Error: Referenced column nope not found in FROM clause", ctx)
+
+seen_errors = []
+real_fix, real_gen = _assist.fix_sql, ai_svc.generate_sql
+
+
+def fix_once_wrong(sql, error, context, provider, check):
+    seen_errors.append(error)
+    return BAD if len(seen_errors) == 1 else GOOD          # first repair is still wrong, the second works
+
+
+_assist.fix_sql = fix_once_wrong
+sql, res, fixes = dash_repair.run_with_repairs(spec, BAD, ctx, None)
+assert fixes == 2 and res["row_count"] == 1 and sql.startswith(GOOD), (fixes, sql)
+assert "Hint:" in seen_errors[0] and "Earlier fixes also failed" in seen_errors[1], seen_errors   # round 2 knows what round 1 got wrong
+
+# every patch fails -> the last round writes a different simpler query
+_assist.fix_sql = lambda *a, **k: BAD
+ai_svc.generate_sql = lambda messages, provider_id=None, check=None: GOOD
+sql, res, fixes = dash_repair.run_with_repairs(spec, BAD, ctx, None)
+assert fixes == 3 and sql.startswith(GOOD)
+
+# a runtime failure (binds fine, fails when run) is repaired too
+sql, res, fixes = dash_repair.run_with_repairs(spec, "SELECT CAST('abc' AS INTEGER) AS x FROM sales", ctx, None)
+assert fixes == 3 and res["row_count"] == 1
+
+# nothing works -> a clear reason that says how many automatic fixes were tried
+ai_svc.generate_sql = lambda messages, provider_id=None, check=None: BAD
+try:
+    dash_repair.run_with_repairs(spec, BAD, ctx, None)
+    raise SystemExit("expected ValueError")
+except ValueError as e:
+    assert "3 automatic fixes" in str(e) and "Table with name r" in str(e), str(e)
+
+# a model that fails during repair (rate limit) does not crash the build: the round is counted and the next one runs
+_assist.fix_sql = lambda *a, **k: (_ for _ in ()).throw(ai_svc.AIError("429: rate limited"))
+ai_svc.generate_sql = lambda messages, provider_id=None, check=None: GOOD
+sql, res, fixes = dash_repair.run_with_repairs(spec, BAD, ctx, None)
+assert sql.startswith(GOOD) and res["row_count"] == 1
+
+# a query that already works costs no fixes
+_assist.fix_sql, ai_svc.generate_sql = real_fix, real_gen
+sql, res, fixes = dash_repair.run_with_repairs(spec, GOOD, ctx, None)
+assert fixes == 0
+
 # the page calls really overlap: three 0.4 s model calls take about 0.4 s, not 1.2 s
 import time as _t0
 

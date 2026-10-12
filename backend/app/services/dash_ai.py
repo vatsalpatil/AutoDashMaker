@@ -119,14 +119,8 @@ def _materialize(spec: dict[str, Any], context: str, provider_id: str | None) ->
     sql = str(spec.get("sql") or "").strip()
     if not sql:
         raise ValueError("no SQL")
-    try:
-        sql = validate_readonly(sql, 10000)
-        err = engine.check_sql(sql)
-        if err:  # one repair round with the database's own message
-            sql = validate_readonly(assist_svc.fix_sql(sql, err, context, provider_id, engine.check_sql), 10000)
-        result = engine.execute(sql, 2000)
-    except Exception as e:
-        raise ValueError(str(e)[:160]) from e
+    from .dash_repair import run_with_repairs   # lazy: it imports the engine and assist helpers
+    sql, result, fixes = run_with_repairs(spec, sql, context, provider_id)   # raises ValueError after its automatic fixes failed
     rows, cols = list(result["rows"]), result["columns"]
     if not cols:
         raise ValueError("query returned no columns")
@@ -136,7 +130,7 @@ def _materialize(spec: dict[str, Any], context: str, provider_id: str | None) ->
     chart = {"type": ctype, "encoding": encode(ctype, cols, rows), "options": suggested["options"] if ctype == suggested["type"] else {}}
     if ctype == "kpi":
         chart["options"] = {"numberFormat": "compact"}
-    return {"title": title, "sql": result["sql"], "chart": chart, "columns": cols, "preview": _tidy(rows[:6]), "all_rows": _tidy(rows[:400]), "ms": result.get("duration_ms")}
+    return {"title": title, "sql": result["sql"], "chart": chart, "columns": cols, "preview": _tidy(rows[:6]), "all_rows": _tidy(rows[:400]), "ms": result.get("duration_ms"), "fixed": fixes}
 
 
 def _store_widget(dash_id: str, widget: dict[str, Any], position: dict[str, int], dataset_id: str | None, page: str = "main") -> dict[str, Any]:

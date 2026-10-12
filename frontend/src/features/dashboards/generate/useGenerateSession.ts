@@ -3,7 +3,7 @@ import { streamPost } from '@/lib/sse';
 
 /** `spentMs` = finished time on this step; `startedAt` = when its current run began (unset when not running). */
 export interface GenStep { n: number; title: string; detail: string; items?: string[]; done: boolean; spentMs: number; startedAt?: number }
-export interface GenWidget { title: string; status: 'ok' | 'skipped'; detail?: string; page?: string; chart?: string; ms?: number | null; why?: string; formula?: string; sql?: string }
+export interface GenWidget { title: string; status: 'ok' | 'skipped'; detail?: string; page?: string; chart?: string; ms?: number | null; fixed?: number; why?: string; formula?: string; sql?: string }
 export interface DescribeRow { column: string; type: string; role: string; empty_pct: number; distinct: number; min: unknown; p25: unknown; median: unknown; p75: unknown; max: unknown; mean: unknown; std: unknown }
 export interface Evidence { table: string; rows: number; describe: DescribeRow[]; sample: { columns: string[]; rows: Record<string, unknown>[] }; correlations: { a: string; b: string; r: number }[] }
 export interface Question { id: string; question: string; why: string; options: string[]; multi: boolean }
