@@ -219,6 +219,21 @@ out = _da.edit_dashboard(legacy["id"], "add a kpi", None, None, None)
 assert out["page"] == "main" and store.list("dashboard_widgets", where="dashboard_id = ?", params=[legacy["id"]], order=None)[0]["page"] == "main"
 _da._ask = _real_ask
 
+# self-healing: widgets orphaned on a page the dashboard does not have (the old Edit-with-AI bug) come back on the first page, same position
+from app.routers.dashboards import get_dashboard
+
+hurt = store.insert("dashboards", {"name": "hurt", "pages": [{"id": "overview", "name": "Overview"}, {"id": "breakdown", "name": "Breakdown"}]})
+orphan = store.insert("dashboard_widgets", {"dashboard_id": hurt["id"], "kind": "text", "title": "orphan", "page": "main", "position": {"x": 0, "y": 2, "w": 12, "h": 4}, "settings": {"content": "x"}})
+fine = store.insert("dashboard_widgets", {"dashboard_id": hurt["id"], "kind": "text", "title": "fine", "page": "breakdown", "position": {"x": 0, "y": 0, "w": 6, "h": 2}, "settings": {"content": "y"}})
+got = get_dashboard(hurt["id"])
+by_title = {w["title"]: w for w in got["widgets"]}
+assert by_title["orphan"]["page"] == "overview" and by_title["orphan"]["position"] == {"x": 0, "y": 2, "w": 12, "h": 4}, by_title["orphan"]
+assert by_title["fine"]["page"] == "breakdown"
+assert store.get("dashboard_widgets", orphan["id"])["page"] == "overview"            # persisted, not just patched in the response
+legacy_dash = store.insert("dashboards", {"name": "no pages"})                       # a dashboard without pages keeps using 'main'
+store.insert("dashboard_widgets", {"dashboard_id": legacy_dash["id"], "kind": "text", "title": "t", "page": "main", "position": {"x": 0, "y": 0, "w": 4, "h": 2}, "settings": {"content": "z"}})
+assert get_dashboard(legacy_dash["id"])["widgets"][0]["page"] == "main"
+
 # the whole dashboard's data in one request (parallel, identical queries run once), and fresh=true bypasses the cache
 from app.routers.dashboards import dashboard_data
 

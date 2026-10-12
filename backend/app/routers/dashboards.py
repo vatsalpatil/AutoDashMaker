@@ -71,6 +71,19 @@ def dashboard_data(dashboard_id: str, fresh: bool = False):
         return {cid: f.result() for cid, f in futures.items()}
 
 
+def _adopt_orphans(d: dict[str, Any]) -> None:
+    """Self-healing: a widget on a page the dashboard does not have is invisible (no tab shows it) and leaves a hole where it used to be.
+    An older "Edit with AI" saved its new / updated widgets on a page called `main` even when the dashboard's pages were overview,
+    breakdown, ... Such widgets move to the first real page; they keep their position, so they fill the gap they were meant for."""
+    pages = [p["id"] for p in (d.get("pages") or []) if isinstance(p, dict) and p.get("id")]
+    if not pages:
+        return
+    for w in d["widgets"]:
+        if (w.get("page") or "main") not in pages:
+            store.update("dashboard_widgets", w["id"], {"page": pages[0]})
+            w["page"] = pages[0]
+
+
 @router.get("/{dashboard_id}")
 def get_dashboard(dashboard_id: str):
     d = store.get("dashboards", dashboard_id)
@@ -79,6 +92,7 @@ def get_dashboard(dashboard_id: str):
     d["widgets"] = store.list("dashboard_widgets",
                               where="dashboard_id = ?", params=[dashboard_id],
                               order="created_at ASC")
+    _adopt_orphans(d)
     return d
 
 
