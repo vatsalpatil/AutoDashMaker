@@ -1,12 +1,15 @@
 import { AlertTriangle, Check, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { GenStep, GenWidget } from './generate/useGenerateSession';
+import { formatDuration, stepMs, useTicker } from './generate/timing';
+import { LiveThinking } from './generate/LiveThinking';
+import type { GenStep, GenWidget, LiveLanes } from './generate/useGenerateSession';
 
 export const STEP_TITLES = ['Reading the data', 'Understanding the data', 'Planning the dashboard', 'Building and checking each widget', 'Writing insights', 'Saving the dashboard'];
 const ENTER = 'animate-in fade-in slide-in-from-bottom-2 duration-300 fill-mode-both';
 
 /** The AI's process, top to bottom: all steps are listed up front; the active one pulses, finished ones turn green, pending ones wait dimmed. */
-export function GenerationTimeline({ steps, widgets, busy }: { steps: GenStep[]; widgets: GenWidget[]; busy: boolean }) {
+export function GenerationTimeline({ steps, widgets, busy, live = {} }: { steps: GenStep[]; widgets: GenWidget[]; busy: boolean; live?: LiveLanes }) {
+  const now = useTicker(busy);
   const byN = new Map(steps.map((s) => [s.n, s]));
   const nextN = Math.max(0, ...steps.filter((x) => x.done).map((x) => x.n)) + 1;   // the step waiting to start
   return (
@@ -27,8 +30,12 @@ export function GenerationTimeline({ steps, widgets, busy }: { steps: GenStep[];
               </span>
             </span>
             <div className="min-w-0 flex-1">
-              <p className={cn('text-sm font-semibold', running && 'gen-shimmer')}>{title}</p>
+              <div className="flex items-baseline justify-between gap-2">
+                <p className={cn('text-sm font-semibold', running && 'gen-shimmer')}>{title}</p>
+                {s && (s.done || running || s.spentMs > 0) && <span className={cn('tabular-nums text-xs', running ? 'text-primary' : 'text-muted-foreground')}>{formatDuration(stepMs(s, now))}</span>}
+              </div>
               {s?.detail && <p className={cn('whitespace-pre-line text-sm text-muted-foreground', ENTER)}>{s.detail}</p>}
+              {running && live[n] && Object.entries(live[n]).map(([lane, t]) => <LiveThinking key={lane} label={Object.keys(live[n]).length > 1 ? t.label : undefined} reasoning={t.reasoning} answer={t.answer} />)}
               {s?.items && s.items.length > 0 && (
                 <ul className="mt-1 list-disc space-y-0.5 pl-5 text-sm text-muted-foreground">
                   {s.items.map((t, k) => <li key={k} className={ENTER} style={{ animationDelay: `${Math.min(k, 12) * 60}ms` }}>{t}</li>)}

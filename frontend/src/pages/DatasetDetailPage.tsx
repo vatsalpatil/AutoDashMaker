@@ -11,6 +11,7 @@ import { SchemaGrid } from '@/components/SchemaGrid';
 import { FreshnessStrip } from '@/components/FreshnessStrip';
 import { WhyPanel } from '@/components/WhyPanel';
 import { TransformPanel } from '@/components/TransformPanel';
+import { CopyLiveData } from '@/features/sources/CopyLiveData';
 import { QualityPanel } from '@/features/quality/QualityPanel';
 
 export default function DatasetDetailPage() {
@@ -53,6 +54,7 @@ export default function DatasetDetailPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {dataset.remote_table && <CopyLiveData datasetId={dataset.id} variant="button" onDone={loadDataset} />}
           {!dataset.remote_table && dataset.source_id && ["mysql", "postgres", "sqlite"].includes(dataset.kind ?? "") && (
             <Button variant="secondary" label={linking ? "Switching…" : "Keep only stats"} icon={<Link2 className="h-4 w-4" />} onClick={keepOnlyStats} isDisabled={linking} />
           )}

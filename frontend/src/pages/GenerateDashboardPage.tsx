@@ -9,12 +9,14 @@ import { PlanCard } from '@/features/dashboards/generate/PlanCard';
 import { ResultCard } from '@/features/dashboards/generate/ResultCard';
 import { SetupCard } from '@/features/dashboards/generate/SetupCard';
 import { UnderstandingCard } from '@/features/dashboards/generate/UnderstandingCard';
+import { formatDuration, totalMs, useTicker } from '@/features/dashboards/generate/timing';
 import { useGenerateSession } from '@/features/dashboards/generate/useGenerateSession';
 
 /** AI dashboard session as a page: set up, the AI studies the data and asks you questions, you approve a plan, it builds and checks everything. */
 export default function GenerateDashboardPage() {
   const [params] = useSearchParams();
   const s = useGenerateSession();
+  const now = useTicker(s.busy);
   // bring the card that needs your attention into view whenever the session moves on
   useEffect(() => {
     const id = { questions: 'gen-questions', plan: 'gen-plan', done: 'gen-result' }[s.phase as 'questions' | 'plan' | 'done'];
@@ -45,9 +47,10 @@ export default function GenerateDashboardPage() {
             <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold">
               <span className="relative flex size-5 items-center justify-center">{s.busy && <span className="gen-ring absolute inset-0 rounded-full bg-primary/40" />}<Sparkles className="relative size-4 text-primary" /></span>
               How the AI is working
+              {s.steps.length > 0 && <span className="ml-auto rounded-full border px-2 py-0.5 text-xs font-normal tabular-nums text-muted-foreground" title="Total AI working time (waiting for your answers is not counted)">Total {formatDuration(totalMs(s.steps, now))}</span>}
             </h2>
             {s.steps.length === 0 && !s.busy ? <p className="text-sm text-muted-foreground">Its steps will appear here as it works.</p>
-              : <div className="max-h-[calc(100svh-10rem)] overflow-y-auto"><GenerationTimeline steps={s.steps} widgets={s.widgets} busy={s.busy} /></div>}
+              : <div className="max-h-[calc(100svh-10rem)] overflow-y-auto"><GenerationTimeline steps={s.steps} widgets={s.widgets} busy={s.busy} live={s.live} /></div>}
           </div>
         </aside>
       </div>

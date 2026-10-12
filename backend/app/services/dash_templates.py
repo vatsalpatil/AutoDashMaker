@@ -8,10 +8,14 @@ from __future__ import annotations
 TEMPLATES: dict[str, dict] = {
     "auto": {
         "name": "Best fit (AI decides)",
-        "description": "The AI reads the data and picks the pages and widgets that suit it best.",
-        "pages": [],
-        "blueprint": ("Choose 2 to 4 pages that suit THIS data (for example Overview, Breakdown, Details). Always start with an "
-                      "Overview page of 3-4 KPIs, a trend and the most important ranking."),
+        "description": "Overview, Breakdown and Details pages, with the widgets the AI judges best for this data.",
+        "pages": [("overview", "Overview"), ("breakdown", "Breakdown"), ("details", "Details")],
+        "blueprint": (
+            "overview: 3-4 KPIs that matter most for THIS data (totals, an average or rate, a record count, and a growth % of the latest complete "
+            "period vs the one before when a date exists), a trend over time when a date exists, and the single most important ranking.\n"
+            "breakdown: 3-4 charts splitting the main measure by the most useful dimensions (bar, pie of at most 8 slices, composed or treemap), "
+            "and one dimension-by-time chart when a date exists. Choose the dimensions and chart types that fit the data.\n"
+            "details: one table of the most informative rows (named columns only, at most 50) and, when it suits the data, one pivot-style table."),
     },
     "executive": {
         "name": "Executive overview",

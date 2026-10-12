@@ -126,6 +126,27 @@ def to_linked(dataset_id: str, remote_table: str | None = None):
     return out
 
 
+@router.post("/{dataset_id}/to-copy")
+def to_copy(dataset_id: str):
+    """Start copying a live-linked table into the app (background job; poll /copy-status). Charts keep working, much faster."""
+    ds = store.get("datasets", dataset_id)
+    if not ds:
+        raise HTTPException(404, "dataset not found")
+    if not ds.get("remote_table"):
+        return {"state": "done"}
+    from ..services import copy_jobs
+    return copy_jobs.start(ds)
+
+
+@router.get("/{dataset_id}/copy-status")
+def copy_status(dataset_id: str):
+    from ..services import copy_jobs
+    out = copy_jobs.state(dataset_id)
+    if out["state"] == "done":
+        _SCHEMA_CACHE.pop(dataset_id, None)
+    return out
+
+
 @router.get("/{dataset_id}/schema")
 def schema(dataset_id: str, fresh: bool = False):
     """Schema + per-column profile from the analytical engine, cached until the dataset changes (`?fresh=true` re-profiles)."""

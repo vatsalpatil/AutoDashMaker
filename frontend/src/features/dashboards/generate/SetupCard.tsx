@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { SelectField } from '@/components/common/SelectField';
 import { Button, Card, TextArea } from '@/components/ui/kit';
+import { CopyLiveData } from '@/features/sources/CopyLiveData';
 import { useApi } from '@/hooks/useApi';
 import type { Dataset } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -10,7 +11,8 @@ interface Template { id: string; name: string; description: string; pages: strin
 
 /** Step 1: which dataset, which template, any special focus. Collapses to a one-line summary once the AI is working. */
 export function SetupCard({ initialDataset, locked, onStart }: { initialDataset?: string; locked: Setup | null; onStart: (s: Setup) => void }) {
-  const datasets = useApi<Dataset[]>('/datasets').data ?? [];
+  const datasetsApi = useApi<Dataset[]>('/datasets');
+  const datasets = datasetsApi.data ?? [];
   const templates = useApi<Template[]>('/dashboards/ai/templates').data ?? [];
   const [datasetId, setDatasetId] = useState(initialDataset ?? '');
   const [template, setTemplate] = useState('auto');
@@ -36,6 +38,7 @@ export function SetupCard({ initialDataset, locked, onStart }: { initialDataset?
         <SelectField label="Dataset" value={datasetId} onChange={(e) => setDatasetId(e.target.value)}>
           {datasets.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
         </SelectField>
+        {datasets.find((d) => d.id === datasetId)?.remote_table && <CopyLiveData datasetId={datasetId} variant="notice" onDone={datasetsApi.reload} />}
         <div role="radiogroup" aria-label="Template" className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {templates.map((t) => (
             <button key={t.id} type="button" role="radio" aria-checked={template === t.id} onClick={() => setTemplate(t.id)}

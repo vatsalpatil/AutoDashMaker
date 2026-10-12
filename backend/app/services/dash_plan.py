@@ -12,7 +12,7 @@ from typing import Any, Iterator
 
 import httpx
 
-from . import ai as ai_svc
+from . import ai as ai_svc, ai_stream
 from .dash_ai import CHART_TYPES, json_objects, widgets_of
 from .dash_profile import profile
 from .dash_templates import DATA_BASICS, FORMULAS, NAMING_RULES, SQL_RULES, TEMPLATES
@@ -50,7 +50,7 @@ def clean_title(title: Any) -> str:
     return t[:60] or "Untitled"
 
 
-def ask_json(system: str, user: str, provider_id: str | None, key: str) -> dict[str, Any]:
+def ask_json(system: str, user: str, provider_id: str | None, key: str, step: int | None = None, lane: str | None = None, label: str | None = None) -> dict[str, Any]:
     """One model call that must return a JSON object holding `key`.
 
     Handles what free/reasoning models do in practice: temporary rate limits (retry after a pause), a reasoning transcript that eats
@@ -60,7 +60,7 @@ def ask_json(system: str, user: str, provider_id: str | None, key: str) -> dict[
     tokens, nudged, waits = 6000, False, [5, 15]
     while True:
         try:
-            text = ai_svc.chat(messages, provider_id=provider_id, max_tokens=tokens, timeout=180)
+            text = ai_stream.chat_live(messages, provider_id=provider_id, max_tokens=tokens, timeout=180, step=step, lane=lane, label=label)
         except httpx.TimeoutException:
             raise ai_svc.AIError("The AI model took too long to answer. Try again, or pick a faster model in Settings.") from None
         except ai_svc.AIError as e:
@@ -126,7 +126,7 @@ def understand(dataset_id: str, template: str, focus: str, provider_id: str | No
 
     yield {"type": "step", "n": 2, "title": "Understanding the data", "detail": "The AI is studying the statistics and sample rows…"}
     focus_line = f"\n\nThe user's focus: {focus.strip()[:400]}" if focus.strip() else ""
-    plan = ask_json(UNDERSTAND_SYSTEM, f"{prof['text']}\n\nTemplate wanted: {TEMPLATES.get(template, TEMPLATES['auto'])['name']}{focus_line}", provider_id, "understanding")
+    plan = ask_json(UNDERSTAND_SYSTEM, f"{prof['text']}\n\nTemplate wanted: {TEMPLATES.get(template, TEMPLATES['auto'])['name']}{focus_line}", provider_id, "understanding", step=2)
     yield {"type": "step", "n": 2, "title": "Understanding the data", "done": True, "detail": str(plan.get("understanding") or "").strip(), "items": _strings(plan.get("thinking"), 8)}
     yield {"type": "understanding", "understanding": str(plan.get("understanding") or "").strip(), "thinking": _strings(plan.get("thinking"), 8),
            "questions": _questions(plan.get("questions")), "ideas": _strings(plan.get("ideas"), 4)}
@@ -179,20 +179,33 @@ def plan(dataset_id: str, template: str, focus: str, understanding: str, answers
     tpl = TEMPLATES[template]
     yield {"type": "step", "n": 3, "title": "Planning the dashboard", "detail": "Turning what it understood and your answers into pages and widgets…"}
     prof = profile(ds)
-    pages_hint = ", ".join(f"{i} = {n}" for i, n in tpl["pages"]) or "(you choose)"
-    parts = [prof["text"], f"Analyst's understanding: {understanding[:1200]}",
-             f"Blueprint \"{tpl['name']}\" — pages: {pages_hint}\n{tpl['blueprint']}"]
+    context = [prof["text"], f"Analyst's understanding: {understanding[:1200]}"]
     if answers:
-        parts.append("The user answered:\n" + "\n".join(f"- {q}: {a}" for q, a in answers.items() if a))
+        context.append("The user answered:\n" + "\n".join(f"- {q}: {a}" for q, a in answers.items() if a))
     if focus.strip():
-        parts.append(f"The user's focus: {focus.strip()[:400]}")
+        context.append(f"The user's focus: {focus.strip()[:400]}")
+
     if feedback.strip():
-        parts.append(f"The user reviewed the previous plan ({'; '.join(previous)[:900]}) and asks: {feedback.strip()[:600]}. Revise accordingly.")
-    raw = ask_json(PLAN_SYSTEM, "\n\n".join(parts), provider_id, "widgets")
-    specs = widgets_of(raw)[:MAX_GENERATED]
-    if not specs:
-        raise ai_svc.AIError("The model's plan had no widgets. Try again or pick another model in Settings.")
-    pages = clean_pages(raw.get("pages"), template)
+        # a revision changes the plan as a whole, so one call sees all of it
+        pages_hint = ", ".join(f"{i} = {n}" for i, n in tpl["pages"]) or "(you choose)"
+        parts = context + [f"Blueprint \"{tpl['name']}\" — pages: {pages_hint}\n{tpl['blueprint']}",
+                           f"The user reviewed the previous plan ({'; '.join(previous)[:900]}) and asks: {feedback.strip()[:600]}. Revise accordingly."]
+        raw = ask_json(PLAN_SYSTEM, "\n\n".join(parts), provider_id, "widgets", step=3)
+        specs = widgets_of(raw)[:MAX_GENERATED]
+        if not specs:
+            raise ai_svc.AIError("The model's plan had no widgets. Try again or pick another model in Settings.")
+        pages, thinking, model_name = clean_pages(raw.get("pages"), template), _strings(raw.get("thinking"), 6), raw.get("name")
+    else:
+        from .dash_pages import plan_in_parallel   # lazy: dash_pages imports this module
+        result: dict[str, Any] = {}
+        for ev in plan_in_parallel(template, "\n\n".join(context), provider_id):
+            if ev["type"] == "step":
+                yield ev
+            else:
+                result = ev
+        specs, pages, thinking = result["specs"], result["pages"], result["notes"]
+        model_name = f"{clean_title(ds['name'])} Dashboard" if template == "auto" else f"{clean_title(ds['name'])} {tpl['name']}"
+
     page_name = {p["id"]: p["name"] for p in pages}
     seen: set[str] = set()
     widgets = []
@@ -203,6 +216,5 @@ def plan(dataset_id: str, template: str, focus: str, understanding: str, answers
                         "why": str(s.get("why") or "").strip()[:300], "formula": str(s.get("formula") or "").strip()[:300],
                         "sql": str(s.get("sql") or "").strip()})
     used = [p for p in pages if any(w["page"] == p["id"] for w in widgets)]
-    yield {"type": "step", "n": 3, "title": "Planning the dashboard", "done": True, "detail": f"{len(used)} pages, {len(widgets)} widgets proposed.",
-           "items": _strings(raw.get("thinking"), 6)}
-    yield {"type": "plan", "name": clean_title(name or raw.get("name") or f"{ds['name']} Dashboard"), "pages": used, "widgets": widgets}
+    yield {"type": "step", "n": 3, "title": "Planning the dashboard", "done": True, "detail": f"{len(used)} pages, {len(widgets)} widgets proposed.", "items": thinking}
+    yield {"type": "plan", "name": clean_title(name or model_name or f"{ds['name']} Dashboard"), "pages": used, "widgets": widgets}

@@ -58,6 +58,27 @@ engine.invalidate()
 assert engine.execute(f"SELECT COUNT(*) AS n FROM {ds['physical_name']}")["rows"][0]["n"] == 3
 assert refresh_dataset(ds["id"])["row_count"] == 3
 
+# 4. link -> stored copy: same name keeps working, now local (no source needed), with its own Parquet file
+import time
+from app.services import columnar, copy_jobs
+
+ds2 = remote.link_source(src, "sales", "sales_to_copy")
+assert remote.is_linked(ds2["physical_name"])
+assert copy_jobs.state(ds2["id"])["state"] == "idle"
+copy_jobs.start(store.get("datasets", ds2["id"]))
+for _ in range(100):
+    if copy_jobs.state(ds2["id"])["state"] != "running":
+        break
+    time.sleep(0.1)
+assert copy_jobs.state(ds2["id"]) == {"state": "done"}, copy_jobs.state(ds2["id"])
+after = store.get("datasets", ds2["id"])
+assert not after.get("remote_table") and after["row_count"] == 3, after
+assert not remote.is_linked(ds2["physical_name"]) and columnar.parquet_path(ds2["physical_name"]).exists()
+db.execute("DELETE FROM sales")   # the source loses its rows: a stored copy must not care
+db.commit()
+assert engine.execute(f"SELECT COUNT(*) AS n FROM {ds2['physical_name']}")["rows"][0]["n"] == 3
+engine.drop_table(ds2["physical_name"])
+
 # 5. delete drops the view
 engine.drop_table(ds["physical_name"])
 with engine.connect(read_only=True) as con:

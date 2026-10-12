@@ -6,6 +6,7 @@ model (as text) and to the user (as tables), so both look at the same evidence.
 """
 from __future__ import annotations
 
+import time
 from datetime import date, datetime, timedelta
 from typing import Any
 
@@ -120,7 +121,7 @@ def _cell(v: Any) -> str:
     return str(v)[:24] if v is not None else ""
 
 
-def profile(dataset: dict[str, Any]) -> dict[str, Any]:
+def _build_profile(dataset: dict[str, Any]) -> dict[str, Any]:
     table = dataset["physical_name"]
     schema = engine.describe_table(table)
     rows, cols = schema["row_count"], schema["columns"]
@@ -169,3 +170,22 @@ def profile(dataset: dict[str, Any]) -> dict[str, Any]:
                  **{k: (stats.get(c["name"]) or {}).get(k) for k in ("min", "p25", "median", "p75", "max", "mean", "std")}} for c in cols]
     return {"table": table, "rows": rows, "columns": cols, "grain": grain, "text": "\n".join(lines),
             "describe": describe, "sample": sample, "correlations": corr}
+
+
+_CACHE: dict[tuple, tuple[float, dict[str, Any]]] = {}
+CACHE_SECONDS = 600
+
+
+def profile(dataset: dict[str, Any]) -> dict[str, Any]:
+    """The profile, cached for ten minutes per user and dataset version: understand, plan and build all need it, and for a big or
+    remote table every scan is expensive."""
+    from ..core import tenant
+    key = (tenant.current(), dataset["id"], dataset.get("physical_name"), dataset.get("row_count"), str(dataset.get("refreshed_at")))
+    hit = _CACHE.get(key)
+    if hit and time.monotonic() - hit[0] < CACHE_SECONDS:
+        return hit[1]
+    result = _build_profile(dataset)
+    if len(_CACHE) > 32:
+        _CACHE.clear()
+    _CACHE[key] = (time.monotonic(), result)
+    return result

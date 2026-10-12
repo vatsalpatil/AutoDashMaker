@@ -30,20 +30,20 @@ assert p["grain"] == "month" and "top: " in p["text"], p["grain"]
 
 PLAN = {
     "understanding": "Each row is an order.", "thinking": ["Main measure: amount"], "name": "sales_overview",
-    "pages": [{"id": "overview", "name": "overview"}, {"id": "regions", "name": "regions"}],
+    "pages": [{"id": "overview", "name": "overview"}, {"id": "breakdown", "name": "breakdown"}],
     "widgets": [
         {"page": "overview", "title": "total_amount", "type": "kpi", "why": "How much was sold", "formula": "sum", "sql": "SELECT ROUND(SUM(amount), 2) AS total_amount FROM sales"},
         {"page": "overview", "title": "monthly amount trend", "type": "line", "sql": "SELECT DATE_TRUNC('month', d) AS month, SUM(amount) AS total_amount FROM sales GROUP BY 1 ORDER BY 1"},
-        {"page": "Regions", "title": "Top Regions", "type": "bar", "sql": "SELECT region, SUM(amount) AS total_amount FROM sales GROUP BY 1 ORDER BY 2 DESC LIMIT 10"},
+        {"page": "Breakdown", "title": "Top Regions", "type": "bar", "sql": "SELECT region, SUM(amount) AS total_amount FROM sales GROUP BY 1 ORDER BY 2 DESC LIMIT 10"},
         {"page": "nowhere", "title": "Top Regions", "type": "pie", "sql": "SELECT region, COUNT(*) AS orders FROM sales GROUP BY 1"},
-        {"page": "regions", "title": "Broken", "type": "bar", "sql": "SELECT missing_col FROM sales"},
+        {"page": "breakdown", "title": "Broken", "type": "bar", "sql": "SELECT missing_col FROM sales"},
     ],
 }
 real_ask_json = dash_plan.ask_json
 seen_prompts = {}
 
 
-def fake_ask_json(system, user, provider, key):
+def fake_ask_json(system, user, provider, key, step=None, lane=None, label=None):
     seen_prompts[key] = user
     if key == "understanding":
         return {"understanding": "Each row is an order.", "thinking": ["Main measure: amount"],
@@ -51,11 +51,16 @@ def fake_ask_json(system, user, provider, key):
                 "ideas": ["Regional performance"]}
     if key == "suggestions":
         return {"suggestions": ["Add average order value by region"]}
+    if key == "widgets" and "Your page:" in user:   # one call per page: only that page's widgets
+        page = user.split('Your page: "')[1].split('"')[0].lower()
+        return {"widgets": [w for w in PLAN["widgets"] if w["page"].lower() == page]}
     return PLAN
 
 
 dash_plan.ask_json = fake_ask_json
 dash_gen.ask_json = fake_ask_json
+from app.services import dash_pages
+dash_pages.ask_json = fake_ask_json
 ai_svc.chat = lambda messages, provider_id=None, max_tokens=0, timeout=0: "- **Top region:** N leads."
 
 # phase 1: statistics + top rows reach the model, the user gets facts + questions
@@ -69,29 +74,41 @@ assert "median" in seen_prompts["understanding"] and "First 12 of the top 100 ro
 und = ev1[-1]
 assert [q["id"] for q in und["questions"]] == ["q1"] and und["questions"][0]["options"] == ["amount", "orders"], und["questions"]
 
-# phase 2: answers + feedback shape the plan prompt; names are cleaned, titles unique
-ev2 = list(dash_plan.plan(ds["id"], "executive", "", und["understanding"], {"Which measure is the main KPI?": "amount"}, "add a table", ["Total Amount"], None))
-assert "The user answered" in seen_prompts["widgets"] and "add a table" in seen_prompts["widgets"] and "Each row is an order" in seen_prompts["widgets"]
+# phase 2a: first plan = one model call per page, all at once (the AI chose the pages in a short outline call)
+ev2 = list(dash_plan.plan(ds["id"], "auto", "", und["understanding"], {"Which measure is the main KPI?": "amount"}, "", [], None))
+assert "Your page:" in seen_prompts["widgets"] and "Other pages (do NOT repeat" in seen_prompts["widgets"]
+assert "The user answered" in seen_prompts["widgets"] and "Each row is an order" in seen_prompts["widgets"]
+progress = [e for e in ev2 if e["type"] == "step" and not e.get("done")]
+assert any("at the same time" in e["detail"] for e in progress), [e["detail"] for e in progress]
 planned = ev2[-1]
-assert planned["type"] == "plan" and planned["name"] == "Sales Overview", planned["name"]
+assert planned["type"] == "plan" and planned["name"] == "Sales Dashboard", planned["name"]
+assert [p["name"] for p in planned["pages"]] == ["Overview", "Breakdown"], planned["pages"]
 titles = [w["title"] for w in planned["widgets"]]
-assert len(set(t.lower() for t in titles)) == len(titles) and "Total Amount" in titles, titles
+assert titles == ["Total Amount", "Monthly Amount Trend", "Top Regions", "Broken"], titles   # page order, names cleaned
 
-# phase 3: build the plan (the user may have dropped a widget)
-kept = [w for w in planned["widgets"] if w["title"] != "Broken"]
+# phase 2b: a revision with feedback is one call that sees the whole plan
+ev2b = list(dash_plan.plan(ds["id"], "executive", "", und["understanding"], {"Which measure is the main KPI?": "amount"}, "add a table", ["Total Amount"], None))
+assert "add a table" in seen_prompts["widgets"] and "Your page:" not in seen_prompts["widgets"]
+titles_b = [w["title"] for w in ev2b[-1]["widgets"]]
+assert len(set(t.lower() for t in titles_b)) == len(titles_b), titles_b   # duplicate "Top Regions" made unique
+
+# phase 3: build the plan in parallel (the user may have dropped a widget)
 ev3 = list(dash_gen.build(ds["id"], planned["name"], planned["pages"], planned["widgets"], None))
 widgets = [e for e in ev3 if e["type"] == "widget"]
-assert [w["status"] for w in widgets].count("skipped") == 1 and sum(w["status"] == "ok" for w in widgets) == 4
+assert [w["status"] for w in widgets].count("skipped") == 1 and sum(w["status"] == "ok" for w in widgets) == 3
+assert any("at the same time" in e.get("detail", "") for e in ev3 if e["type"] == "step"), "build progress"
 done = ev3[-1]
-assert done["type"] == "done" and done["pages"] == ["Overview", "Regions", "Insights"], done["pages"]
+assert done["type"] == "done" and done["pages"] == ["Overview", "Breakdown", "Insights"], done["pages"]
 assert done["suggestions"] == ["Add average order value by region"] and done["skipped"][0]["title"] == "Broken"
 steps = [e["n"] for e in ev3 if e["type"] == "step" and e.get("done")]
 assert steps == [4, 5, 6], steps
+# widgets keep the plan's order whatever order they finished in
+assert [w["title"] for w in done["widgets"] if w["page"] == "Overview"] == ["Total Amount", "Monthly Amount Trend"], done["widgets"]
 
 dash = store.get("dashboards", done["dashboard_id"])
-assert [p["id"] for p in dash["pages"]] == ["overview", "regions", "insights"], dash["pages"]
+assert [p["id"] for p in dash["pages"]] == ["overview", "breakdown", "insights"], dash["pages"]
 rows = store.list("dashboard_widgets", where="dashboard_id = ?", params=[dash["id"]], order=None)
-assert {r["page"] for r in rows} == {"overview", "regions", "insights"}
+assert {r["page"] for r in rows} == {"overview", "breakdown", "insights"}
 assert "Top region" in [r for r in rows if r["kind"] == "text"][0]["settings"]["content"]
 for r in rows:
     if r.get("chart_id"):
@@ -149,4 +166,63 @@ except ai_svc.AIError as e:
 from app.core.compression import STREAM_PATHS
 for path in ("/api/dashboards/generate/understand", "/api/dashboards/generate/plan", "/api/dashboards/generate/build", "/api/ai/agent"):
     assert path.startswith(STREAM_PATHS), path
+# the page calls really overlap: three 0.4 s model calls take about 0.4 s, not 1.2 s
+import time as _t0
+
+
+def slow_ask(system, user, provider, key, step=None, lane=None, label=None):
+    _t0.sleep(0.4)
+    return {"widgets": [{"title": f"W {lane}", "type": "kpi", "sql": "SELECT 1 AS n"}]}
+
+
+_saved_ask = dash_pages.ask_json
+dash_pages.ask_json = slow_ask
+started = _t0.monotonic()
+res = list(dash_pages.plan_in_parallel("executive", "ctx", None))
+elapsed = _t0.monotonic() - started
+dash_pages.ask_json = _saved_ask
+assert res[-1]["type"] == "specs" and len(res[-1]["specs"]) == 3, res[-1]
+assert elapsed < 0.9, f"pages ran one after another ({elapsed:.2f}s)"
+
+# live streaming: reasoning + answer chunks reach the sink while the full text is still returned
+import json as _json
+import threading
+from http.server import BaseHTTPRequestHandler, HTTPServer
+
+from app.services import ai_stream, live
+
+
+class _Stream(BaseHTTPRequestHandler):
+    def log_message(self, *a):
+        pass
+
+    def do_POST(self):
+        n = int(self.headers.get("Content-Length", 0))
+        body = _json.loads(self.rfile.read(n))
+        assert body["stream"] is True
+        self.send_response(200)
+        self.send_header("Content-Type", "text/event-stream")
+        self.end_headers()
+        chunks = [{"choices": [{"delta": {"reasoning": "Let me think. "}}]}, {"choices": [{"delta": {"reasoning": "Revenue matters."}}]},
+                  {"choices": [{"delta": {"content": '{"understanding": '}}]}, {"choices": [{"delta": {"content": '"ok"}'}, "finish_reason": "stop"}]}]
+        self.wfile.write(b": PROCESSING\n\n")
+        for c in chunks:
+            self.wfile.write(("data: " + _json.dumps(c) + "\n\n").encode())
+        self.wfile.write(b"data: [DONE]\n\n")
+
+
+srv = HTTPServer(("127.0.0.1", 0), _Stream)
+threading.Thread(target=srv.serve_forever, daemon=True).start()
+store.insert("ai_providers", {"label": "local", "provider": "openai", "model": "m", "api_key": "x", "base_url": f"http://127.0.0.1:{srv.server_port}/v1", "is_default": True})
+ai_svc.chat = lambda *a, **k: (_ for _ in ()).throw(AssertionError("must stream, not call chat"))
+got = []
+live.sink.set(got.append)
+text = ai_stream.chat_live([{"role": "user", "content": "x"}], max_tokens=100, step=2)
+live.sink.set(None)
+assert text == '{"understanding": "ok"}', text
+assert got[0] == {"type": "think", "n": 2, "kind": "reset", "text": "", "lane": "main", "label": ""}
+assert "".join(e["text"] for e in got if e["kind"] == "reasoning") == "Let me think. Revenue matters."
+assert "".join(e["text"] for e in got if e["kind"] == "answer") == text
+srv.shutdown()
+
 print("dash_gen tests OK")

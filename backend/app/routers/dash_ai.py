@@ -9,7 +9,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from ..core.security import UnsafeQueryError
-from ..services import ai as ai_svc, audit, dash_ai, dash_gen, dash_plan
+from ..services import ai as ai_svc, audit, dash_ai, dash_gen, dash_plan, live
 from ..services.dash_templates import template_list
 
 PING_SECONDS = 8
@@ -101,6 +101,7 @@ def _sse(events, on_done=None):
     q: queue.Queue = queue.Queue()
 
     def work():
+        live.sink.set(q.put)   # the model's thinking / answer stream into this response while the phase runs
         try:
             for ev in events():
                 if ev["type"] == "done" and on_done:

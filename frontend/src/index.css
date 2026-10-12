@@ -260,6 +260,6 @@ div.pointer-events-auto.touch-none > .bg-border:hover, div.pointer-events-auto.t
 @keyframes gen-text-shimmer { to { background-position: -200% 0; } }
 @keyframes gen-ring { 0% { opacity: .7; transform: scale(1); } 100% { opacity: 0; transform: scale(2.1); } }
 .gen-sweep { animation: gen-sweep 1.6s ease-in-out infinite; }
-.gen-shimmer { background: linear-gradient(90deg, currentColor 40%, var(--primary) 50%, currentColor 60%) 0 0 / 200% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: gen-text-shimmer 2s linear infinite; }
+.gen-shimmer { background: linear-gradient(90deg, var(--foreground) 40%, var(--primary) 50%, var(--foreground) 60%) 0 0 / 200% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: gen-text-shimmer 2s linear infinite; }
 .gen-ring { animation: gen-ring 1.6s ease-out infinite; }
 @media (prefers-reduced-motion: reduce) { .gen-sweep, .gen-shimmer, .gen-ring { animation: none; } .gen-shimmer { color: inherit; background: none; } }

@@ -194,3 +194,21 @@ def convert_to_linked(ds: dict[str, Any], remote_name: str | None = None) -> dic
     invalidate()
     audit.record("dataset.link", entity_type="dataset", entity_id=ds["id"], detail=f"{ds['name']} switched to a live link ({count} rows, nothing stored)")
     return store.get("datasets", ds["id"])
+
+
+def convert_to_copy(ds: dict[str, Any]) -> dict[str, Any]:
+    """Inverse of convert_to_linked: copy the live table's rows into a stored Parquet file under the same name.
+
+    Charts, queries and dashboards keep working (same table name) but read local data, so they are fast and no longer
+    depend on the source database being reachable. Quotas and the disk guard apply like any import."""
+    from .ingest import ingest_source
+
+    src = store.get("datasources", ds["source_id"]) if ds.get("source_id") else None
+    if not src or not ds.get("remote_table"):
+        raise ConnectorError("this dataset is not a live link to a database table")
+    result = ingest_source(src, ds["name"], discover_name=ds["remote_table"], target_table=ds["physical_name"])
+    store.execute("UPDATE datasets SET remote_table = NULL WHERE id = ?", [ds["id"]])
+    store.update("datasets", ds["id"], {"row_count": result["row_count"], "column_count": len(result["columns"]), "refreshed_at": datetime.now(timezone.utc)})
+    invalidate()
+    audit.record("dataset.copy", entity_type="dataset", entity_id=ds["id"], detail=f"{ds['name']} copied from the live source ({result['row_count']} rows)")
+    return store.get("datasets", ds["id"])

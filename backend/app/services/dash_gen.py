@@ -7,12 +7,15 @@ without pausing for the user (API use and tests).
 """
 from __future__ import annotations
 
+import contextvars
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Iterator
 
 from ..core.store import store
-from . import ai as ai_svc
+from . import ai as ai_svc, ai_stream
 from .dash_ai import _layout, _materialize, _store_widget
+from .dash_pages import MAX_PARALLEL
 from .dash_plan import ask_json, clean_title, plan as plan_phase, understand
 from .dash_profile import profile
 
@@ -50,7 +53,7 @@ def _insights(name: str, built: list[dict[str, Any]], prof: dict[str, Any], prov
     tokens = 1500
     for attempt in range(3):   # rate limit -> pause; reasoning model with an empty answer -> bigger budget
         try:
-            text = ai_svc._THINK.sub("", ai_svc._ANSI.sub("", ai_svc.chat(messages, provider_id=provider_id, max_tokens=tokens, timeout=180))).strip()
+            text = ai_svc._THINK.sub("", ai_svc._ANSI.sub("", ai_stream.chat_live(messages, provider_id=provider_id, max_tokens=tokens, timeout=180, step=5))).strip()
             return text or None
         except Exception as e:
             msg = str(e)
@@ -88,29 +91,40 @@ def build(dataset_id: str, name: str, pages: list[dict[str, str]], widgets: list
     prof = profile(ds)
     yield {"type": "step", "n": 4, "title": "Building and checking each widget",
            "detail": "Every query is validated read-only, bound against the real schema, repaired once if needed, and executed."}
-    built, skipped = [], []
-    for spec in widgets:
-        title = clean_title(spec.get("title"))
-        try:
-            w = _materialize(spec, prof["text"], provider_id)
-        except ValueError as e:
-            skipped.append({"title": title, "reason": str(e)})
-            yield {"type": "widget", "title": title, "status": "skipped", "detail": str(e)}
-            continue
-        page = spec.get("page") if spec.get("page") in page_name else next(iter(page_name))
-        w["title"], w["page"] = title, page
-        built.append(w)
-        yield {"type": "widget", "title": title, "status": "ok", "page": page_name[page], "chart": w["chart"]["type"], "ms": w.get("ms"),
-               "why": str(spec.get("why") or ""), "formula": str(spec.get("formula") or ""), "sql": w["sql"]}
+    done_by_idx: dict[int, dict[str, Any]] = {}
+    skipped: list[dict[str, str]] = []
+    total = len(widgets)
+    # every widget is checked and executed at the same time (the model repairs of failing queries overlap; local queries are quick)
+    with ThreadPoolExecutor(max_workers=MAX_PARALLEL) as pool:
+        futures = {pool.submit(contextvars.copy_context().run, _materialize, spec, prof["text"], provider_id): (i, spec) for i, spec in enumerate(widgets)}
+        for fut in as_completed(futures):
+            i, spec = futures[fut]
+            title = clean_title(spec.get("title"))
+            try:
+                w = fut.result()
+            except ValueError as e:
+                skipped.append({"title": title, "reason": str(e)})
+                yield {"type": "widget", "title": title, "status": "skipped", "detail": str(e)}
+            else:
+                page = spec.get("page") if spec.get("page") in page_name else next(iter(page_name))
+                w["title"], w["page"] = title, page
+                done_by_idx[i] = w
+                yield {"type": "widget", "title": title, "status": "ok", "page": page_name[page], "chart": w["chart"]["type"], "ms": w.get("ms"),
+                       "why": str(spec.get("why") or ""), "formula": str(spec.get("formula") or ""), "sql": w["sql"]}
+            yield {"type": "step", "n": 4, "title": "Building and checking each widget",
+                   "detail": f"Checked {len(done_by_idx) + len(skipped)} of {total} widgets (several at the same time)…"}
+    built = [done_by_idx[i] for i in sorted(done_by_idx)]   # plan order, whatever order they finished in
     if not built:
         raise ai_svc.AIError("None of the planned widgets could be built: " + "; ".join(s["reason"] for s in skipped)[:300])
     yield {"type": "step", "n": 4, "title": "Building and checking each widget", "done": True,
            "detail": f"{len(built)} widgets built" + (f", {len(skipped)} skipped." if skipped else ".")}
 
     dash_name = clean_title(name)
-    yield {"type": "step", "n": 5, "title": "Writing insights", "detail": "The AI reads the real results and may only quote numbers that appear in them."}
-    insights = _insights(dash_name, built, prof, provider_id)
-    suggestions = _suggestions(dash_name, built, insights, prof, provider_id)
+    yield {"type": "step", "n": 5, "title": "Writing insights", "detail": "The AI reads the real results (and thinks of improvements at the same time); it may only quote numbers that appear in them."}
+    with ThreadPoolExecutor(max_workers=2) as pool:   # insights and suggestions need only the built widgets, not each other
+        f_ins = pool.submit(contextvars.copy_context().run, _insights, dash_name, built, prof, provider_id)
+        f_sug = pool.submit(contextvars.copy_context().run, _suggestions, dash_name, built, None, prof, provider_id)
+        insights, suggestions = f_ins.result(), f_sug.result()
     yield {"type": "step", "n": 5, "title": "Writing insights", "done": True,
            "detail": "Insights page added." if insights else "Skipped (the model did not return insights)."}
 
