@@ -35,6 +35,7 @@ UNDERSTAND_SYSTEM = (
 PLAN_SYSTEM = (
     "You are a senior BI designer inside a DuckDB analytics app. You have the data profile, what the analyst understood and what the "
     "user answered. Design a multi-page dashboard that makes the data directly useful and follows the user's answers and feedback. "
+    "An answer may list several choices separated by ' | ' (e.g. two KPIs, three audiences): cover ALL of them. "
     'Reply with ONLY one JSON object, no prose, no markdown: {"name": string, "thinking": [2 to 5 short strings: how the answers shaped '
     'the plan], "pages": [{"id": string, "name": string}], "widgets": [{"page": a page id, "title": string, "type": one of '
     + "|".join(CHART_TYPES) + ', "why": one sentence: the question this widget answers, "formula": the calculation in plain words, '

@@ -1,31 +1,45 @@
 import { useState } from 'react';
-import { Lightbulb } from 'lucide-react';
+import { Check, Lightbulb } from 'lucide-react';
 import { Button, Card, TextArea, TextInput } from '@/components/ui/kit';
 import { cn } from '@/lib/utils';
 import { EvidenceTabs } from './EvidenceTabs';
 import type { Evidence, Question, Understanding } from './useGenerateSession';
 
-const toggle = (current: string, option: string, multi: boolean) => {
-  if (!multi) return current === option ? '' : option;
-  const set = new Set(current.split(' | ').filter(Boolean));
-  if (set.has(option)) set.delete(option); else set.add(option);
-  return [...set].join(' | ');
-};
+const SEP = ' | ';
+const split = (v: string) => v.split(SEP).filter(Boolean);
 
+/** Every question takes any number of the suggested answers plus your own text (all are sent to the planner). */
 function QuestionBlock({ q, value, onChange }: { q: Question; value: string; onChange: (v: string) => void }) {
-  const picked = new Set(value.split(' | '));
-  const custom = value && ![...picked].every((v) => q.options.includes(v));
+  const parts = split(value);
+  const picked = parts.filter((p) => q.options.includes(p));
+  const custom = parts.filter((p) => !q.options.includes(p)).join(', ');
+  const save = (p: string[], c: string) => onChange([...p, ...(c.trim() ? [c] : [])].join(SEP));
+  const flip = (o: string) => save(picked.includes(o) ? picked.filter((x) => x !== o) : [...picked, o], custom);
   return (
     <div className="rounded-lg border bg-card p-3">
-      <p className="text-sm font-medium">{q.question}</p>
-      {q.why && <p className="text-xs text-muted-foreground">{q.why}</p>}
-      <div className="mt-2 flex flex-wrap gap-1.5">
-        {q.options.map((o) => (
-          <button key={o} type="button" aria-pressed={picked.has(o)} onClick={() => onChange(toggle(value, o, q.multi))}
-            className={cn('rounded-full border px-2.5 py-1 text-xs transition-colors', picked.has(o) ? 'border-primary bg-primary/10 text-primary' : 'hover:bg-accent')}>{o}</button>
-        ))}
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <p className="text-sm font-medium">{q.question}</p>
+        <span className="text-[11px] text-muted-foreground">{picked.length ? `${picked.length} selected` : 'Pick one or more'}</span>
       </div>
-      <div className="mt-2"><TextInput label="" aria-label={`${q.question} (your own answer)`} value={custom ? value : ''} placeholder="Or type your own answer" onChange={onChange} /></div>
+      {q.why && <p className="text-xs text-muted-foreground">{q.why}</p>}
+      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+        {q.options.map((o) => {
+          const on = picked.includes(o);
+          return (
+            <button key={o} type="button" aria-pressed={on} onClick={() => flip(o)}
+              className={cn('flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition-colors', on ? 'border-primary bg-primary/10 text-primary' : 'hover:bg-accent')}>
+              <span className={cn('flex size-3.5 items-center justify-center rounded-sm border', on && 'border-primary bg-primary text-primary-foreground')}>{on && <Check className="size-3" />}</span>
+              {o}
+            </button>
+          );
+        })}
+        {q.options.length > 1 && (
+          <button type="button" className="px-1 text-xs text-primary" onClick={() => save(picked.length === q.options.length ? [] : q.options, custom)}>
+            {picked.length === q.options.length ? 'Clear' : 'Select all'}
+          </button>
+        )}
+      </div>
+      <div className="mt-2"><TextInput label="" aria-label={`${q.question} (your own answer)`} value={custom} placeholder="Add your own answer (kept together with the ones you picked)" onChange={(c) => save(picked, c)} /></div>
     </div>
   );
 }
