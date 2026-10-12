@@ -5,7 +5,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from ..services import agent, audit
+from ..services import agent, ai_vision, audit
 
 router = APIRouter()
 
@@ -18,6 +18,7 @@ class AgentIn(BaseModel):
     error: str | None = None
     cells: list[dict] = []              # earlier notebook steps, by name
     provider_id: str | None = None
+    images: list[str] = []            # attached pictures (data URLs) the model should read
 
 
 @router.post("/agent")
@@ -31,6 +32,7 @@ def run_agent(body: AgentIn):
     def stream():
         steps = 0
         try:
+            ai_vision.use(body.images)   # set here: the stream runs in its own context
             for ev in agent.run(body.task.strip(), body.history, mode, ctx, body.provider_id):
                 steps += ev["type"] == "step"
                 yield f"data: {json.dumps(ev, default=str)}\n\n"

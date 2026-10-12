@@ -16,7 +16,7 @@ export interface GenResult { dashboard_id: string; name: string; pages: string[]
 export interface LiveText { reasoning: string; answer: string; label: string }
 /** step number -> lane (one per parallel model call, e.g. one per page) -> that call's streaming text */
 export type LiveLanes = Record<number, Record<string, LiveText>>
-export interface Setup { dataset_id: string; template: string; focus: string }
+export interface Setup { dataset_id: string; template: string; focus: string; images?: string[] }
 /** setup -> understand (AI studies the data) -> questions (you answer) -> plan (you review) -> build -> done */
 export type Phase = 'setup' | 'understanding' | 'questions' | 'planning' | 'plan' | 'building' | 'done';
 
@@ -92,12 +92,14 @@ export function useGenerateSession() {
     return run(`${BASE}/understand`, s, 'understanding', 'setup').then((failed) => { if (failed) setSetup(null); });
   }, [run]);
 
-  const makePlan = useCallback((a: Record<string, string>, feedback = '') => {
+  const makePlan = useCallback((a: Record<string, string>, feedback = '', extraImages: string[] = []) => {
     if (!setup || !understanding) return;
     setAnswers(a);
     const q = Object.fromEntries(understanding.questions.map((x) => [x.id, x.question]));
     const named = Object.fromEntries(Object.entries(a).map(([id, v]) => [q[id] ?? id, v]));
-    return run(`${BASE}/plan`, { ...setup, understanding: understanding.understanding, answers: named, feedback, previous: plan?.widgets.map((w) => w.title) ?? [], name: plan?.name },
+    const images = [...(setup.images ?? []), ...extraImages].slice(-4);
+    if (extraImages.length) setSetup({ ...setup, images });   // later plans / revisions keep seeing them
+    return run(`${BASE}/plan`, { ...setup, images, understanding: understanding.understanding, answers: named, feedback, previous: plan?.widgets.map((w) => w.title) ?? [], name: plan?.name },
       'planning', feedback ? 'plan' : 'questions');
   }, [setup, understanding, plan, run]);
 

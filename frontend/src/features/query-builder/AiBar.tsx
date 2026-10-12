@@ -7,6 +7,8 @@ import { useApi } from '@/hooks/useApi';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import type { QbSpec } from './qbModel';
+import { AttachImageButton, AttachmentTray } from '@/features/ai/attachments/Attachments';
+import { useImageAttachments } from '@/features/ai/attachments/useImageAttachments';
 
 export interface AiResult { status: 'ok' | 'failed' | 'no_provider'; detail?: string; spec?: QbSpec; title?: string; explanation?: string; steps?: string[]; source?: 'rules' | 'ai'; attempts?: number }
 
@@ -21,6 +23,7 @@ export function AiBar({ spec, onBuilt, onUndo, canUndo }: { spec: QbSpec; onBuil
   const table = spec.stages[0]?.table;
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
+  const att = useImageAttachments();
   const [res, setRes] = useState<AiResult | null>(null);
   const [steps, setSteps] = useState<string[] | null>(null);
   const [open, setOpen] = useState(true);
@@ -30,9 +33,9 @@ export function AiBar({ spec, onBuilt, onUndo, canUndo }: { spec: QbSpec; onBuil
     if (!prompt.trim() || busy) return;
     setBusy(true); setRes(null); setSteps(null);
     try {
-      const r = await api.post<AiResult>('/qb/ai/build', { prompt, spec: table ? spec : undefined });
+      const r = await api.post<AiResult>('/qb/ai/build', { prompt, spec: table ? spec : undefined, images: att.images });
       setRes(r);
-      if (r.status === 'ok' && r.spec) { onBuilt(r.spec); setText(''); setOpen(true); }
+      if (r.status === 'ok' && r.spec) { onBuilt(r.spec); setText(''); att.clear(); setOpen(true); }
     } catch (e) {
       setRes({ status: 'failed', detail: (e as Error).message });
     } finally { setBusy(false); }
@@ -45,14 +48,16 @@ export function AiBar({ spec, onBuilt, onUndo, canUndo }: { spec: QbSpec; onBuil
 
   return (
     <div className="flex flex-col gap-2 rounded-xl border bg-gradient-to-br from-primary/10 via-card to-card p-3">
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2" onDrop={att.dropProps.onDrop} onDragOver={att.dropProps.onDragOver}>
         <Sparkles className="size-4 shrink-0 text-primary" />
         <Input value={text} disabled={busy} aria-label="Describe what you want" onChange={(e) => setText(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter') run(); }} className="h-9 flex-1 bg-background"
+          onKeyDown={(e) => { if (e.key === 'Enter') run(); }} onPaste={att.dropProps.onPaste} className="h-9 flex-1 bg-background"
           placeholder={table ? 'Change this query… e.g. only 2024, add a running total, top 5' : 'Describe what you want… e.g. total revenue by category'} />
+        <AttachImageButton att={att} disabled={busy} />
         <Button size="sm" variant="primary" isDisabled={busy || !text.trim()} label={busy ? 'Working…' : table ? 'Update' : 'Build'} onClick={() => run()} />
       </div>
 
+      <AttachmentTray att={att} />
       {!res && !steps && !busy && (ideas.data?.suggestions?.length ?? 0) > 0 && (
         <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">Try:
           {ideas.data!.suggestions.slice(0, table ? 4 : 5).map((s) => <button key={s} type="button" onClick={() => run(s)} className="rounded-full border bg-card px-2 py-0.5 text-foreground hover:bg-accent">{s}</button>)}

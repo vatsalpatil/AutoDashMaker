@@ -10,6 +10,7 @@ export interface ChatMessage {
   id: string;
   role: 'user' | 'assistant';
   text: string;
+  imageCount?: number;   // pictures sent with this message (not stored: they would fill the browser's storage)
   steps: Step[];
   status: 'running' | 'done' | 'error' | 'stopped';
   sql?: string | null;
@@ -108,7 +109,7 @@ export function useAgent(getContext: () => AgentContext, actions: NotebookAction
     else patch(id, (m) => ({ ...m, text: ev.message, status: 'error' }));
   }, [patch, apply, prefs.autoApprove]);
 
-  const send = useCallback(async (task: string) => {
+  const send = useCallback(async (task: string, images: string[] = []) => {
     const text = task.trim();
     if (!text || busy) return;
     const ctx = getContext();
@@ -117,7 +118,7 @@ export function useAgent(getContext: () => AgentContext, actions: NotebookAction
     live.current = id;
     owner.current[id] = chats.active.id;
     setMessages((ms) => {
-      const user: ChatMessage = { id: uid(), role: 'user', text, steps: [], status: 'done' };
+      const user: ChatMessage = { id: uid(), role: 'user', text, imageCount: images.length || undefined, steps: [], status: 'done' };
       const reply: ChatMessage = { id, role: 'assistant', text: '', steps: [], status: 'running' };
       return [...ms, user, reply].slice(-KEEP);
     });
@@ -129,7 +130,7 @@ export function useAgent(getContext: () => AgentContext, actions: NotebookAction
     try {
       const res = await authFetch('/api/ai/agent', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: ctl.signal,
-        body: JSON.stringify({ task: text, mode: prefs.mode, history, active_sql: ctx.activeSql, error: ctx.error, cells: ctx.cells }),
+        body: JSON.stringify({ task: text, mode: prefs.mode, history, active_sql: ctx.activeSql, error: ctx.error, cells: ctx.cells, images }),
       });
       if (!res.ok || !res.body) throw new Error((await res.text()).slice(0, 300) || `HTTP ${res.status}`);
       const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();

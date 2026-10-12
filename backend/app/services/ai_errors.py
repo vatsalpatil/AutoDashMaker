@@ -15,6 +15,10 @@ def friendly(error: object) -> str:
     msg = str(error)
     if "works again in" in msg:
         return msg
+    from .ai_vision import is_vision_error
+    if is_vision_error(msg):
+        return ("The selected AI model can't read images. Pick a vision model in Settings → AI models (for example Gemini 2.5 Flash, "
+                "GPT-4o mini, Claude, or an OpenRouter model marked 'image' such as google/gemma-3-27b-it:free), or send the message without the image.")
     low = msg.lower()
     if is_daily_limit(msg):
         return ("Your AI provider's daily limit for free models is used up (OpenRouter allows about 50 free-model requests per day per account, "

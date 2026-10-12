@@ -4,6 +4,7 @@ from pydantic import BaseModel
 
 from ..core.security import UnsafeQueryError, quote_ident
 from ..core.store import store
+from ..services import ai_vision
 from ..services import audit
 from ..services.engine import engine
 from ..services.qb import compile_spec
@@ -110,6 +111,7 @@ class AiBuildIn(BaseModel):
     prompt: str
     spec: dict | None = None          # the current spec: the request then edits it instead of starting over
     provider_id: str | None = None
+    images: list[str] = []            # attached pictures (data URLs) the model should read
 
 
 def _ai_error(e: Exception) -> dict:
@@ -121,6 +123,7 @@ def ai_build(body: AiBuildIn):
     if not body.prompt.strip():
         raise HTTPException(400, "describe what you want to see")
     try:
+        ai_vision.use(body.images)
         out = build_spec(body.prompt.strip(), body.spec, body.provider_id)
     except (ai_svc.AIError, ValueError) as e:
         audit.record("qb.ai", detail=f"{body.prompt[:200]} -- {e}", status="error")

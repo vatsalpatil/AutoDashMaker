@@ -39,8 +39,9 @@ class _Batcher:
 
 
 def _stream_openai(base_url: str, cfg: dict[str, Any], messages: list[dict], max_tokens: int, timeout: float, step: int, lane: str | None, label: str | None) -> str:
-    from . import ai_limits
+    from . import ai_limits, ai_vision
     ai_limits.check(cfg)
+    messages = ai_vision.apply(messages)
     t0 = time.perf_counter()
     try:
         text, usage, headers = _stream_body(base_url, cfg, messages, max_tokens, timeout, step, lane, label)

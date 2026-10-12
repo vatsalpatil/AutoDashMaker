@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/kit';
 import { AnswerCard } from '@/features/ask/AnswerCard';
 import { Composer } from '@/features/ask/Composer';
 import { useAskThread } from '@/features/ask/useAskThread';
+import { MessageImages } from '@/features/ai/attachments/Attachments';
 import { useApi } from '@/hooks/useApi';
 import { ASK_EVENT, takePendingQuestion } from '@/lib/askHandoff';
 import type { Dataset } from '@/lib/types';
@@ -47,7 +48,7 @@ export default function AskPage() {
               <div className="flex justify-end"><Button variant="ghost" size="sm" icon={<Eraser className="size-4" />} label="New conversation" onClick={clear} /></div>
               {turns.map((t) => (
                 <div key={t.id} className="flex flex-col gap-3">
-                  <div className="ml-auto max-w-[85%] rounded-2xl rounded-br-sm bg-primary px-4 py-2 text-sm text-primary-foreground">{t.question}</div>
+                  <div className="ml-auto flex max-w-[85%] flex-col items-end gap-1.5"><MessageImages images={t.images} /><div className="rounded-2xl rounded-br-sm bg-primary px-4 py-2 text-sm text-primary-foreground">{t.question}</div></div>
                   {t.response ? <AnswerCard question={t.question} response={t.response} onFollowUp={ask} />
                     : <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="size-4 animate-spin" /> Writing SQL, running it and summarising…</div>}
                 </div>

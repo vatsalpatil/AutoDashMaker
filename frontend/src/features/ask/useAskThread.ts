@@ -5,6 +5,7 @@ import type { AnalystResponse } from '@/lib/types';
 export interface AskTurn {
   id: number;
   question: string;
+  images?: string[];
   response: AnalystResponse | null;   // null while the analyst is working
   error?: string;
 }
@@ -22,7 +23,7 @@ export function useAskThread() {
 
   const patch = (id: number, p: Partial<AskTurn>) => setTurns((ts) => ts.map((t) => (t.id === id ? { ...t, ...p } : t)));
 
-  const ask = useCallback(async (question: string) => {
+  const ask = useCallback(async (question: string, images: string[] = []) => {
     const q = question.trim();
     if (!q) return;
     const id = nextId.current++;
@@ -30,9 +31,9 @@ export function useAskThread() {
       .filter((t) => t.response?.status === 'ok' && t.response.sql)
       .slice(-3)
       .map((t) => ({ question: t.question, sql: t.response!.sql }));
-    setTurns((ts) => [...ts, { id, question: q, response: null }]);
+    setTurns((ts) => [...ts, { id, question: q, images, response: null }]);
     try {
-      const response = await api.post<AnalystResponse>('/ai/chat', { question: q, dataset_id: scope || undefined, history });
+      const response = await api.post<AnalystResponse>('/ai/chat', { question: q, dataset_id: scope || undefined, history, images });
       patch(id, { response });
     } catch (e) {
       patch(id, { error: (e as Error).message, response: { status: 'sql_error', detail: (e as Error).message } });

@@ -32,7 +32,7 @@ export function AgentMessage({ m, actions, elapsed, onApprove, onUndo, onRetry }
   const running = m.status === 'running';
   const [showSteps, setShowSteps] = useState(true);
   if (m.role === 'user') {
-    return <div className="ml-6 self-end whitespace-pre-wrap rounded-lg rounded-br-sm bg-primary px-3 py-2 text-sm text-primary-foreground">{m.text}</div>;
+    return <div className="ml-6 self-end whitespace-pre-wrap rounded-lg rounded-br-sm bg-primary px-3 py-2 text-sm text-primary-foreground">{m.imageCount ? <span className="mb-1 block text-[11px] opacity-80">{m.imageCount} image{m.imageCount > 1 ? 's' : ''} attached</span> : null}{m.text}</div>;
   }
   const hasSqlInText = /```/.test(m.text);
   const steps = m.steps.filter((s) => s.tool !== 'final');   // the final step is the answer below, not a card

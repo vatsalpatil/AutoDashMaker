@@ -93,7 +93,8 @@ def _call_openai_compatible(base_url: str, api_key: str, model: str,
 def _call_anthropic(api_key: str, model: str, messages: list[dict],
                     max_tokens: int = 2048, timeout: float = 60, meta: dict | None = None) -> str:
     system = "\n".join(m["content"] for m in messages if m["role"] == "system")
-    user_msgs = [m for m in messages if m["role"] != "system"]
+    from .ai_vision import anthropic_parts
+    user_msgs = [{**m, "content": anthropic_parts(m["content"])} for m in messages if m["role"] != "system"]
     resp = httpx.post(
         "https://api.anthropic.com/v1/messages",
         headers={"x-api-key": api_key, "anthropic-version": "2023-06-01",
@@ -112,9 +113,10 @@ def _call_anthropic(api_key: str, model: str, messages: list[dict],
 
 def _call_gemini(api_key: str, model: str, messages: list[dict],
                  max_tokens: int = 2048, meta: dict | None = None) -> str:
+    from .ai_vision import gemini_parts
     contents = [
         {"role": "user" if m["role"] != "assistant" else "model",
-         "parts": [{"text": m["content"]}]}
+         "parts": gemini_parts(m["content"])}
         for m in messages if m["role"] != "system"
     ]
     system = "\n".join(m["content"] for m in messages if m["role"] == "system")
@@ -181,8 +183,9 @@ def chat(messages: list[dict], provider_id: str | None = None,
 
 def _call(cfg: dict[str, Any], messages: list[dict], max_tokens: int, timeout: float = 60) -> str:
     """One provider call, checked against its usage limits first and logged after (tokens, time, errors, rate-limit headers)."""
-    from . import ai_limits   # lazy: ai_limits imports the store
+    from . import ai_limits, ai_vision   # lazy: ai_limits imports the store
     ai_limits.check(cfg)
+    messages = ai_vision.apply(messages)
     kind, meta, t0 = cfg["provider"], {}, time.perf_counter()
     try:
         if kind == "anthropic":

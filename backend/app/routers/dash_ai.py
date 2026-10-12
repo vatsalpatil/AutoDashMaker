@@ -9,7 +9,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from ..core.security import UnsafeQueryError
-from ..services import ai as ai_svc, audit, dash_ai, dash_create, dash_edit, dash_gen, dash_plan, live
+from ..services import ai as ai_svc, ai_vision, audit, dash_ai, dash_create, dash_edit, dash_gen, dash_plan, live
 from ..services.ai_errors import friendly
 from ..services.dash_templates import template_list
 
@@ -22,6 +22,7 @@ class CreateIn(BaseModel):
     prompt: str
     dataset_id: str | None = None     # None = the AI may use every table
     provider_id: str | None = None
+    images: list[str] = []            # attached pictures (data URLs) the model should read
 
 
 class EditIn(BaseModel):
@@ -29,10 +30,12 @@ class EditIn(BaseModel):
     provider_id: str | None = None
     history: list[dict] = []        # earlier turns [{role: user|assistant, text}] so 'it' / 'that chart' make sense
     page: str | None = None         # the page the user is looking at: new widgets go there
+    images: list[str] = []            # attached pictures (data URLs) the model should read
 
 
 @router.post("/ai/create")
 def ai_create(body: CreateIn):
+    _images(body)
     if not body.prompt.strip():
         raise HTTPException(400, "describe the dashboard you want")
     try:
@@ -50,6 +53,7 @@ def ai_create(body: CreateIn):
 
 @router.post("/{dashboard_id}/ai-edit")
 def ai_edit(dashboard_id: str, body: EditIn):
+    _images(body)
     if not body.instruction.strip():
         raise HTTPException(400, "tell me what to change")
     try:
@@ -94,6 +98,13 @@ def generate(body: GenerateIn):
     return {"status": "ok", **out}
 
 
+def _images(body) -> None:
+    try:
+        ai_vision.use(getattr(body, "images", None))
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
 def _sse(events, on_done=None):
     """Server-Sent Events over a phase generator.
 
@@ -135,6 +146,7 @@ class UnderstandIn(BaseModel):
     template: str = "auto"
     focus: str = ""
     provider_id: str | None = None
+    images: list[str] = []            # attached pictures (data URLs) the model should read
 
 
 class PlanIn(UnderstandIn):
@@ -156,12 +168,14 @@ class BuildIn(BaseModel):
 @router.post("/generate/understand")
 def generate_understand(body: UnderstandIn):
     """Phase 1 (SSE): profile + statistics + top rows -> what the AI understood and the questions it wants answered."""
+    _images(body)
     return _sse(lambda: dash_plan.understand(body.dataset_id, body.template, body.focus, body.provider_id))
 
 
 @router.post("/generate/plan")
 def generate_plan(body: PlanIn):
     """Phase 2 (SSE): the widget plan from the understanding, the user's answers and optional feedback."""
+    _images(body)
     return _sse(lambda: dash_plan.plan(body.dataset_id, body.template, body.focus, body.understanding, body.answers, body.feedback, body.previous, body.provider_id, body.name))
 
 
@@ -175,6 +189,7 @@ def generate_build(body: BuildIn):
 @router.post("/ai/create/stream")
 def ai_create_stream(body: CreateIn):
     """Create with AI (SSE): read → design → build & check → self-review → insights → save, each phase reported live."""
+    _images(body)
     if not body.prompt.strip():
         raise HTTPException(400, "describe the dashboard you want")
     return _sse(lambda: dash_create.create_stream(body.prompt.strip(), body.dataset_id, body.provider_id),
@@ -184,6 +199,7 @@ def ai_create_stream(body: CreateIn):
 @router.post("/{dashboard_id}/ai-edit/stream")
 def ai_edit_stream(dashboard_id: str, body: EditIn):
     """Edit with AI (SSE): read → plan → apply & check (self-correcting) → verify layout; ends with `done` (applied, next ideas, can_undo)."""
+    _images(body)
     if not body.instruction.strip():
         raise HTTPException(400, "tell me what to change")
     return _sse(lambda: dash_edit.edit_stream(dashboard_id, body.instruction.strip(), body.provider_id, body.history, body.page),

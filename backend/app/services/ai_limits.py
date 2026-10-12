@@ -216,4 +216,6 @@ def record(cfg: dict[str, Any], ok: bool, ms: int, tokens: tuple[int, int], stat
 
 def estimate_tokens(messages: list[dict], text: str = "") -> tuple[int, int]:
     """Rough tokens (4 characters each) when the provider reports no usage."""
-    return sum(len(str(m.get("content", ""))) for m in messages) // 4, len(text) // 4
+    from .ai_vision import text_of
+    images = sum(1 for m in messages if isinstance(m.get("content"), list) for p in m["content"] if p.get("type") == "image_url")
+    return sum(len(text_of(m.get("content", ""))) for m in messages) // 4 + 1000 * images, len(text) // 4

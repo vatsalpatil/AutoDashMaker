@@ -3,11 +3,13 @@ import { Link } from 'react-router-dom';
 import { AlertTriangle, ArrowUp, Check, Lightbulb, RotateCw, Sparkles, Undo2 } from 'lucide-react';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { api } from '@/lib/api';
+import { AttachImageButton, AttachmentTray, MessageImages } from '@/features/ai/attachments/Attachments';
+import { useImageAttachments } from '@/features/ai/attachments/useImageAttachments';
 import { AiRunLog } from './ai/AiRunLog';
 import { useAiRun, type OpLine } from './ai/useAiRun';
 
 interface EditDone { message: string; applied: string[]; skipped: { title: string; reason: string }[]; page?: string; next: string[]; can_undo: boolean }
-interface Turn { instruction: string; result?: EditDone; ops: OpLine[]; error?: string; noProvider?: boolean; undone?: boolean }
+interface Turn { instruction: string; images?: string[]; result?: EditDone; ops: OpLine[]; error?: string; noProvider?: boolean; undone?: boolean }
 
 const STEPS = ['Reading the dashboard', 'Planning the change', 'Applying and checking', 'Verifying the result'];
 const IDEAS = ['Add KPIs for the headline totals in one row', 'Add a monthly trend after the KPIs', 'Change the pie to a bar chart and make it wider',
@@ -23,23 +25,25 @@ export function DashboardAiPanel({ open, dashboardId, activePage, onClose, onCha
   onChanged: (page?: string) => void;
 }) {
   const [turns, setTurns] = useState<Turn[]>([]);
-  const [pending, setPending] = useState<string | null>(null);
+  const [pending, setPending] = useState<{ text: string; images: string[] } | null>(null);
+  const att = useImageAttachments();
   const [text, setText] = useState('');
   const run = useAiRun<EditDone>();
   const end = useRef<HTMLDivElement>(null);
   useEffect(() => { end.current?.scrollIntoView({ block: 'end' }); }, [turns, run.steps, run.ops]);
 
   async function send(instruction: string) {
-    const t = instruction.trim();
+    const images = att.take();
+    const t = instruction.trim() || (images.length ? 'Change the dashboard to match the attached image(s).' : '');
     if (!t || run.busy) return;
     setText('');
-    setPending(t);
+    setPending({ text: t, images });
     // the earlier turns, so "it" / "that chart" in a follow-up make sense
     const history = turns.flatMap((x) => [{ role: 'user', text: x.instruction },
       ...(x.result ? [{ role: 'assistant', text: [x.result.message, ...x.result.applied].filter(Boolean).join(' — ') }] : [])]);
-    const { done: r, ops, error } = await run.run(`/api/dashboards/${dashboardId}/ai-edit/stream`, { instruction: t, history, page: activePage });
+    const { done: r, ops, error } = await run.run(`/api/dashboards/${dashboardId}/ai-edit/stream`, { instruction: t, history, page: activePage, images });
     setPending(null);
-    setTurns((all) => [...all, { instruction: t, result: r ?? undefined, ops, error: error?.message, noProvider: error?.noProvider }]);
+    setTurns((all) => [...all, { instruction: t, images, result: r ?? undefined, ops, error: error?.message, noProvider: error?.noProvider }]);
     if (r?.applied.length) onChanged(r.page);
   }
 
@@ -66,6 +70,7 @@ export function DashboardAiPanel({ open, dashboardId, activePage, onClose, onCha
           )}
           {turns.map((t, i) => (
             <div key={i} className="flex flex-col gap-2">
+              <MessageImages images={t.images} className="ml-auto" />
               <div className="ml-auto max-w-[85%] rounded-2xl rounded-br-sm bg-primary px-3 py-1.5 text-sm text-primary-foreground">{t.instruction}</div>
               {t.error && (
                 <p className="rounded-lg bg-destructive/10 p-2 text-sm text-destructive">
@@ -98,7 +103,8 @@ export function DashboardAiPanel({ open, dashboardId, activePage, onClose, onCha
           ))}
           {pending && (
             <div className="flex flex-col gap-2">
-              <div className="ml-auto max-w-[85%] rounded-2xl rounded-br-sm bg-primary px-3 py-1.5 text-sm text-primary-foreground">{pending}</div>
+              <MessageImages images={pending.images} className="ml-auto" />
+              <div className="ml-auto max-w-[85%] rounded-2xl rounded-br-sm bg-primary px-3 py-1.5 text-sm text-primary-foreground">{pending.text}</div>
               <div className="rounded-lg border p-2"><AiRunLog run={run} titles={STEPS} compact /></div>
             </div>
           )}
@@ -106,13 +112,15 @@ export function DashboardAiPanel({ open, dashboardId, activePage, onClose, onCha
         </div>
 
         <div className="border-t p-3">
-          <div className="flex items-end gap-2 rounded-xl border bg-card p-1.5 focus-within:ring-2 focus-within:ring-ring/40">
-            <textarea value={text} rows={2} onChange={(e) => setText(e.target.value)} placeholder="e.g. add a bar chart of profit by country after the KPIs"
+          <AttachmentTray att={att} className="mb-2" />
+          <div onDrop={att.dropProps.onDrop} onDragOver={att.dropProps.onDragOver} className="flex items-end gap-2 rounded-xl border bg-card p-1.5 focus-within:ring-2 focus-within:ring-ring/40">
+            <AttachImageButton att={att} disabled={run.busy} />
+            <textarea value={text} rows={2} onChange={(e) => setText(e.target.value)} onPaste={att.dropProps.onPaste} placeholder="e.g. add a bar chart of profit by country after the KPIs"
               onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(text); } }}
               className="min-w-0 flex-1 resize-none bg-transparent px-1.5 py-1 text-sm outline-none placeholder:text-muted-foreground" />
             {run.busy
               ? <button type="button" onClick={run.stop} className="h-8 shrink-0 rounded-full border px-3 text-xs">Stop</button>
-              : <button type="button" onClick={() => send(text)} disabled={!text.trim()} aria-label="Send"
+              : <button type="button" onClick={() => send(text)} disabled={!text.trim() && !att.images.length} aria-label="Send"
                 className="grid size-8 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground disabled:opacity-40"><ArrowUp className="size-4" /></button>}
           </div>
         </div>

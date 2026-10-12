@@ -1,3 +1,5 @@
+import { AttachImageButton, AttachmentTray } from '@/features/ai/attachments/Attachments';
+import { useImageAttachments } from '@/features/ai/attachments/useImageAttachments';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowUp, Bot, MessageSquare, Plus, Square, Table2, Timer } from 'lucide-react';
 import { useApi } from '@/hooks/useApi';
@@ -35,7 +37,8 @@ export function AgentPanel({ datasets, getContext, actions, activeName, hasSql, 
   const at = mentionAt(input);
   const mentions = useMemo(() => (at ? datasets.filter((d) => d.name.toLowerCase().includes(at[1].toLowerCase())).slice(0, 6) : []), [at, datasets]);
   const pick = (name: string) => { setInput((t) => t.replace(/@[\w.-]*$/, name + ' ')); box.current?.focus(); };
-  const submit = (text = input) => { if (!text.trim() || a.busy) return; a.send(text); setInput(''); };
+  const att = useImageAttachments();
+  const submit = (text = input) => { if (!text.trim() || a.busy) return; a.send(text, att.take()); setInput(''); };
 
   const chips = [
     ...(hasError ? ['Fix the error in this cell'] : []),
@@ -102,13 +105,15 @@ export function AgentPanel({ datasets, getContext, actions, activeName, hasSql, 
             ))}
           </ul>
         )}
-        <div className="rounded-lg border bg-background focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/40">
-          <textarea ref={box} value={input} rows={2} onChange={(e) => setInput(e.target.value)} aria-label="Message the assistant"
+        <div onDrop={att.dropProps.onDrop} onDragOver={att.dropProps.onDragOver} className="rounded-lg border bg-background focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/40">
+          <AttachmentTray att={att} className="px-3 pt-2" />
+          <textarea ref={box} value={input} rows={2} onChange={(e) => setInput(e.target.value)} aria-label="Message the assistant" onPaste={att.dropProps.onPaste}
             onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && !mentions.length) { e.preventDefault(); submit(); } if (e.key === 'Tab' && mentions.length) { e.preventDefault(); pick(mentions[0].name); } }}
             placeholder={a.prefs.mode === 'agent' ? 'What should I build or find out?  (@ for tables, Shift+Enter for a new line)' : 'Ask about your data…'}
             className="block max-h-40 w-full resize-none bg-transparent px-3 pt-2 text-sm outline-none" />
           <div className="flex items-center gap-2 px-2 pb-1.5 text-[11px] text-muted-foreground">
             <ModelPicker disabled={a.busy} />
+            <AttachImageButton att={att} disabled={a.busy} className="size-6" />
             {activeName && <span className="mono rounded bg-muted px-1.5 py-0.5" title="The assistant sees this cell">{activeName}</span>}
             {a.busy && <span className="flex items-center gap-1 tabular-nums"><Timer className="size-3" />{a.elapsed.toFixed(1)} s</span>}
             {a.busy

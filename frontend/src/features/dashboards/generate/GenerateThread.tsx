@@ -7,6 +7,7 @@ import type { Dataset } from '@/lib/types';
 import { AiRunLog } from '../ai/AiRunLog';
 import { useAiRun } from '../ai/useAiRun';
 import { ActionChip, Composer } from './Composer';
+import { MessageImages } from '@/features/ai/attachments/Attachments';
 import { PlanCard } from './PlanCard';
 import { ResultCard } from './ResultCard';
 import { SetupCard } from './SetupCard';
@@ -15,7 +16,7 @@ import { UnderstandingCard } from './UnderstandingCard';
 import type { Setup, useGenerateSession } from './useGenerateSession';
 
 type Session = ReturnType<typeof useGenerateSession>;
-interface FollowUp { text: string; log?: ReturnType<typeof snapshot>; error?: string; message?: string }
+interface FollowUp { text: string; images?: string[]; log?: ReturnType<typeof snapshot>; error?: string; message?: string }
 const EDIT_STEPS = ['Reading the dashboard', 'Planning the change', 'Applying and checking', 'Verifying the result'];
 const snapshot = (r: ReturnType<typeof useAiRun<unknown>>) => ({ steps: r.steps, live: {}, plan: r.plan, widgets: r.widgets, ops: r.ops, review: r.review, busy: false });
 
@@ -29,7 +30,8 @@ export function GenerateThread({ s, initialDataset }: { s: Session; initialDatas
   const datasets = useApi<Dataset[]>('/datasets').data ?? [];
   const draft = useRef<Setup | null>(null);
   const answers = useRef<Record<string, string>>({});
-  const [revisions, setRevisions] = useState<string[]>([]);
+  const [revisions, setRevisions] = useState<{ text: string; images: string[] }[]>([]);
+  const [notesImages, setNotesImages] = useState<string[]>([]);
   const [follow, setFollow] = useState<FollowUp[]>([]);
   const edit = useAiRun<{ message: string; applied: string[] }>();
   const scroll = useStickToBottom();
@@ -38,14 +40,17 @@ export function GenerateThread({ s, initialDataset }: { s: Session; initialDatas
   const phase = s.phase;
   const answered = Object.entries(s.answers).filter(([k]) => k !== 'notes');
 
-  async function send(text: string) {
+  async function send(text: string, images: string[] = []) {
     scroll.jump();
-    if (phase === 'setup' && draft.current) { setRevisions([]); setFollow([]); s.start({ ...draft.current, focus: text }); }
-    else if (phase === 'questions') s.makePlan({ ...answers.current, ...(text ? { notes: [answers.current.notes, text].filter(Boolean).join('; ') } : {}) });
-    else if (phase === 'plan') { setRevisions((r) => [...r, text]); s.makePlan(s.answers, text); }
+    if (phase === 'setup' && draft.current) { setRevisions([]); setFollow([]); setNotesImages([]); s.start({ ...draft.current, focus: text, images }); }
+    else if (phase === 'questions') {
+      setNotesImages(images);
+      s.makePlan({ ...answers.current, ...(text ? { notes: [answers.current.notes, text].filter(Boolean).join('; ') } : {}) }, '', images);
+    }
+    else if (phase === 'plan') { setRevisions((r) => [...r, { text, images }]); s.makePlan(s.answers, text || 'Use the attached image(s).', images); }
     else if (phase === 'done' && s.result) {
-      setFollow((f) => [...f.map((x, i) => (i === f.length - 1 ? { ...x, log: snapshot(edit) } : x)), { text }]);   // freeze the previous turn's log
-      const r = await edit.run(`/api/dashboards/${s.result.dashboard_id}/ai-edit/stream`, { instruction: text, page: undefined,
+      setFollow((f) => [...f.map((x, i) => (i === f.length - 1 ? { ...x, log: snapshot(edit) } : x)), { text, images }]);   // freeze the previous turn's log
+      const r = await edit.run(`/api/dashboards/${s.result.dashboard_id}/ai-edit/stream`, { instruction: text || 'Apply what the attached image(s) show.', images, page: undefined,
         history: follow.map((f) => ({ role: 'user', text: f.text })) });
       setFollow((f) => f.map((x, i) => (i === f.length - 1 ? { ...x, error: r.error?.message, message: r.done?.message } : x)));
     }
@@ -77,21 +82,21 @@ export function GenerateThread({ s, initialDataset }: { s: Session; initialDatas
               Hi! Pick the data and a style. I’ll study it, ask what matters to you, propose a plan you can edit, then build and check every widget.</p>
             <SetupCard initialDataset={initialDataset} locked={s.setup} onStart={s.start} onDraft={onDraft} />
           </Ai>
-          {s.setup && <You><b>{ds?.name ?? 'Dataset'}</b> · {s.setup.template === 'auto' ? 'Best fit' : s.setup.template}{s.setup.focus ? ` — ${s.setup.focus}` : ''}</You>}
+          {s.setup && <You><MessageImages images={s.setup.images} className="mb-1.5" /><b>{ds?.name ?? 'Dataset'}</b> · {s.setup.template === 'auto' ? 'Best fit' : s.setup.template}{s.setup.focus ? ` — ${s.setup.focus}` : ''}</You>}
           {s.setup && (
             <Ai>
               <ThinkingBlock label="Studied the data" steps={s.steps} only={[1, 2]} live={s.live} active={phase === 'understanding'} />
               {(s.evidence || s.understanding) && <UnderstandingCard evidence={s.evidence} understanding={s.understanding} busy={phase !== 'questions'} onContinue={(a) => s.makePlan(a)} onAnswers={onAnswers} />}
             </Ai>
           )}
-          {s.plan || phase === 'planning' ? <You>{answered.length ? `Answered ${answered.length} question(s)` : 'Go ahead with your best judgement'}{s.answers.notes ? ` — ${s.answers.notes}` : ''}</You> : null}
-          {revisions.map((r, i) => <You key={i}>{r}</You>)}
+          {s.plan || phase === 'planning' ? <You>{answered.length ? `Answered ${answered.length} question(s)` : 'Go ahead with your best judgement'}{s.answers.notes ? ` — ${s.answers.notes}` : ''}<MessageImages images={notesImages} className="mt-1.5" /></You> : null}
+          {revisions.map((r, i) => <You key={i}><MessageImages images={r.images} className="mb-1.5" />{r.text}</You>)}
           {(s.plan || phase === 'planning') && (
             <Ai>
               <ThinkingBlock label="Planned the dashboard" steps={s.steps} only={[3]} live={s.live} active={phase === 'planning'} />
               {s.plan && phase !== 'planning' && (
                 <PlanCard plan={s.plan} status={phase === 'building' ? 'building' : phase === 'done' ? 'locked' : 'idle'}
-                  onRevise={(f) => { setRevisions((r) => [...r, f]); s.makePlan(s.answers, f); }} onBuild={s.build} />
+                  onRevise={(f) => { setRevisions((r) => [...r, { text: f, images: [] }]); s.makePlan(s.answers, f); }} onBuild={s.build} />
               )}
             </Ai>
           )}
@@ -103,7 +108,7 @@ export function GenerateThread({ s, initialDataset }: { s: Session; initialDatas
           )}
           {follow.map((f, i) => (
             <div key={i} className="flex flex-col gap-3">
-              <You>{f.text}</You>
+              <You><MessageImages images={f.images} className="mb-1.5" />{f.text}</You>
               <Ai>
                 <div className="rounded-xl border bg-card/60 p-2">
                   <AiRunLog run={i === follow.length - 1 ? edit : (f.log ?? snapshot(edit))} titles={EDIT_STEPS} compact />

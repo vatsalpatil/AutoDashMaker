@@ -5,6 +5,8 @@ import { SelectField } from '@/components/common/SelectField';
 import { Button, Dialog, TextArea } from '@/components/ui/kit';
 import { useApi } from '@/hooks/useApi';
 import type { Dataset } from '@/lib/types';
+import { AttachImageButton, AttachmentTray, MessageImages } from '@/features/ai/attachments/Attachments';
+import { useImageAttachments } from '@/features/ai/attachments/useImageAttachments';
 import { AiRunLog } from './ai/AiRunLog';
 import { useAiRun } from './ai/useAiRun';
 import type { ReviewCheck } from './ai/ReviewChecklist';
@@ -41,10 +43,11 @@ export function AiDashboardDialog({ open, onClose }: { open: boolean; onClose: (
   const [scope, setScope] = useState('');
   const [depth, setDepth] = useState('auto');
   const run = useAiRun<CreateDone>();
+  const att = useImageAttachments();
   const started = run.busy || run.steps.length > 0;
 
   const build = () => run.run('/api/dashboards/ai/create/stream',
-    { prompt: [prompt.trim(), DEPTH[depth]].filter(Boolean).join('\n'), dataset_id: scope || undefined });
+    { prompt: [prompt.trim() || 'Build a dashboard like the attached image(s).', DEPTH[depth]].filter(Boolean).join('\n'), dataset_id: scope || undefined, images: att.images });
   const restart = () => run.reset();
   const done = run.done;
 
@@ -59,6 +62,11 @@ export function AiDashboardDialog({ open, onClose }: { open: boolean; onClose: (
           <>
             <TextArea label="What should the dashboard show?" value={prompt} onChange={setPrompt} rows={4}
               placeholder="e.g. Sales performance: total revenue and profit KPIs, monthly trend, top 10 products and revenue by country" />
+            <div className="flex items-center gap-2" onPaste={att.dropProps.onPaste} onDrop={att.dropProps.onDrop} onDragOver={att.dropProps.onDragOver}>
+              <AttachImageButton att={att} />
+              <span className="text-xs text-muted-foreground">Attach, paste or drop a screenshot of a dashboard to copy, a sketch or a chart.</span>
+            </div>
+            <AttachmentTray att={att} />
             <div className="flex flex-wrap gap-1.5">
               {EXAMPLES.map((e) => <button key={e} type="button" onClick={() => setPrompt(e)} className="rounded-full border bg-card px-2.5 py-1 text-left text-xs hover:border-primary hover:text-primary">{e}</button>)}
             </div>
@@ -75,7 +83,7 @@ export function AiDashboardDialog({ open, onClose }: { open: boolean; onClose: (
             </div>
           </>
         )}
-        {started && <p className="rounded-md bg-muted/40 px-3 py-2 text-sm"><span className="text-muted-foreground">Request:</span> {prompt}</p>}
+        {started && <div className="flex flex-col gap-1.5 rounded-md bg-muted/40 px-3 py-2 text-sm"><MessageImages images={att.images} /><p><span className="text-muted-foreground">Request:</span> {prompt || 'Copy the attached image(s)'}</p></div>}
 
         <AiRunLog run={run} titles={STEPS} />
 
@@ -94,7 +102,7 @@ export function AiDashboardDialog({ open, onClose }: { open: boolean; onClose: (
           {run.busy && <Button variant="ghost" label="Stop" onClick={run.stop} />}
           {!run.busy && <Button variant="ghost" label="Close" onClick={onClose} />}
           {!run.busy && !done && started && <Button variant="secondary" label="Change request" onClick={restart} />}
-          {!started && <Button variant="primary" icon={<Sparkles className="size-4" />} label="Build dashboard" onClick={build} isDisabled={!prompt.trim()} />}
+          {!started && <Button variant="primary" icon={<Sparkles className="size-4" />} label="Build dashboard" onClick={build} isDisabled={!prompt.trim() && !att.images.length} />}
           {!run.busy && !done && started && <Button variant="primary" label="Try again" onClick={build} />}
         </div>
       </div>
