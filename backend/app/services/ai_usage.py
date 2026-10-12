@@ -92,7 +92,11 @@ def _provider(cfg: dict[str, Any]) -> dict[str, Any]:
     until = cfg.get("blocked_until")
     blocked = {"until": until.isoformat() + "Z", "reason": cfg.get("block_reason") or "", "seconds": int((until - now()).total_seconds())} \
         if until and until > now() else None
-    return {"id": pid, "provider": cfg["provider"], "label": label_of(cfg), "model": cfg.get("model"), "is_default": bool(cfg.get("is_default")),
+    first = store.execute("SELECT MIN(created_at) AS t FROM ai_usage WHERE provider_id = ?", [pid])[0]["t"]
+    exact = live["remaining_requests"] is not None and rpd == live["limit_requests"]
+    return {"id": pid, "provider": cfg["provider"], "tracked_since": first.isoformat() + "Z" if first else None,
+            "exact": exact,   # False = counted by Dashtor only (calls from other apps / before tracking are not seen)
+            "label": label_of(cfg), "model": cfg.get("model"), "is_default": bool(cfg.get("is_default")),
             "limits": {"rpd": rpd, "rpm": lim["rpm"], "tpd": tpd, "source": lim["source"], "note": lim["note"], "tz": lim["tz"],
                        "mine": {k: cfg.get(f"limit_{k}") for k in ("rpd", "rpm", "tpd")}},
             "window": {"start": start.isoformat() + "Z", "resets_at": reset.isoformat() + "Z", "seconds_to_reset": int((reset - now()).total_seconds())},
@@ -137,5 +141,5 @@ def summary() -> dict[str, Any]:
     if not cfg or not cfg.get("id"):
         return {"provider": None}
     p = _provider(cfg)
-    return {"provider": p["label"], "model": p["model"], "remaining": p["remaining"], "limits": {"rpd": p["limits"]["rpd"]},
+    return {"provider": p["label"], "model": p["model"], "remaining": p["remaining"], "exact": p["exact"], "tracked_since": p["tracked_since"], "limits": {"rpd": p["limits"]["rpd"]},
             "today": p["today"]["requests"], "window": p["window"], "blocked": p["blocked"]}

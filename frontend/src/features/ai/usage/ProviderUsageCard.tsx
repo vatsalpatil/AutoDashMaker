@@ -71,7 +71,7 @@ export function ProviderUsageCard({ p, onChanged }: { p: ProviderUsage; onChange
         )}
 
         <div className="flex flex-wrap items-center gap-5">
-          <Ring pct={blocked ? 0 : p.remaining.pct} label={left === null ? '∞' : compact(blocked ? 0 : left)} sub={left === null ? 'no fixed cap' : 'requests left'} />
+          <Ring pct={blocked ? 0 : p.remaining.pct} label={left === null ? '∞' : `${p.exact ? '' : '≈'}${compact(blocked ? 0 : left)}`} sub={left === null ? 'no fixed cap' : p.exact ? 'requests left' : 'left (estimate)'} />
           <div className="flex min-w-[14rem] flex-1 flex-col gap-2.5">
             <Bar label="Requests today" used={p.today.requests} total={p.limits.rpd} />
             {p.limits.rpm && <Bar label="This minute" used={p.last_minute} total={p.limits.rpm} />}
@@ -99,6 +99,13 @@ export function ProviderUsageCard({ p, onChanged }: { p: ProviderUsage; onChange
             {p.account.limit_usd !== null ? ` of $${p.account.limit_usd}` : ''}{p.account.free_tier ? ' · free tier (50 free requests/day)' : ' · credits bought (1,000 free requests/day)'}</p>
         )}
         <p className="text-[11px] text-muted-foreground">{p.limits.note}</p>
+        {!p.exact && left !== null && (
+          <p className="rounded-md bg-muted/50 p-2 text-[11px] text-muted-foreground">
+            “Left” counts only calls made through Dashtor{p.tracked_since ? ` since ${new Date(p.tracked_since).toLocaleString()}` : ' (none yet)'}. Calls with the same key elsewhere
+            (or before tracking started) are not visible to us, so the real number can be lower. The provider’s own dashboard is the source of truth;
+            when it rejects a call, Dashtor learns the real reset time and shows it here.
+          </p>
+        )}
 
         {editing ? (
           <div className="flex flex-wrap items-end gap-2">

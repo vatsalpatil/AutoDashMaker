@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 export interface UsageSum { requests: number; tokens_in: number; tokens_out: number; errors: number; avg_ms: number }
 export interface Blocked { until: string; reason: string; seconds: number }
 export interface ProviderUsage {
-  id: string; provider: string; label: string; model: string; is_default: boolean;
+  id: string; provider: string; label: string; model: string; is_default: boolean; exact: boolean; tracked_since: string | null;
   limits: { rpd: number | null; rpm: number | null; tpd: number | null; source: string; note: string; tz: string; mine: { rpd: number | null; rpm: number | null; tpd: number | null } };
   window: { start: string; resets_at: string; seconds_to_reset: number };
   today: UsageSum; last_minute: number;
@@ -21,7 +21,7 @@ export interface UsageReport {
   recent: { created_at: string; provider: string; model: string; feature: string; ok: boolean; status: number | null; tokens_in: number; tokens_out: number; ms: number; error: string | null }[];
   providers: ProviderUsage[]; active: string | null; now: string;
 }
-export interface UsageSummary { provider: string | null; model?: string; remaining?: ProviderUsage['remaining']; limits?: { rpd: number | null }; today?: number; window?: ProviderUsage['window']; blocked?: Blocked | null }
+export interface UsageSummary { provider: string | null; exact?: boolean; tracked_since?: string | null; model?: string; remaining?: ProviderUsage['remaining']; limits?: { rpd: number | null }; today?: number; window?: ProviderUsage['window']; blocked?: Blocked | null }
 
 export const compact = (n: number | null | undefined) =>
   n === null || n === undefined ? '—' : Intl.NumberFormat(undefined, { notation: n >= 10000 ? 'compact' : 'standard', maximumFractionDigits: 1 }).format(n);

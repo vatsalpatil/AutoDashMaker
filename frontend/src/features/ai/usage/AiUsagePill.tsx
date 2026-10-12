@@ -26,14 +26,15 @@ export function AiUsagePill() {
   const pct = s.remaining?.pct ?? null;
   const open = () => { setTab('usage'); navigate('/settings'); };
   const title = paused ? `${s.provider} hit its limit. Works again in ${duration(pausedFor!)}.`
-    : `${s.provider} · ${s.today} requests today${left !== null ? `, ${left} left` : ''} · resets in ${duration(resetIn ?? 0)}`;
+    : `${s.provider} · ${s.today} requests today through Dashtor${left !== null ? `, about ${left} left` : ''} · resets in ${duration(resetIn ?? 0)}`
+      + (s.exact ? '' : ' — Estimate: calls made with the same key outside Dashtor (or before tracking started) are not counted until the provider reports them.');
 
   return (
     <button type="button" onClick={open} title={title}
       className={cn('flex h-7 items-center gap-1.5 rounded-full border px-2.5 text-xs transition-colors hover:bg-accent', paused && 'border-warning/50 bg-warning/10')}>
       {paused ? <PauseCircle className="size-3.5 text-warning" /> : <Sparkles className={cn('size-3.5', tone(pct))} />}
       {paused ? <span className="tabular-nums">AI back in {duration(pausedFor!)}</span>
-        : left !== null ? <span className="tabular-nums"><b className={tone(pct)}>{compact(left)}</b><span className="text-muted-foreground">/{compact(s.limits?.rpd ?? null)} left</span></span>
+        : left !== null ? <span className="tabular-nums">{!s.exact && <span className="text-muted-foreground">≈</span>}<b className={tone(pct)}>{compact(left)}</b><span className="text-muted-foreground">/{compact(s.limits?.rpd ?? null)} left</span></span>
           : <span className="tabular-nums text-muted-foreground">{s.today} today</span>}
     </button>
   );
