@@ -9,6 +9,7 @@ interface EditResult {
   detail?: string;
   message?: string;
   applied?: string[];
+  page?: string;   // the page that changed: the dashboard switches to it so the result is visible
   skipped?: { title: string; reason: string }[];
 }
 interface Turn { instruction: string; result?: EditResult; error?: string }
@@ -16,11 +17,13 @@ interface Turn { instruction: string; result?: EditResult; error?: string }
 const IDEAS = ['Add a KPI for the total', 'Change the line chart to an area chart', 'Add a pie of the top categories', 'Remove the table'];
 
 /** Chat with the dashboard: describe a change, the AI adds / updates / removes widgets (each query is checked first). */
-export function DashboardAiPanel({ open, dashboardId, onClose, onChanged }: {
+export function DashboardAiPanel({ open, dashboardId, activePage, onClose, onChanged }: {
   open: boolean;
   dashboardId: string;
+  /** The page being viewed: new widgets go there. */
+  activePage?: string;
   onClose: () => void;
-  onChanged: () => void;
+  onChanged: (page?: string) => void;
 }) {
   const [turns, setTurns] = useState<Turn[]>([]);
   const [text, setText] = useState('');
@@ -36,9 +39,12 @@ export function DashboardAiPanel({ open, dashboardId, onClose, onChanged }: {
     setTurns((all) => [...all, { instruction: t }]);
     const patch = (p: Partial<Turn>) => setTurns((all) => all.map((x, i) => (i === all.length - 1 ? { ...x, ...p } : x)));
     try {
-      const r = await api.post<EditResult>(`/dashboards/${dashboardId}/ai-edit`, { instruction: t });
+      // the earlier turns, so "it" / "that chart" in a follow-up make sense
+      const history = turns.flatMap((x) => [{ role: 'user', text: x.instruction },
+        ...(x.result?.status === 'ok' ? [{ role: 'assistant', text: [x.result.message, ...(x.result.applied ?? [])].filter(Boolean).join(' — ') }] : [])]);
+      const r = await api.post<EditResult>(`/dashboards/${dashboardId}/ai-edit`, { instruction: t, history, page: activePage });
       patch({ result: r });
-      if (r.status === 'ok' && r.applied?.length) onChanged();
+      if (r.status === 'ok' && r.applied?.length) onChanged(r.page);
     } catch (e) {
       patch({ error: (e as Error).message });
     } finally {

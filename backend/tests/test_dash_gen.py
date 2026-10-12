@@ -162,12 +162,69 @@ try:
     raise SystemExit("expected AIError")
 except ai_svc.AIError as e:
     assert "rate-limiting" in str(e), str(e)
+# "Edit with AI": new widgets land on a page that exists (the one being viewed), the chat remembers earlier turns, updates stay on their page
+from app.services import dash_ai as _da
+
+TREND_SQL = "SELECT DATE_TRUNC('month', d) AS month, SUM(amount) AS total FROM sales GROUP BY 1 ORDER BY 1"
+holder = {"ops": [], "prompt": ""}
+
+
+def fake_edit_ask(system, user, provider):
+    holder["prompt"] = user
+    return {"message": "ok", "ops": holder["ops"]}
+
+
+_real_ask = _da._ask
+_da._ask = fake_edit_ask
+edit_id = done["dashboard_id"]   # pages: overview, breakdown, insights
+
+
+def widget_named(title):
+    for r in store.list("dashboard_widgets", where="dashboard_id = ?", params=[edit_id], order=None):
+        if r.get("chart_id") and store.get("charts", r["chart_id"])["name"] == title:
+            return r
+    return None
+
+
+# the user is looking at 'breakdown' and says a chart is missing: it is added THERE (this used to save it on a page called 'main')
+holder["ops"] = [{"op": "add", "widget": {"title": "Monthly Revenue Trend", "type": "line", "sql": TREND_SQL}}]
+out = _da.edit_dashboard(edit_id, "there is no Monthly Revenue Trend chart, fix it", None,
+                         [{"role": "user", "text": "earlier question"}, {"role": "assistant", "text": "Changed X — updated Y"}], "breakdown")
+w = widget_named("Monthly Revenue Trend")
+assert w and w["page"] == "breakdown" and out["page"] == "breakdown", (w and w["page"], out)
+assert "on Breakdown" in out["applied"][0], out["applied"]
+assert "viewing page: breakdown" in holder["prompt"] and "Pages: overview (Overview)" in holder["prompt"]
+assert "Conversation so far" in holder["prompt"] and "earlier question" in holder["prompt"] and "Changed X" in holder["prompt"]
+assert "page=overview" in holder["prompt"]                                   # every widget is listed with its page
+assert w["page"] in {p["id"] for p in store.get("dashboards", edit_id)["pages"]}   # a visible tab
+
+# a named page wins; an unknown page falls back to the one being viewed
+holder["ops"] = [{"op": "add", "widget": {"title": "Orders by Region", "type": "bar", "page": "overview", "sql": "SELECT region, COUNT(*) AS n FROM sales GROUP BY 1"}},
+                 {"op": "add", "widget": {"title": "Revenue Share", "type": "pie", "page": "nowhere", "sql": "SELECT region, SUM(amount) AS s FROM sales GROUP BY 1"}}]
+out = _da.edit_dashboard(edit_id, "add two charts", None, None, "breakdown")
+assert widget_named("Orders by Region")["page"] == "overview" and widget_named("Revenue Share")["page"] == "breakdown"
+
+# an update keeps the widget on its own page, whatever page is being viewed
+target = [r for r in store.list("dashboard_widgets", where="dashboard_id = ?", params=[edit_id], order=None) if r["page"] == "overview" and r.get("chart_id")][0]
+before_name = store.get("charts", target["chart_id"])["name"]
+holder["ops"] = [{"op": "update", "id": target["id"], "title": "Renamed On Overview"}]
+out = _da.edit_dashboard(edit_id, "rename it", None, None, "breakdown")
+renamed = widget_named("Renamed On Overview")
+assert renamed and renamed["page"] == "overview" and out["page"] == "overview" and widget_named(before_name) is None or before_name == "Renamed On Overview"
+
+# a dashboard without pages (older ones) still works: everything goes to 'main'
+legacy = store.insert("dashboards", {"name": "legacy"})
+holder["ops"] = [{"op": "add", "widget": {"title": "Legacy KPI", "type": "kpi", "sql": "SELECT COUNT(*) AS n FROM sales"}}]
+out = _da.edit_dashboard(legacy["id"], "add a kpi", None, None, None)
+assert out["page"] == "main" and store.list("dashboard_widgets", where="dashboard_id = ?", params=[legacy["id"]], order=None)[0]["page"] == "main"
+_da._ask = _real_ask
+
 # the whole dashboard's data in one request (parallel, identical queries run once), and fresh=true bypasses the cache
 from app.routers.dashboards import dashboard_data
 
 bundle = dashboard_data(done["dashboard_id"])
 chart_ids = [r["chart_id"] for r in store.list("dashboard_widgets", where="dashboard_id = ?", params=[done["dashboard_id"]], order=None) if r.get("chart_id")]
-assert set(bundle) == set(chart_ids) and len(chart_ids) == 3, (set(bundle), chart_ids)
+assert set(bundle) == set(chart_ids) and len(chart_ids) >= 3, (set(bundle), chart_ids)
 assert all("chart" in v and v["data"]["row_count"] >= 1 for v in bundle.values()), bundle
 again = dashboard_data(done["dashboard_id"])
 assert all(v["data"]["cached"] is True for v in again.values())

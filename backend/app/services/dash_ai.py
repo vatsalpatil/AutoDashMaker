@@ -36,9 +36,11 @@ CREATE_SYSTEM = (
 EDIT_SYSTEM = (
     "You edit an existing dashboard. You are given its widgets and the user's instruction. Reply with ONLY one JSON "
     'object, no prose: {"message": a short sentence saying what you changed, "ops": [ ... ]} where each op is one of '
-    f'{{"op":"add","widget":{_WIDGET_FORMAT}}}, {{"op":"remove","id":widget id}}, '
+    f'{{"op":"add","widget":{_WIDGET_FORMAT} plus optional "page": a page id}}, {{"op":"remove","id":widget id}}, '
     '{"op":"update","id":widget id,"title"?:string,"type"?:chart type,"sql"?:string}. '
     "Only include ops the instruction needs; if it needs none, reply with an empty ops list and explain in message. "
+    "If the user says a chart or KPI is missing or not visible, ADD it (do not change a different widget). Use the earlier conversation to "
+    "resolve words like 'it' or 'that chart'. New widgets go on the page the user is viewing unless they name another page. "
     + _SQL_RULES)
 
 
@@ -197,42 +199,62 @@ def _describe(dash_id: str) -> tuple[str, dict[str, dict]]:
         if not ch:
             continue
         index[w["id"]] = {"widget": w, "chart": ch, "sql": (q or {}).get("sql", "")}
-        lines.append(f'- id={w["id"]} type={ch["spec"]["type"]} title="{ch["name"]}" sql: {(q or {}).get("sql", "")[:300]}')
+        lines.append(f'- id={w["id"]} page={w.get("page") or "main"} type={ch["spec"]["type"]} title="{ch["name"]}" sql: {(q or {}).get("sql", "")[:300]}')
     return "\n".join(lines) or "(no widgets yet)", index
 
 
-def edit_dashboard(dash_id: str, instruction: str, provider_id: str | None) -> dict[str, Any]:
+def _bottom(index: dict[str, dict], page: str) -> int:
+    """First free row below the widgets of one page."""
+    return max([(w["widget"].get("position") or {}).get("y", 0) + (w["widget"].get("position") or {}).get("h", 0)
+                for w in index.values() if (w["widget"].get("page") or "main") == page] or [0])
+
+
+def edit_dashboard(dash_id: str, instruction: str, provider_id: str | None, history: list[dict] | None = None, page: str | None = None) -> dict[str, Any]:
+    """Apply a chat instruction to a dashboard. New widgets land on the page being viewed (or the one named), updated widgets keep
+    their own page; `history` is the earlier conversation so the model can resolve "it" / "that chart"."""
     dash = store.get("dashboards", dash_id)
     if not dash:
         raise LookupError("dashboard not found")
+    pages = [p for p in (dash.get("pages") or []) if isinstance(p, dict) and p.get("id")] or [{"id": "main", "name": "Overview"}]
+    page_ids = [p["id"] for p in pages]
+    page_name = {p["id"]: p.get("name", p["id"]) for p in pages}
+    viewing = page if page in page_ids else page_ids[0]
     listing, index = _describe(dash_id)
     context = f"{workbench_context(None, instruction)}\n\n{semantic_context(None)}"
-    plan = _ask(EDIT_SYSTEM, f"{context}\n\nDashboard \"{dash['name']}\" widgets:\n{listing}\n\nInstruction: {instruction}", provider_id)
-    applied, skipped = [], []
-    bottom = max([(w["widget"].get("position") or {}).get("y", 0) + (w["widget"].get("position") or {}).get("h", 0) for w in index.values()] or [0])
+    talk = "\n".join(f'{"User" if t.get("role") == "user" else "You"}: {str(t.get("text", ""))[:300]}' for t in (history or [])[-8:])
+    user = (f"{context}\n\nDashboard \"{dash['name']}\". Pages: " + ", ".join(f"{pid} ({page_name[pid]})" for pid in page_ids)
+            + f". The user is viewing page: {viewing}.\nWidgets:\n{listing}\n" + (f"\nConversation so far:\n{talk}\n" if talk else "") + f"\nInstruction: {instruction}")
+    plan = _ask(EDIT_SYSTEM, user, provider_id)
+    applied, skipped, touched = [], [], viewing
+    bottoms = {pid: _bottom(index, pid) for pid in page_ids}
     for op in [o for o in plan.get("ops", []) if isinstance(o, dict)][:MAX_WIDGETS]:
         kind, wid = op.get("op"), str(op.get("id", ""))
         try:
             if kind == "remove" and wid in index:
                 store.delete("dashboard_widgets", wid)
+                touched = index[wid]["widget"].get("page") or touched
                 applied.append(f'removed "{index[wid]["chart"]["name"]}"')
             elif kind == "add" and isinstance(op.get("widget"), dict):
                 w = _materialize(op["widget"], context, provider_id)
-                pos = _layout([w], bottom)[0]
-                _store_widget(dash_id, w, pos, None)
-                bottom += pos["h"]
-                applied.append(f'added "{w["title"]}"')
+                target = op["widget"].get("page") if op["widget"].get("page") in page_ids else viewing
+                pos = _layout([w], bottoms[target])[0]
+                _store_widget(dash_id, w, pos, None, target)
+                bottoms[target] += pos["h"]
+                touched = target
+                applied.append(f'added "{w["title"]}" on {page_name[target]}')
             elif kind == "update" and wid in index:
                 cur = index[wid]
+                where = cur["widget"].get("page") or "main"
                 spec = {"title": op.get("title") or cur["chart"]["name"], "type": op.get("type") or cur["chart"]["spec"]["type"],
                         "sql": op.get("sql") or cur["sql"]}
                 w = _materialize(spec, context, provider_id)
-                # a new chart (not an in-place edit): the old one may be shared with other dashboards
-                new = _store_widget(dash_id, w, cur["widget"].get("position") or {"x": 0, "y": bottom, "w": 6, "h": 4}, None)
+                # a new chart (not an in-place edit): the old one may be shared with other dashboards; it stays on its own page
+                new = _store_widget(dash_id, w, cur["widget"].get("position") or {"x": 0, "y": bottoms.get(where, 0), "w": 6, "h": 4}, None, where)
                 store.delete("dashboard_widgets", wid)
+                touched = where
                 applied.append(f'updated "{w["title"]}" ({new["type"]})')
             else:
                 skipped.append({"title": kind or "?", "reason": "unknown widget or operation"})
         except ValueError as e:
             skipped.append({"title": str(op.get("title") or op.get("widget", {}).get("title") or wid or kind), "reason": str(e)})
-    return {"message": str(plan.get("message") or ("Done." if applied else "Nothing to change.")), "applied": applied, "skipped": skipped}
+    return {"message": str(plan.get("message") or ("Done." if applied else "Nothing to change.")), "applied": applied, "skipped": skipped, "page": touched}

@@ -26,6 +26,8 @@ class CreateIn(BaseModel):
 class EditIn(BaseModel):
     instruction: str
     provider_id: str | None = None
+    history: list[dict] = []        # earlier turns [{role: user|assistant, text}] so 'it' / 'that chart' make sense
+    page: str | None = None         # the page the user is looking at: new widgets go there
 
 
 @router.post("/ai/create")
@@ -50,7 +52,7 @@ def ai_edit(dashboard_id: str, body: EditIn):
     if not body.instruction.strip():
         raise HTTPException(400, "tell me what to change")
     try:
-        out = dash_ai.edit_dashboard(dashboard_id, body.instruction.strip(), body.provider_id)
+        out = dash_ai.edit_dashboard(dashboard_id, body.instruction.strip(), body.provider_id, body.history, body.page)
     except LookupError as e:
         raise HTTPException(404, str(e))
     except ai_svc.AIError as e:

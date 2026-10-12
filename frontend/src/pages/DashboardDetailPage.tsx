@@ -99,7 +99,7 @@ export default function DashboardDetailPage() {
       {d.presenting && <PresentMode dashboard={d.dashboard} pages={d.pages} onClose={() => d.setPresenting(false)} />}
       <PrintDialog open={printOpen} pageCount={d.pages.length} onClose={() => setPrintOpen(false)} onPrint={(o) => { setPrintOpen(false); setPrinting(o); }} />
       {printing && <PrintSheet dashboard={d.dashboard} pages={d.pages} options={printing} onDone={donePrinting} />}
-      <DashboardAiPanel open={aiOpen} dashboardId={d.dashboard.id} onClose={() => setAiOpen(false)} onChanged={d.load} />
+      <DashboardAiPanel open={aiOpen} dashboardId={d.dashboard.id} activePage={d.activePage} onClose={() => setAiOpen(false)} onChanged={(page) => { d.load(); if (page) d.setActivePage(page); }} />
       <AddWidgetDialog open={d.pickerOpen} charts={d.charts} onPick={d.addWidget} onContent={(k) => { d.setPickerOpen(false); d.setContentNew(k); }} onClose={() => d.setPickerOpen(false)} />
       {(d.contentNew || d.contentEdit) && (
         <ContentDialog open kind={d.contentEdit ? (d.contentEdit.kind as 'text' | 'link' | 'iframe') : d.contentNew!} widget={d.contentEdit}
