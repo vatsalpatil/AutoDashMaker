@@ -15,7 +15,7 @@ function useEntityName(kind: string | undefined, id: string | undefined): string
   const key = kind && id ? `${kind}/${id}` : '';
   const [name, setName] = useState<string | undefined>(names.get(key));
   useEffect(() => {
-    if (!key || id === 'new') { setName(undefined); return; }
+    if (!key || id === 'new' || id === 'generate') { setName(undefined); return; }   // fixed pages, not entities
     setName(names.get(key));
     let alive = true;
     api.get<{ name?: string }>(`/${key}`)
