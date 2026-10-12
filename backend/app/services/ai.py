@@ -123,13 +123,25 @@ def _call_gemini(api_key: str, model: str, messages: list[dict],
     return "".join(p.get("text", "") for p in parts)
 
 
+def server_provider() -> dict[str, Any] | None:
+    """The model the administrator hosts for everyone (OLLAMA_URL + OLLAMA_MODEL), or None."""
+    if settings.ollama_url and settings.ollama_model:
+        return {"id": "server", "provider": "ollama", "model": settings.ollama_model, "base_url": settings.ollama_url, "api_key": "",
+                "label": "Server model (self-hosted)", "is_default": False, "managed": True}
+    return None
+
+
 def resolve_provider(provider_id: str | None = None) -> dict[str, Any] | None:
-    """Pick the requested provider, else the user's default, else env default."""
+    """Pick the requested provider, else the user's default, else the server's own model, else env default."""
+    if provider_id == "server":
+        return server_provider()
     if provider_id:
         return store.get("ai_providers", provider_id)
     defaults = store.list("ai_providers", where="is_default = TRUE", order=None)
     if defaults:
         return defaults[0]
+    if server_provider():
+        return server_provider()
     env_key = os.environ.get("GOOGLE_API_KEY") or os.environ.get("GEMINI_API_KEY")
     if env_key:
         return {"provider": "gemini", "model": settings.default_ai_model,
@@ -137,8 +149,19 @@ def resolve_provider(provider_id: str | None = None) -> dict[str, Any] | None:
     return None
 
 
+def is_local(provider_id: str | None = None) -> bool:
+    """A self-hosted model (Ollama): slow per token, so callers wait longer and run fewer calls at once."""
+    cfg = resolve_provider(provider_id)
+    return bool(cfg and cfg.get("provider") == "ollama")
+
+
+def request_timeout(provider_id: str | None, default: float) -> float:
+    return float(settings.local_ai_timeout_s) if is_local(provider_id) else default
+
+
 def chat(messages: list[dict], provider_id: str | None = None,
-         max_tokens: int = 2048, timeout: float = 60) -> str:
+         max_tokens: int = 2048, timeout: float = 60, json_mode: bool = False) -> str:
+    """`json_mode` asks a self-hosted model to constrain its output to valid JSON (other providers get it from the prompt)."""
     cfg = resolve_provider(provider_id)
     if not cfg:
         raise AIError(
@@ -146,6 +169,15 @@ def chat(messages: list[dict], provider_id: str | None = None,
             "(Gemini free tier needs only a free Google AI Studio key)."
         )
     kind = cfg["provider"]
+    if cfg.get("id") != "server":   # a user-added provider: its address must be one a hosted user may use
+        from .ai_urls import check_provider_url
+        try:
+            check_provider_url(kind, cfg.get("base_url"), OPENAI_COMPATIBLE_DEFAULTS)
+        except ValueError as e:
+            raise AIError(str(e)) from None
+    if kind == "ollama":
+        from . import ollama
+        return ollama.chat(cfg, messages, max_tokens, timeout, json_mode)
     if kind == "anthropic":
         return _call_anthropic(cfg["api_key"], cfg["model"], messages, max_tokens, timeout)
     if kind == "gemini":

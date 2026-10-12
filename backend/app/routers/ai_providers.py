@@ -38,7 +38,17 @@ def _make_default(provider_id: str) -> None:
     store.update("ai_providers", provider_id, {"is_default": True})
 
 
+def _check_url(kind: str, base_url: str | None) -> None:
+    from ..services.ai_urls import check_provider_url
+    try:
+        check_provider_url(kind, base_url, ai_svc.OPENAI_COMPATIBLE_DEFAULTS)
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from None
+
+
 def _get_provider(provider_id: str) -> dict:
+    if provider_id == "server" and ai_svc.server_provider():
+        return ai_svc.server_provider()
     row = store.get("ai_providers", provider_id)
     if not row:
         raise HTTPException(404, "provider not found")
@@ -55,11 +65,16 @@ def list_providers():
     rows = store.list("ai_providers")
     for r in rows:
         r["api_key"] = ("•••" + r["api_key"][-4:]) if r.get("api_key") else ""
+    server = ai_svc.server_provider()
+    if server:   # the administrator's own model: listed first, used when you have not chosen another one
+        server["is_default"] = not any(r.get("is_default") for r in rows)
+        rows.insert(0, server)
     return rows
 
 
 @router.post("/providers")
 def add_provider(body: ProviderIn):
+    _check_url(body.provider, body.base_url)
     if body.is_default:
         store.execute("UPDATE ai_providers SET is_default = FALSE WHERE workspace_id = ?", [tenant.current()])
     return store.insert("ai_providers", body.model_dump())
@@ -67,6 +82,8 @@ def add_provider(body: ProviderIn):
 
 @router.post("/providers/test")
 def test_provider(body: ProviderTestIn):
+    if body.provider:
+        _check_url(body.provider, body.base_url)
     if body.id:  # saved provider: use the stored, unmasked key
         return ai_svc.test_provider(_get_provider(body.id))
     if not body.provider or not body.model:  # unsaved credentials from the "Add provider" form

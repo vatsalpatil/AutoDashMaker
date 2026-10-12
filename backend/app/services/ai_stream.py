@@ -77,14 +77,22 @@ def _stream_openai(base_url: str, cfg: dict[str, Any], messages: list[dict], max
 
 
 def chat_live(messages: list[dict], provider_id: str | None = None, max_tokens: int = 2048, timeout: float = 60, step: int | None = None,
-              lane: str | None = None, label: str | None = None) -> str:
+              lane: str | None = None, label: str | None = None, json_mode: bool = False) -> str:
     if live.sink.get() is None or step is None:
-        return ai.chat(messages, provider_id=provider_id, max_tokens=max_tokens, timeout=timeout)
+        return ai.chat(messages, provider_id=provider_id, max_tokens=max_tokens, timeout=timeout, json_mode=json_mode)
     cfg = ai.resolve_provider(provider_id)
+    if cfg and cfg["provider"] == "ollama":   # native client: thinking off, valid-JSON decoding, streamed into the live view
+        from . import ollama
+        batch = _Batcher(step, lane, label)
+        live.push(step, "reset", "", lane, label)
+        try:
+            return ollama.chat(cfg, messages, max_tokens, timeout, json_mode, on_delta=batch.add)
+        finally:
+            batch.flush()
     if cfg and cfg["provider"] not in ("anthropic", "gemini"):
         base_url = cfg.get("base_url") or ai.OPENAI_COMPATIBLE_DEFAULTS.get(cfg["provider"])
         if base_url:
             return _stream_openai(base_url, cfg, messages, max_tokens, timeout, step, lane, label)
-    text = ai.chat(messages, provider_id=provider_id, max_tokens=max_tokens, timeout=timeout)
+    text = ai.chat(messages, provider_id=provider_id, max_tokens=max_tokens, timeout=timeout, json_mode=json_mode)
     live.push(step, "answer", text, lane, label)
     return text

@@ -77,7 +77,7 @@ export function AddProviderDialog({ open, catalog, connected, isFirst, onClose, 
             </div>
             <ErrorBanner message={error} onDismiss={() => setError(null)} />
             {entry.id !== 'ollama' && <TextInput label="API key" type="password" value={apiKey} onChange={setApiKey} />}
-            <TextInput label={entry.id === 'ollama' ? 'Ollama URL (default http://localhost:11434/v1)' : 'Custom base URL (optional)'}
+            <TextInput label={entry.id === 'ollama' ? 'Ollama URL (same machine: http://localhost:11434/v1 · Docker: http://<service-name>:11434/v1)' : 'Custom base URL (optional)'}
               value={baseUrl} onChange={setBaseUrl} />
             <p className="text-xs text-muted-foreground">The key is stored on this server only and is never shown again.</p>
             <div className="flex justify-between">

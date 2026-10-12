@@ -40,6 +40,7 @@ PLAN = {
     ],
 }
 real_ask_json = dash_plan.ask_json
+real_gen_chat = ai_svc.chat
 seen_prompts = {}
 
 
@@ -61,7 +62,7 @@ dash_plan.ask_json = fake_ask_json
 dash_gen.ask_json = fake_ask_json
 from app.services import dash_pages
 dash_pages.ask_json = fake_ask_json
-ai_svc.chat = lambda messages, provider_id=None, max_tokens=0, timeout=0: "- **Top region:** N leads."
+ai_svc.chat = lambda messages, provider_id=None, max_tokens=0, timeout=0, **kw: "- **Top region:** N leads."
 
 # phase 1: statistics + top rows reach the model, the user gets facts + questions
 ev1 = list(dash_plan.understand(ds["id"], "executive", "", None))
@@ -133,7 +134,7 @@ _time.sleep = lambda *_: None
 script = []
 
 
-def scripted_chat(messages, provider_id=None, max_tokens=0, timeout=0):
+def scripted_chat(messages, provider_id=None, max_tokens=0, timeout=0, **kw):
     step = script.pop(0)
     scripted_chat.tokens.append(max_tokens)
     if isinstance(step, Exception):
@@ -465,5 +466,129 @@ assert got[0] == {"type": "think", "n": 2, "kind": "reset", "text": "", "lane": 
 assert "".join(e["text"] for e in got if e["kind"] == "reasoning") == "Let me think. Revenue matters."
 assert "".join(e["text"] for e in got if e["kind"] == "answer") == text
 srv.shutdown()
+
+# self-hosted Ollama: the app talks to its native API with thinking OFF, valid-JSON decoding, a sized context window, and streams to the live view
+from app.services import ollama as _ollama
+
+seen = []
+
+
+class _Ollama(BaseHTTPRequestHandler):
+    def log_message(self, *a):
+        pass
+
+    def do_POST(self):
+        n = int(self.headers.get("Content-Length", 0))
+        body = _json.loads(self.rfile.read(n))
+        seen.append((self.path, body))
+        if body.get("think") is False and _Ollama.reject_think:
+            self.send_response(400)
+            self.end_headers()
+            self.wfile.write(b'{"error":"registry.ollama.ai/library/old does not support thinking"}')
+            return
+        self.send_response(200)
+        self.send_header("Content-Type", "application/x-ndjson")
+        self.end_headers()
+        lines = [{"message": {"role": "assistant", "thinking": "hmm "}}, {"message": {"role": "assistant", "content": '{"understanding": '}},
+                 {"message": {"role": "assistant", "content": '"from ollama"}'}},
+                 {"done": True, "done_reason": "stop", "eval_count": 40, "eval_duration": 4_000_000_000, "prompt_eval_count": 300, "prompt_eval_duration": 3_000_000_000, "load_duration": 1_000_000_000}]
+        for ln in lines:
+            self.wfile.write((_json.dumps(ln) + "\n").encode())
+
+
+_Ollama.reject_think = False
+osrv = HTTPServer(("127.0.0.1", 0), _Ollama)
+threading.Thread(target=osrv.serve_forever, daemon=True).start()
+op = store.insert("ai_providers", {"label": "self-hosted", "provider": "ollama", "model": "qwen3.5:9b", "api_key": "", "base_url": f"http://127.0.0.1:{osrv.server_port}/v1", "is_default": False})
+
+# a JSON call (what ask_json makes): native /api/chat, think off, format json, context + keep-alive set, live events streamed
+ai_svc.chat = lambda *a, **k: (_ for _ in ()).throw(AssertionError("an Ollama provider must use the native client"))
+got2 = []
+live.sink.set(got2.append)
+txt = ai_stream.chat_live([{"role": "user", "content": "x"}], provider_id=op["id"], max_tokens=777, timeout=30, step=2, json_mode=True)
+live.sink.set(None)
+path, req = seen[-1]
+assert path == "/api/chat" and req["model"] == "qwen3.5:9b" and req["stream"] is True and req["think"] is False and req["format"] == "json", req
+assert req["options"]["num_ctx"] == 8192 and req["options"]["num_predict"] == 777 and req["keep_alive"] == "30m", req["options"]
+assert txt == '{"understanding": "from ollama"}', txt
+assert [e["kind"] for e in got2 if e["kind"] != "reset"][0] == "reasoning" and "".join(e["text"] for e in got2 if e["kind"] == "answer") == txt
+st = _ollama.STATS["qwen3.5:9b"]
+assert st["tokens"] == 40 and abs(st["gen_s"] - 4.0) < 1e-6 and st["prompt_tokens"] == 300 and abs(st["load_s"] - 1.0) < 1e-6   # 10 tokens/s, measured not guessed
+
+# a plain (non-JSON) call has no format constraint; the stored URL may end in /v1 or not
+seen.clear()
+ai_svc.chat = real_chat_for_ollama = real_gen_chat   # the real chat() routes to the native client
+assert ai_svc.chat([{"role": "user", "content": "x"}], provider_id=op["id"], max_tokens=50) == txt
+assert "format" not in seen[-1][1] and _ollama.root("http://ollama:11434/v1/") == "http://ollama:11434" and _ollama.root("http://ollama:11434") == "http://ollama:11434"
+
+# an Ollama that does not know "think" is asked again without it
+_Ollama.reject_think = True
+seen.clear()
+assert ai_svc.chat([{"role": "user", "content": "x"}], provider_id=op["id"]) == txt
+assert len(seen) == 2 and seen[0][1].get("think") is False and "think" not in seen[1][1], [b.get("think", "absent") for _, b in seen]
+_Ollama.reject_think = False
+
+# an unreachable server says what to check instead of a stack trace
+dead = store.insert("ai_providers", {"label": "dead", "provider": "ollama", "model": "m", "api_key": "", "base_url": "http://127.0.0.1:9/v1", "is_default": False})
+try:
+    ai_svc.chat([{"role": "user", "content": "x"}], provider_id=dead["id"])
+    raise SystemExit("expected AIError")
+except ai_svc.AIError as e:
+    assert "Cannot reach Ollama" in str(e) and "Dokploy" in str(e), str(e)
+
+# local models wait longer and run fewer calls at once
+assert ai_svc.is_local(op["id"]) and not ai_svc.is_local(None) and ai_svc.request_timeout(op["id"], 180) == 900 and ai_svc.request_timeout(None, 180) == 180
+osrv.shutdown()
+
+# the administrator's own model (OLLAMA_URL/OLLAMA_MODEL) is used when nobody has chosen another, and listed first
+from app.core.config import settings as _cfg
+from app.services.ai_urls import check_provider_url
+
+assert ai_svc.server_provider() is None                                           # not configured: nothing changes
+_cfg.ollama_url, _cfg.ollama_model = "http://ollama:11434/v1", "qwen3.5:9b"
+sp = ai_svc.server_provider()
+assert sp["provider"] == "ollama" and sp["model"] == "qwen3.5:9b" and sp["id"] == "server" and sp["managed"] is True
+assert ai_svc.resolve_provider("server")["model"] == "qwen3.5:9b"
+store.execute("UPDATE ai_providers SET is_default = FALSE")                        # nobody chose a default model
+assert ai_svc.resolve_provider()["id"] == "server"
+store.update("ai_providers", op["id"], {"is_default": True})                       # a personal default wins over the server's
+assert ai_svc.resolve_provider()["model"] == "qwen3.5:9b" and ai_svc.resolve_provider()["id"] == op["id"]
+store.update("ai_providers", op["id"], {"is_default": False})
+from app.routers.ai_providers import list_providers
+listed = list_providers()
+assert listed[0]["id"] == "server" and listed[0]["is_default"] is True and all(r["id"] != "server" for r in listed[1:])
+_cfg.ollama_url, _cfg.ollama_model = "", ""
+
+# hosted mode: a user-added provider address must be public, except hosts the administrator allows
+DEFAULTS = ai_svc.OPENAI_COMPATIBLE_DEFAULTS
+check_provider_url("openai", "http://10.0.0.5:11434/v1", DEFAULTS)                # local mode: no restriction
+_cfg.auth_enabled = True
+for bad in ("http://10.0.0.5:11434/v1", "http://127.0.0.1:8000/v1", "http://169.254.169.254/latest"):   # internal / loopback / cloud metadata
+    try:
+        check_provider_url("openai", bad, DEFAULTS)
+        raise SystemExit(f"expected {bad} to be refused")
+    except ValueError as e:
+        assert "not allowed" in str(e), str(e)
+check_provider_url("openai", None, DEFAULTS)                                       # built-in addresses are not checked
+check_provider_url("openai", DEFAULTS["openai"], DEFAULTS)
+check_provider_url("anthropic", "http://10.0.0.5", DEFAULTS)                       # fixed-endpoint providers ignore base_url
+_cfg.allowed_ai_hosts = "ollama, My-Ollama"
+check_provider_url("ollama", "http://ollama:11434/v1", DEFAULTS)                   # the administrator's own service is allowed
+check_provider_url("ollama", "http://my-ollama:11434", DEFAULTS)
+try:
+    check_provider_url("ollama", "http://postgres:5432/v1", DEFAULTS)              # an allow-list entry does not open other private hosts
+    raise SystemExit("expected refusal")
+except ValueError as e:
+    assert "ollama" in str(e)
+# a provider row saved earlier with a forbidden address cannot be used for chat
+bad_row = store.insert("ai_providers", {"label": "sneaky", "provider": "openai", "model": "m", "api_key": "x", "base_url": "http://10.0.0.5:9/v1", "is_default": False})
+_cfg.allowed_ai_hosts = ""
+try:
+    ai_svc.chat([{"role": "user", "content": "x"}], provider_id=bad_row["id"])
+    raise SystemExit("expected AIError")
+except ai_svc.AIError as e:
+    assert "not allowed" in str(e), str(e)
+_cfg.auth_enabled = False
+
 
 print("dash_gen tests OK")

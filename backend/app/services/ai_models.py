@@ -99,6 +99,7 @@ PROVIDER_CATALOG = [
      "models": ["llama-3.3-70b-versatile"], "note": "Free tier, very fast"},
     {"id": "openrouter", "label": "OpenRouter", "free": True,
      "models": ["openrouter/free"], "note": "Free models with :free suffix"},
-    {"id": "ollama", "label": "Ollama (local)", "free": True,
-     "models": ["llama3.1", "qwen2.5"], "note": "No key needed, runs locally"},
+    {"id": "ollama", "label": "Ollama (self-hosted)", "free": True,
+     "models": ["qwen3.5:9b", "qwen3.5:4b", "gemma4:e4b"],
+     "note": "No key needed. Same machine: http://localhost:11434/v1. In Docker/Dokploy use the Ollama service name, e.g. http://ollama:11434/v1"},
 ]
