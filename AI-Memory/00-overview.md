@@ -35,10 +35,10 @@ API docs: http://127.0.0.1:8000/docs (or your uvicorn port)/docs · UI: http://l
 - AI output that contains SQL is always validated (`validate_readonly`) and never auto-executed by the SQL-assistant endpoint.
 - Explanations/confidence/"why" are deterministic (rule-based), not LLM-generated — keeps answers auditable.
 
-## Git workflow + release gate (standing instruction from the user, 2026-10-08)
-- Work ONLY on `Dashtor_First` (the staging/working branch). After each task: run `python Scripts/verify.py --quick` (full: without --quick), commit, push to `origin Dashtor_First` without asking. Pushing it NEVER changes the server: Dokploy follows the separate `production` branch.
-- The user verifies on their PC (localhost) first by running `Main.py` and `npm run dev` themselves (see Run; localhost behaves like the server), and `verify.bat` / `python Scripts/verify.py` (all tests + production build). The assistant runs in a cloud container and cannot touch the user's PC; only a session started on their PC can.
-- NOTHING reaches the server until the user says "deploy". Then: run the full verify, and only if green fast-forward `production` to `Dashtor_First` (`git push origin Dashtor_First:production`); the user presses Deploy in Dokploy (backend first). Never push `production` on our own, never open a PR unless asked, never commit keys/secrets (`.env`, `backend/OrcaleFiles/`).
+## Git workflow + release (standing instruction from the user, updated 2026-10-13)
+- Work ONLY on `Dashtor_First`. After each task: run `python Scripts/verify.py` (with `DISK_USAGE_LIMIT_PCT=95` on this PC) and only if green commit + push to `origin Dashtor_First` WITHOUT asking.
+- The user wants every push to deploy automatically: Dokploy auto-deploy should track `Dashtor_First` (the user switches the branch in Dokploy). Pushing `production` from the assistant is blocked by Claude Code's safety classifier, so do not rely on it.
+- Never commit keys/secrets (`.env`, `backend/OrcaleFiles/`), never open a PR unless asked. A red verify = do not push; fix first.
 
 ## Code structure & reuse rules (standing instruction from the user — follow them)
 Goal: **do more with less code.** Reuse before writing; keep files small and focused.
