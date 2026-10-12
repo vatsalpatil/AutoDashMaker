@@ -15,7 +15,7 @@ from typing import Any
 
 import duckdb
 
-from . import tenant
+from . import duck, tenant
 from .config import settings
 
 from .schema import MIGRATIONS, SCHEMA
@@ -38,7 +38,7 @@ class Store:
     def _conn(self) -> duckdb.DuckDBPyConnection:
         # opening the file for every read/write cost ~50 ms each; a cursor of the open instance costs microseconds
         if self._base is None:
-            self._base = duckdb.connect(self._path)
+            self._base = duck.connect(self._path)
         return self._base.cursor()
 
     def _init(self) -> None:

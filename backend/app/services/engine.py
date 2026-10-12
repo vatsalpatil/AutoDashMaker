@@ -11,7 +11,7 @@ from typing import Any, Iterator
 
 import duckdb
 
-from ..core import tenant
+from ..core import duck, tenant
 from ..core.config import settings
 from ..core.security import UnsafeQueryError, quote_ident, validate_readonly
 
@@ -60,7 +60,7 @@ class QueryEngine:
     def _shared(self) -> duckdb.DuckDBPyConnection:
         with self._base_lock:
             if self._base is None:
-                self._base = duckdb.connect(self._path, config=self._config())
+                self._base = duck.connect(self._path, config=self._config())
             return self._base
 
     def close(self) -> None:
