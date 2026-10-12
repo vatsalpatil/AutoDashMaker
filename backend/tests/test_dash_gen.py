@@ -263,6 +263,61 @@ assert out["applied"] == ['moved "Table"'] and pos_of("Table")["y"] == 0 and pos
 # and the prompt shows the model every widget's row, so it can pick a sensible place
 assert "row=" in holder["prompt"] and "place" in _da.EDIT_SYSTEM and "after_kpis" in _da.EDIT_SYSTEM
 
+# "all the KPIs in a single row, 4 columns": the arrange op resizes + lines them up; resize changes one widget; the model sees col/size
+kp = store.insert("dashboards", {"name": "stacked kpis", "pages": [{"id": "overview", "name": "Overview"}]})
+stack = [mk(kp, f"KPI {i}", "kpi", {"x": 0, "y": 2 * i, "w": 12, "h": 2}) for i in range(4)]    # four full-width KPIs, one under the other
+tbl2 = mk(kp, "Detail Table", "table", {"x": 0, "y": 8, "w": 12, "h": 7})
+
+
+def pos2(title):
+    for r in store.list("dashboard_widgets", where="dashboard_id = ?", params=[kp["id"]], order=None):
+        if r.get("chart_id") and store.get("charts", r["chart_id"])["name"] == title:
+            return r["position"]
+
+
+holder["ops"] = [{"op": "arrange", "columns": 4}]                                       # no ids: every KPI of the page being viewed
+out = _da.edit_dashboard(kp["id"], "i want all the kpis in single row 4 column view", None, None, "overview")
+assert "size=12x2" in holder["prompt"] and "col=0" in holder["prompt"], holder["prompt"][-900:]   # the model can SEE the widths now
+assert out["applied"] == ["arranged 4 widgets in rows of 4"], out
+assert [pos2(f"KPI {i}") for i in range(4)] == [{"x": 3 * i, "y": 0, "w": 3, "h": 2} for i in range(4)], [pos2(f"KPI {i}") for i in range(4)]
+assert pos2("Detail Table")["y"] >= 2                                                    # nothing overlaps the new row
+
+holder["ops"] = [{"op": "arrange", "columns": 3}]                                       # 4 KPIs in rows of 3: a second row
+_da.edit_dashboard(kp["id"], "three per row", None, None, "overview")
+assert [pos2(f"KPI {i}")["w"] for i in range(4)] == [4, 4, 4, 4] and pos2("KPI 3") == {"x": 0, "y": 2, "w": 4, "h": 2}
+assert pos2("Detail Table")["y"] >= 4
+
+holder["ops"] = [{"op": "arrange", "ids": [stack[0]["id"], stack[1]["id"]], "columns": 2}]   # only the named widgets
+_da.edit_dashboard(kp["id"], "put the first two side by side", None, None, "overview")
+assert pos2("KPI 0")["w"] == 6 and pos2("KPI 1")["x"] == 6 and pos2("KPI 2")["w"] == 4          # the others keep their layout
+
+holder["ops"] = [{"op": "resize", "id": tbl2["id"], "w": 8, "h": 3}]
+out = _da.edit_dashboard(kp["id"], "make the table smaller", None, None, "overview")
+assert pos2("Detail Table")["w"] == 8 and pos2("Detail Table")["h"] == 3 and out["applied"] == ['resized "Detail Table" to 8x3']
+store.update("dashboard_widgets", tbl2["id"], {"position": {"x": 8, "y": 20, "w": 4, "h": 3}})
+holder["ops"] = [{"op": "resize", "id": tbl2["id"], "w": 8}]
+_da.edit_dashboard(kp["id"], "wider", None, None, "overview")
+assert pos2("Detail Table")["x"] == 4 and pos2("Detail Table")["w"] == 8                     # stays inside the 12 columns
+
+# provider errors read as sentences, and a daily quota is never retried
+from app.services.ai_errors import friendly, is_daily_limit
+
+daily = '429: {"error":{"message":"Rate limit exceeded: free-models-per-day. Add 10 credits to unlock 1000 free model requests per day","code":429}}'
+assert is_daily_limit(daily) and "daily limit" in friendly(daily) and "midnight UTC" in friendly(daily) and "{" not in friendly(daily)
+assert "rate-limiting" in friendly("429: provider returned error rate-limited upstream")
+assert "rejected the API key" in friendly("401: no auth credentials found") and "out of credits" in friendly("402: insufficient credits")
+assert friendly("something else broke") == "something else broke"
+sleeps = []
+_t_sleep = _time.sleep
+_time.sleep = lambda s: sleeps.append(s)
+ai_svc.chat = lambda *a, **k: (_ for _ in ()).throw(ai_svc.AIError(daily))
+try:
+    real_ask_json("s", "u", None, "understanding")
+    raise SystemExit("expected AIError")
+except ai_svc.AIError as e:
+    assert "daily limit" in str(e), str(e)
+assert sleeps == [], f"a daily quota must not be retried (slept {sleeps})"
+
 _da._ask = _real_ask
 
 # self-healing: widgets orphaned on a page the dashboard does not have (the old Edit-with-AI bug) come back on the first page, same position

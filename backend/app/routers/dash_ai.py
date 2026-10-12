@@ -10,6 +10,7 @@ from pydantic import BaseModel
 
 from ..core.security import UnsafeQueryError
 from ..services import ai as ai_svc, audit, dash_ai, dash_gen, dash_plan, live
+from ..services.ai_errors import friendly
 from ..services.dash_templates import template_list
 
 PING_SECONDS = 8
@@ -37,7 +38,7 @@ def ai_create(body: CreateIn):
     try:
         out = dash_ai.create_dashboard(body.prompt.strip(), body.dataset_id, body.provider_id)
     except ai_svc.AIError as e:
-        return {"status": "no_provider" if "No AI provider" in str(e) else "failed", "detail": str(e)}
+        return {"status": "no_provider" if "No AI provider" in str(e) else "failed", "detail": friendly(e)}
     except UnsafeQueryError as e:
         audit.record("dashboard.ai", detail=f"blocked: {e}", status="blocked")
         raise HTTPException(400, f"AI produced unsafe SQL: {e}")
@@ -56,7 +57,7 @@ def ai_edit(dashboard_id: str, body: EditIn):
     except LookupError as e:
         raise HTTPException(404, str(e))
     except ai_svc.AIError as e:
-        return {"status": "no_provider" if "No AI provider" in str(e) else "failed", "detail": str(e)}
+        return {"status": "no_provider" if "No AI provider" in str(e) else "failed", "detail": friendly(e)}
     except Exception as e:
         raise HTTPException(502, f"AI call failed: {str(e)[:300]}")
     audit.record("dashboard.ai", entity_type="dashboard", entity_id=dashboard_id, detail=f"edit: {body.instruction[:200]} -> {out['applied']}")
@@ -84,7 +85,7 @@ def generate(body: GenerateIn):
     except LookupError as e:
         raise HTTPException(404, str(e))
     except ai_svc.AIError as e:
-        return {"status": "no_provider" if "No AI provider" in str(e) else "failed", "detail": str(e)}
+        return {"status": "no_provider" if "No AI provider" in str(e) else "failed", "detail": friendly(e)}
     except UnsafeQueryError as e:
         raise HTTPException(400, f"AI produced unsafe SQL: {e}")
     except Exception as e:
@@ -111,7 +112,7 @@ def _sse(events, on_done=None):
                 q.put(ev)
         except Exception as e:
             kind = "no_provider" if "No AI provider" in str(e) else "error"
-            q.put({"type": "error", "kind": kind, "message": str(e)[:400]})
+            q.put({"type": "error", "kind": kind, "message": friendly(e)[:400]})
         q.put(None)
 
     threading.Thread(target=lambda: ctx.run(work), daemon=True).start()

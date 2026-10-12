@@ -13,6 +13,7 @@ from typing import Any, Iterator
 import httpx
 
 from . import ai as ai_svc, ai_stream
+from .ai_errors import friendly, is_daily_limit
 from .dash_ai import CHART_TYPES, json_objects, widgets_of
 from .dash_profile import profile
 from .dash_templates import DATA_BASICS, FORMULAS, NAMING_RULES, SQL_RULES, TEMPLATES
@@ -65,7 +66,7 @@ def ask_json(system: str, user: str, provider_id: str | None, key: str, step: in
             raise ai_svc.AIError("The AI model took too long to answer. Try again, or pick a faster model in Settings.") from None
         except ai_svc.AIError as e:
             msg = str(e)
-            if ("429" in msg or "rate" in msg.lower()) and waits:
+            if ("429" in msg or "rate" in msg.lower()) and waits and not is_daily_limit(msg):   # a daily quota will not clear in 20 seconds
                 time.sleep(waits.pop(0))
                 continue
             if "empty content" in msg and tokens < 16000:
@@ -74,9 +75,8 @@ def ask_json(system: str, user: str, provider_id: str | None, key: str, step: in
             if "empty content" in msg:
                 raise ai_svc.AIError("This model spent its whole answer budget thinking and returned nothing. Pick a different model in Settings "
                                      "(a non-reasoning or smaller reasoning model works best for dashboards).") from None
-            if "429" in msg or "rate-limit" in msg.lower():
-                raise ai_svc.AIError("The AI provider is rate-limiting requests right now (free models have per-minute and daily limits). "
-                                     "Wait a minute and try again, or pick another model in Settings.") from None
+            if "429" in msg or "rate-limit" in msg.lower() or is_daily_limit(msg):
+                raise ai_svc.AIError(friendly(msg)) from None
             raise
         found = [o for o in json_objects(text) if key in o]
         if found:

@@ -16,7 +16,7 @@ from ..core.store import store
 from . import ai as ai_svc, assist as assist_svc
 from .ai_context import semantic_context, workbench_context
 from .chart_suggest import encode, suggest_chart
-from .dash_place import anchor_y, make_room
+from .dash_place import anchor_y, grid_positions, make_room
 from .engine import engine
 
 CHART_TYPES = ["kpi", "bar", "line", "area", "pie", "scatter", "table", "pivot", "funnel", "treemap", "radar", "composed"]
@@ -37,11 +37,13 @@ CREATE_SYSTEM = (
 EDIT_SYSTEM = (
     "You edit an existing dashboard. You are given its widgets and the user's instruction. Reply with ONLY one JSON "
     'object, no prose: {"message": a short sentence saying what you changed, "ops": [ ... ]} where each op is one of '
-    f'{{"op":"add","widget":{_WIDGET_FORMAT} plus optional "page": a page id and optional "place"}}, {{"op":"move","id":widget id,"place":...}}, {{"op":"remove","id":widget id}}, '
+    f'{{"op":"add","widget":{_WIDGET_FORMAT} plus optional "page": a page id and optional "place"}}, {{"op":"move","id":widget id,"place":...}}, {{"op":"arrange","ids"?:[widget ids, default all KPIs of the page],"columns":1-6}}, {{"op":"resize","id":widget id,"w":1-12,"h":1-12}}, {{"op":"remove","id":widget id}}, '
     '{"op":"update","id":widget id,"title"?:string,"type"?:chart type,"sql"?:string}. '
     "Only include ops the instruction needs; if it needs none, reply with an empty ops list and explain in message. "
     "\"place\" says where on the page: \"bottom\" (default), \"top\", \"after_kpis\" (right below the KPI row), or {\"after\": widget id}; use it whenever the user says where "
     "(\"after the KPIs\", \"at the top\", \"below the trend chart\"), and use the \"move\" op to move a chart that already exists. "
+    "Widgets sit on a 12-column grid (size = columns x rows): use \"arrange\" for \"all KPIs in one row of 4 columns\" (it sets each width to 12/columns and lines them up) and "
+    "\"resize\" for \"make it wider / taller\"; read the current col/size of every widget before deciding what to change. "
     "If the user says a chart or KPI is missing or not visible, ADD it (do not change a different widget). Use the earlier conversation to "
     "resolve words like 'it' or 'that chart'. New widgets go on the page the user is viewing unless they name another page. "
     + _SQL_RULES)
@@ -202,7 +204,7 @@ def _describe(dash_id: str) -> tuple[str, dict[str, dict]]:
         if not ch:
             continue
         index[w["id"]] = {"widget": w, "chart": ch, "sql": (q or {}).get("sql", "")}
-        lines.append(f'- id={w["id"]} page={w.get("page") or "main"} row={(w.get("position") or {}).get("y", 0)} type={ch["spec"]["type"]} title="{ch["name"]}" sql: {(q or {}).get("sql", "")[:300]}')
+        lines.append(f'- id={w["id"]} page={w.get("page") or "main"} row={(w.get("position") or {}).get("y", 0)} col={(w.get("position") or {}).get("x", 0)} size={(w.get("position") or {}).get("w", 6)}x{(w.get("position") or {}).get("h", 4)} type={ch["spec"]["type"]} title="{ch["name"]}" sql: {(q or {}).get("sql", "")[:300]}')
     return "\n".join(lines) or "(no widgets yet)", index
 
 
@@ -257,6 +259,37 @@ def edit_dashboard(dash_id: str, instruction: str, provider_id: str | None, hist
                 store.update("dashboard_widgets", wid, {"position": pos})
                 touched = where
                 applied.append(f'moved "{cur["chart"]["name"]}"')
+            elif kind == "arrange":
+                ids = [str(i) for i in op.get("ids", []) if str(i) in index] if isinstance(op.get("ids"), list) else []
+                if not ids:   # default: every KPI of the page being viewed
+                    ids = [i for i, e in index.items() if (e["widget"].get("page") or "main") == viewing and e["chart"].get("spec", {}).get("type") == "kpi"]
+                if not ids:
+                    skipped.append({"title": "arrange", "reason": "no widgets to arrange"})
+                    continue
+                where = index[ids[0]]["widget"].get("page") or "main"
+                ids.sort(key=lambda i: ((index[i]["widget"].get("position") or {}).get("y", 0), (index[i]["widget"].get("position") or {}).get("x", 0)))
+                cols = min(max(int(op.get("columns") or 4), 1), 6)
+                base = min((index[i]["widget"].get("position") or {}).get("y", 0) for i in ids)
+                cells = grid_positions(len(ids), cols, base)
+                block_h = max(c["y"] + c["h"] for c in cells) - base
+                for other, new_y in make_room(index, where, base, block_h, exclude=set(ids)):   # anything in the way moves below the block
+                    index[other]["widget"]["position"] = {**index[other]["widget"]["position"], "y": new_y}
+                    store.update("dashboard_widgets", other, {"position": index[other]["widget"]["position"]})
+                for wid2, cell in zip(ids, cells):
+                    index[wid2]["widget"]["position"] = cell
+                    store.update("dashboard_widgets", wid2, {"position": cell})
+                touched = where
+                applied.append(f"arranged {len(ids)} widgets in rows of {cols}")
+            elif kind == "resize" and wid in index:
+                cur = index[wid]
+                pos = dict(cur["widget"].get("position") or {"x": 0, "y": 0, "w": 6, "h": 4})
+                pos["w"] = min(max(int(op.get("w") or pos["w"]), 1), 12)
+                pos["h"] = min(max(int(op.get("h") or pos["h"]), 1), 12)
+                pos["x"] = min(pos["x"], 12 - pos["w"])
+                cur["widget"]["position"] = pos
+                store.update("dashboard_widgets", wid, {"position": pos})
+                touched = cur["widget"].get("page") or touched
+                applied.append(f'resized "{cur["chart"]["name"]}" to {pos["w"]}x{pos["h"]}')
             elif kind == "update" and wid in index:
                 cur = index[wid]
                 where = cur["widget"].get("page") or "main"
