@@ -17,8 +17,11 @@ export function timeAgo(iso: string | null | undefined): string {
   return `${Math.floor(s / 86400)} d ago`;
 }
 
+/** '2023-10-01T00:00:00' -> '2023-10-01' (a database date that arrives as a midnight timestamp); anything else is returned unchanged. */
+export const plainDate = (s: string): string => s.replace(/^(\d{4}-\d{2}-\d{2})T00:00:00(?:\.0+)?$/, '$1');
+
 export function fmt(n: unknown): string {
   if (n === null || n === undefined) return '—';
   if (typeof n === 'number') return n.toLocaleString();
-  return String(n);
+  return plainDate(String(n));
 }

@@ -217,6 +217,52 @@ legacy = store.insert("dashboards", {"name": "legacy"})
 holder["ops"] = [{"op": "add", "widget": {"title": "Legacy KPI", "type": "kpi", "sql": "SELECT COUNT(*) AS n FROM sales"}}]
 out = _da.edit_dashboard(legacy["id"], "add a kpi", None, None, None)
 assert out["page"] == "main" and store.list("dashboard_widgets", where="dashboard_id = ?", params=[legacy["id"]], order=None)[0]["page"] == "main"
+# placement: "after the KPIs" fills the blank gap when the chart fits, otherwise pushes the rest down; charts can be moved
+from app.services.dash_place import anchor_y, make_room
+
+
+def mk(dash, title, ctype, pos, page="overview"):
+    q = store.insert("queries", {"name": title, "sql": "SELECT COUNT(*) AS n FROM sales", "status": "ok"})
+    c = store.insert("charts", {"query_id": q["id"], "name": title, "spec": {"type": ctype, "encoding": {"x": "n", "y": "n"}, "options": {}}})
+    return store.insert("dashboard_widgets", {"dashboard_id": dash["id"], "chart_id": c["id"], "position": pos, "page": page})
+
+
+lay = store.insert("dashboards", {"name": "layout", "pages": [{"id": "overview", "name": "Overview"}]})
+ks = [mk(lay, f"K{i}", "kpi", {"x": 4 * i, "y": 0, "w": 4, "h": 2}) for i in range(3)]
+tbl = mk(lay, "Table", "table", {"x": 0, "y": 6, "w": 12, "h": 7})     # rows 2-5 are a blank gap, like the user's dashboard
+
+
+def pos_of(title):
+    for r in store.list("dashboard_widgets", where="dashboard_id = ?", params=[lay["id"]], order=None):
+        if r.get("chart_id") and store.get("charts", r["chart_id"])["name"] == title:
+            return r["position"]
+
+
+# pure helpers
+_, idx = _da._describe(lay["id"])
+assert anchor_y(idx, "overview", "after_kpis") == 2 and anchor_y(idx, "overview", "top") == 0 and anchor_y(idx, "overview", None) == 13
+assert anchor_y(idx, "overview", {"after": tbl["id"]}) == 13 and anchor_y(idx, "overview", {"after": "nope"}) == 13
+assert make_room(idx, "overview", 2, 4) == []                                  # the 4-row gap holds a 4-row chart: nothing moves
+assert make_room(idx, "overview", 2, 5) == [(tbl["id"], 7)]                    # one row short: the table moves down by 1
+
+# "after the KPIs": the chart fills the blank gap exactly and nothing else moves
+holder["ops"] = [{"op": "add", "widget": {"title": "Monthly Revenue Trend", "type": "line", "page": "overview", "place": "after_kpis", "sql": TREND_SQL}}]
+out = _da.edit_dashboard(lay["id"], "after the kpis i want the Monthly Revenue Trend chart", None, None, "overview")
+assert pos_of("Monthly Revenue Trend")["y"] == 2 and pos_of("Table")["y"] == 6, (pos_of("Monthly Revenue Trend"), pos_of("Table"))
+
+# a second chart "after the KPIs": no gap is left, so it takes that spot and the widgets below move down by its height
+holder["ops"] = [{"op": "add", "widget": {"title": "Orders Trend", "type": "line", "page": "overview", "place": "after_kpis", "sql": TREND_SQL}}]
+_da.edit_dashboard(lay["id"], "add orders trend after the kpis", None, None, "overview")
+assert pos_of("Orders Trend")["y"] == 2 and pos_of("Monthly Revenue Trend")["y"] == 6 and pos_of("Table")["y"] == 10, [pos_of(t) for t in ("Orders Trend", "Monthly Revenue Trend", "Table")]
+assert all(pos_of(f"K{i}")["y"] == 0 for i in range(3))                          # the KPI row stays where it is
+
+# moving an existing chart: the table goes to the top, everything else makes room
+holder["ops"] = [{"op": "move", "id": tbl["id"], "place": "top"}]
+out = _da.edit_dashboard(lay["id"], "move the table to the top", None, None, "overview")
+assert out["applied"] == ['moved "Table"'] and pos_of("Table")["y"] == 0 and pos_of("K0")["y"] >= 7 and pos_of("Orders Trend")["y"] > pos_of("K0")["y"], (out, pos_of("Table"), pos_of("K0"))
+# and the prompt shows the model every widget's row, so it can pick a sensible place
+assert "row=" in holder["prompt"] and "place" in _da.EDIT_SYSTEM and "after_kpis" in _da.EDIT_SYSTEM
+
 _da._ask = _real_ask
 
 # self-healing: widgets orphaned on a page the dashboard does not have (the old Edit-with-AI bug) come back on the first page, same position

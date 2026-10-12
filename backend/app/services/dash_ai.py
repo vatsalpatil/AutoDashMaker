@@ -16,6 +16,7 @@ from ..core.store import store
 from . import ai as ai_svc, assist as assist_svc
 from .ai_context import semantic_context, workbench_context
 from .chart_suggest import encode, suggest_chart
+from .dash_place import anchor_y, make_room
 from .engine import engine
 
 CHART_TYPES = ["kpi", "bar", "line", "area", "pie", "scatter", "table", "pivot", "funnel", "treemap", "radar", "composed"]
@@ -36,9 +37,11 @@ CREATE_SYSTEM = (
 EDIT_SYSTEM = (
     "You edit an existing dashboard. You are given its widgets and the user's instruction. Reply with ONLY one JSON "
     'object, no prose: {"message": a short sentence saying what you changed, "ops": [ ... ]} where each op is one of '
-    f'{{"op":"add","widget":{_WIDGET_FORMAT} plus optional "page": a page id}}, {{"op":"remove","id":widget id}}, '
+    f'{{"op":"add","widget":{_WIDGET_FORMAT} plus optional "page": a page id and optional "place"}}, {{"op":"move","id":widget id,"place":...}}, {{"op":"remove","id":widget id}}, '
     '{"op":"update","id":widget id,"title"?:string,"type"?:chart type,"sql"?:string}. '
     "Only include ops the instruction needs; if it needs none, reply with an empty ops list and explain in message. "
+    "\"place\" says where on the page: \"bottom\" (default), \"top\", \"after_kpis\" (right below the KPI row), or {\"after\": widget id}; use it whenever the user says where "
+    "(\"after the KPIs\", \"at the top\", \"below the trend chart\"), and use the \"move\" op to move a chart that already exists. "
     "If the user says a chart or KPI is missing or not visible, ADD it (do not change a different widget). Use the earlier conversation to "
     "resolve words like 'it' or 'that chart'. New widgets go on the page the user is viewing unless they name another page. "
     + _SQL_RULES)
@@ -199,14 +202,8 @@ def _describe(dash_id: str) -> tuple[str, dict[str, dict]]:
         if not ch:
             continue
         index[w["id"]] = {"widget": w, "chart": ch, "sql": (q or {}).get("sql", "")}
-        lines.append(f'- id={w["id"]} page={w.get("page") or "main"} type={ch["spec"]["type"]} title="{ch["name"]}" sql: {(q or {}).get("sql", "")[:300]}')
+        lines.append(f'- id={w["id"]} page={w.get("page") or "main"} row={(w.get("position") or {}).get("y", 0)} type={ch["spec"]["type"]} title="{ch["name"]}" sql: {(q or {}).get("sql", "")[:300]}')
     return "\n".join(lines) or "(no widgets yet)", index
-
-
-def _bottom(index: dict[str, dict], page: str) -> int:
-    """First free row below the widgets of one page."""
-    return max([(w["widget"].get("position") or {}).get("y", 0) + (w["widget"].get("position") or {}).get("h", 0)
-                for w in index.values() if (w["widget"].get("page") or "main") == page] or [0])
 
 
 def edit_dashboard(dash_id: str, instruction: str, provider_id: str | None, history: list[dict] | None = None, page: str | None = None) -> dict[str, Any]:
@@ -226,7 +223,16 @@ def edit_dashboard(dash_id: str, instruction: str, provider_id: str | None, hist
             + f". The user is viewing page: {viewing}.\nWidgets:\n{listing}\n" + (f"\nConversation so far:\n{talk}\n" if talk else "") + f"\nInstruction: {instruction}")
     plan = _ask(EDIT_SYSTEM, user, provider_id)
     applied, skipped, touched = [], [], viewing
-    bottoms = {pid: _bottom(index, pid) for pid in page_ids}
+
+    def put(w: dict[str, Any], target: str, place: Any, exclude: str | None = None, size: dict[str, int] | None = None) -> dict[str, int]:
+        """Position for a widget on `target` (fills a gap when it fits, else pushes the widgets below down) and register it in `index`."""
+        pos = dict(size) if size else _layout([w], 0)[0]
+        pos["y"] = anchor_y(index, target, place, exclude)
+        for other, new_y in make_room(index, target, pos["y"], pos["h"], exclude):
+            index[other]["widget"]["position"] = {**index[other]["widget"]["position"], "y": new_y}
+            store.update("dashboard_widgets", other, {"position": index[other]["widget"]["position"]})
+        return pos
+
     for op in [o for o in plan.get("ops", []) if isinstance(o, dict)][:MAX_WIDGETS]:
         kind, wid = op.get("op"), str(op.get("id", ""))
         try:
@@ -234,23 +240,35 @@ def edit_dashboard(dash_id: str, instruction: str, provider_id: str | None, hist
                 store.delete("dashboard_widgets", wid)
                 touched = index[wid]["widget"].get("page") or touched
                 applied.append(f'removed "{index[wid]["chart"]["name"]}"')
+                del index[wid]
             elif kind == "add" and isinstance(op.get("widget"), dict):
                 w = _materialize(op["widget"], context, provider_id)
                 target = op["widget"].get("page") if op["widget"].get("page") in page_ids else viewing
-                pos = _layout([w], bottoms[target])[0]
-                _store_widget(dash_id, w, pos, None, target)
-                bottoms[target] += pos["h"]
+                pos = put(w, target, op["widget"].get("place") or op.get("place"))
+                new = _store_widget(dash_id, w, pos, None, target)
+                index[new["id"]] = {"widget": {"id": new["id"], "page": target, "position": pos}, "chart": {"name": w["title"], "spec": w["chart"]}, "sql": w["sql"]}
                 touched = target
                 applied.append(f'added "{w["title"]}" on {page_name[target]}')
+            elif kind == "move" and wid in index:
+                cur = index[wid]
+                where = cur["widget"].get("page") or "main"
+                pos = put({}, where, op.get("place"), exclude=wid, size=cur["widget"].get("position"))
+                cur["widget"]["position"] = pos
+                store.update("dashboard_widgets", wid, {"position": pos})
+                touched = where
+                applied.append(f'moved "{cur["chart"]["name"]}"')
             elif kind == "update" and wid in index:
                 cur = index[wid]
                 where = cur["widget"].get("page") or "main"
                 spec = {"title": op.get("title") or cur["chart"]["name"], "type": op.get("type") or cur["chart"]["spec"]["type"],
                         "sql": op.get("sql") or cur["sql"]}
                 w = _materialize(spec, context, provider_id)
-                # a new chart (not an in-place edit): the old one may be shared with other dashboards; it stays on its own page
-                new = _store_widget(dash_id, w, cur["widget"].get("position") or {"x": 0, "y": bottoms.get(where, 0), "w": 6, "h": 4}, None, where)
+                # a new chart (not an in-place edit): the old one may be shared with other dashboards; it keeps its page and position
+                pos = cur["widget"].get("position") or put(w, where, "bottom")
+                new = _store_widget(dash_id, w, pos, None, where)
                 store.delete("dashboard_widgets", wid)
+                del index[wid]
+                index[new["id"]] = {"widget": {"id": new["id"], "page": where, "position": pos}, "chart": {"name": w["title"], "spec": w["chart"]}, "sql": w["sql"]}
                 touched = where
                 applied.append(f'updated "{w["title"]}" ({new["type"]})')
             else:

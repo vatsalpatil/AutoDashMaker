@@ -1,7 +1,7 @@
 import type { ColumnDef } from '@tanstack/react-table';
 import { DataGridColumnHeader } from '@/components/reui/data-grid/data-grid-column-header';
 import type { DataGridFeatures } from '@/components/reui/data-grid/data-grid';
-import { fmt } from '@/lib/utils';
+import { fmt, plainDate } from '@/lib/utils';
 import { ColumnFilter, type FilterValue } from './ColumnFilter';
 import { isRule, ruleMatches, type ColKind } from './ColumnRuleFilter';
 
@@ -11,7 +11,7 @@ const isDate = (v: unknown) => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}([T ]
 const isNum = (v: unknown) => typeof v === 'number' || (typeof v === 'string' && v.trim() !== '' && !Number.isNaN(Number(v)));
 const num = (v: unknown) => (v === null || v === undefined || v === '' ? Number.NEGATIVE_INFINITY : Number(v));
 
-export const cellText = (v: unknown) => (v === null || v === undefined ? '' : typeof v === 'object' ? JSON.stringify(v) : String(v));
+export const cellText = (v: unknown) => (v === null || v === undefined ? '' : typeof v === 'object' ? JSON.stringify(v) : plainDate(String(v)));
 
 const CHAR_PX = 8;      // average glyph width of the grid's dense text
 const HEADER_CHAR_PX = 9;   // semibold header text
