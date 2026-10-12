@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/kit';
 /** Dashboard refresh: a manual button and Metabase's auto-refresh choices. Widgets re-fetch their data whenever `tick` changes. */
 export const RefreshContext = createContext(0);
 export const useRefreshTick = () => useContext(RefreshContext);
+/** Which dashboard the widgets below belong to (so they can load their data in one batch request). */
+export const DashboardIdContext = createContext<string | null>(null);
 
 const EVERY: [number, string][] = [[0, 'Auto-refresh: off'], [1, 'Every minute'], [5, 'Every 5 minutes'], [10, 'Every 10 minutes'], [15, 'Every 15 minutes'], [30, 'Every 30 minutes'], [60, 'Every hour']];
 

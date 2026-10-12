@@ -1,10 +1,13 @@
 """Dashboards: collections of chart widgets with positions + lineage."""
+import contextvars
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from ..core.store import store
+from ..services.engine import engine
 from ..services.lineage import dashboard_lineage
 from ..services.brief import dashboard_brief
 
@@ -43,6 +46,29 @@ def list_dashboards():
 @router.post("")
 def create_dashboard(body: DashboardIn):
     return store.insert("dashboards", body.model_dump())
+
+
+@router.post("/{dashboard_id}/data")
+def dashboard_data(dashboard_id: str, fresh: bool = False):
+    """Every chart widget's chart (spec) and data in ONE request. The queries run concurrently on the server, identical queries
+    run once, and the page makes one round trip instead of two per widget."""
+    if not store.get("dashboards", dashboard_id):
+        raise HTTPException(404, "dashboard not found")
+    ids = list(dict.fromkeys(w["chart_id"] for w in store.list("dashboard_widgets", where="dashboard_id = ?", params=[dashboard_id], order=None) if w.get("chart_id")))
+
+    def one(chart_id: str) -> dict[str, Any]:
+        try:
+            chart = store.get("charts", chart_id)
+            query = store.get("queries", chart["query_id"]) if chart and chart.get("query_id") else None
+            if not chart or not query:
+                return {"error": "chart or its query no longer exists"}
+            return {"chart": chart, "data": engine.execute(query["sql"], fresh=fresh)}
+        except Exception as e:   # one broken widget must not blank the dashboard
+            return {"error": str(e)[:300]}
+
+    with ThreadPoolExecutor(max_workers=min(6, max(len(ids), 1))) as pool:
+        futures = {cid: pool.submit(contextvars.copy_context().run, one, cid) for cid in ids}
+        return {cid: f.result() for cid, f in futures.items()}
 
 
 @router.get("/{dashboard_id}")

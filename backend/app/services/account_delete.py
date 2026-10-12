@@ -59,8 +59,7 @@ def _purge(user_id: str, ws: str) -> None:
     for t in ("user_contacts", "verification_codes"):
         store.execute(f"DELETE FROM {t} WHERE user_id = ?", [user_id])
     from .engine import engine  # lazy: the engine imports a lot
-    with engine._lock:  # noqa: SLF001 - forget the cached connection holder for this workspace
-        engine._engines.pop(ws, None)  # noqa: SLF001
+    engine.close_workspace(ws)   # release the DuckDB file before its folder is removed
     for d in (Path(tenant.analytics_path(ws)).parent, tenant.upload_dir(ws)):
         if d.name == ws:  # only ever the workspace's own folder
             shutil.rmtree(d, ignore_errors=True)

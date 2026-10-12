@@ -55,4 +55,49 @@ try:
     raise SystemExit("expected timeout")
 except QueryTimeout:
     assert time.time() - t0 < 5
+
+# --- one shared instance, many cursors: queries run concurrently and correctly
+from concurrent.futures import ThreadPoolExecutor
+
+with e.writer() as c:
+    c.execute("CREATE TABLE big AS SELECT i AS id, i % 10 AS g FROM range(2000000) r(i)")
+queries = [f"SELECT SUM(id) AS s FROM big WHERE g = {k}" for k in range(8)]
+with ThreadPoolExecutor(8) as pool:
+    got = list(pool.map(lambda sql: e.execute(sql)["rows"][0]["s"], queries))
+expected = [sum(i for i in range(2000000) if i % 10 == k) for k in range(8)]
+assert got == expected, (got, expected)
+
+# --- single flight: the same slow query asked 6 times at once runs once, the rest share its result
+slow = "SELECT COUNT(*) AS n FROM range(120000000) t(i) WHERE i % 7 = 0"
+with ThreadPoolExecutor(6) as pool:
+    outs = list(pool.map(lambda _: e.execute(slow), range(6)))
+assert all(o["rows"][0]["n"] == 17142858 for o in outs), [o["rows"] for o in outs]
+assert sum(1 for o in outs if o["cached"] is False) == 1, [o["cached"] for o in outs]
+
+# --- a write is visible to the next read (shared instance) and clears the cache
+before = e.execute("SELECT COUNT(*) AS n FROM big")["rows"][0]["n"]
+with e.writer() as c:
+    c.execute("INSERT INTO big VALUES (-1, 0)")
+assert e.execute("SELECT COUNT(*) AS n FROM big")["rows"][0]["n"] == before + 1
+
+# --- the result cache is bounded by total rows, not only by entry count
+from app.core.config import settings as _s
+_s.result_cache_total_rows = 50
+for k in range(10):
+    e.execute(f"SELECT i FROM range({k + 20}) t(i)")
+assert e._cache_rows <= 50 and len(e._cache) < 10, (e._cache_rows, len(e._cache))
+
+# --- close() releases the file; the next use reopens it
+e.close()
+assert e._base is None
+assert e.execute("SELECT COUNT(*) AS n FROM t")["rows"][0]["n"] == 1001
+
+# --- the result sanity warnings are cheap and still right
+assert QueryEngine._profile_result([], ["a"]) == ["empty_result: query returned zero rows"]
+assert QueryEngine._profile_result([{"a": 1}] * 5, ["a"]) == ["duplicate_rows: every row is identical"]
+assert QueryEngine._profile_result([{"a": i, "b": None} for i in range(30)], ["a", "b"]) == ["null_explosion: column 'b' is 100% null"]
+t1 = time.perf_counter()
+QueryEngine._profile_result([{"a": i, "b": i % 3, "c": str(i)} for i in range(10000)], ["a", "b", "c"])
+assert time.perf_counter() - t1 < 0.15, "profiling a 10k-row result must stay cheap"
+
 print("engine tests OK")

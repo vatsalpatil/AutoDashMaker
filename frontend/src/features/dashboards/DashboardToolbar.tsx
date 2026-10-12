@@ -2,7 +2,7 @@ import { Copy, FileText, LayoutGrid, Pencil, Play, Plus, Printer, Sparkles } fro
 import { Button } from '@/components/ui/kit';
 
 /** Actions in the dashboard header. Toggle buttons turn primary while their panel is open. */
-export function DashboardToolbar({ editing, onToggleEdit, showBrief, briefBusy, onBrief, showLineage, onLineage, onPresent, onAdd, onAi, onDuplicate, refresh }: {
+export function DashboardToolbar({ editing, onToggleEdit, showBrief, briefBusy, onBrief, showLineage, onLineage, onPresent, onPrint, onAdd, onAi, onDuplicate, refresh }: {
   editing: boolean;
   onToggleEdit: () => void;
   showBrief: boolean;
@@ -11,6 +11,7 @@ export function DashboardToolbar({ editing, onToggleEdit, showBrief, briefBusy, 
   showLineage: boolean;
   onLineage: () => void;
   onPresent: () => void;
+  onPrint: () => void;
   onAdd: () => void;
   onAi: () => void;
   onDuplicate: () => void;
@@ -23,7 +24,7 @@ export function DashboardToolbar({ editing, onToggleEdit, showBrief, briefBusy, 
       <Button variant={showLineage ? 'primary' : 'secondary'} icon={<LayoutGrid className="h-4 w-4" />} label={showLineage ? 'Hide lineage' : 'View lineage'} onClick={onLineage} />
       {refresh}
       <Button variant="secondary" icon={<Copy className="h-4 w-4" />} label="Duplicate" onClick={onDuplicate} />
-      <Button variant="secondary" icon={<Printer className="h-4 w-4" />} label="Print / PDF" onClick={() => window.print()} />
+      <Button variant="secondary" icon={<Printer className="h-4 w-4" />} label="Print / PDF" onClick={onPrint} />
       <Button variant="secondary" icon={<Play className="h-4 w-4" />} label="Present" onClick={onPresent} />
       <Button variant="secondary" icon={<Sparkles className="h-4 w-4 text-primary" />} label="Edit with AI" onClick={onAi} />
       <Button variant="primary" icon={<Plus className="h-4 w-4" />} label="Add widget" onClick={onAdd} />

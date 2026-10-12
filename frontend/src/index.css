@@ -263,3 +263,20 @@ div.pointer-events-auto.touch-none > .bg-border:hover, div.pointer-events-auto.t
 .gen-shimmer { background: linear-gradient(90deg, var(--foreground) 40%, var(--primary) 50%, var(--foreground) 60%) 0 0 / 200% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: gen-text-shimmer 2s linear infinite; }
 .gen-ring { animation: gen-ring 1.6s ease-out infinite; }
 @media (prefers-reduced-motion: reduce) { .gen-sweep, .gen-shimmer, .gen-ring { animation: none; } .gen-shimmer { color: inherit; background: none; } }
+
+/* Printing: the app is hidden and only the PrintSheet (a portal in <body>) prints, always on a light page. The sheet is laid out at a fixed
+   design width and zoomed to the paper, so every paper size shows the whole dashboard. */
+.print-sheet { display: none; }
+@media print {
+  #root { display: none !important; }
+  html, body { background: #fff !important; }
+  .print-sheet {
+    display: block !important; color: #111827;
+    --background: #ffffff; --foreground: #111827; --card: #ffffff; --card-foreground: #111827; --popover: #ffffff; --popover-foreground: #111827;
+    --muted: #f3f4f6; --muted-foreground: #6b7280; --border: #e5e7eb; --input: #e5e7eb; --accent: #f3f4f6; --accent-foreground: #111827;
+  }
+  .print-sheet, .print-sheet * { -webkit-print-color-adjust: exact; print-color-adjust: exact; animation: none !important; transition: none !important; }
+  .print-page { break-after: page; }
+  .print-page:last-child { break-after: auto; }
+  .print-widget { break-inside: avoid; }
+}

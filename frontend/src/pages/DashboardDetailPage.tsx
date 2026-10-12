@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ErrorBanner } from '@/components/common/ErrorBanner';
 import { Loading } from '@/components/common/Loading';
@@ -6,12 +6,15 @@ import { PageHeader } from '@/components/common/PageHeader';
 import { WidgetSettingsPanel } from '@/components/WidgetSettingsPanel';
 import { AddWidgetDialog } from '@/features/dashboards/AddWidgetDialog';
 import { ContentDialog } from '@/features/dashboards/ContentDialog';
-import { RefreshContext, useDashboardRefresh } from '@/features/dashboards/dashboardRefresh';
+import { DashboardIdContext, RefreshContext, useDashboardRefresh } from '@/features/dashboards/dashboardRefresh';
 import { DashboardAiPanel } from '@/features/dashboards/DashboardAiPanel';
 import { DashboardToolbar } from '@/features/dashboards/DashboardToolbar';
 import { FilterViews } from '@/features/dashboards/FilterViews';
 import { FullscreenModal } from '@/features/dashboards/FullscreenModal';
 import { BriefCard, LineageCard } from '@/features/dashboards/InsightPanels';
+import { PrintDialog } from '@/features/dashboards/PrintDialog';
+import { PrintSheet } from '@/features/dashboards/PrintSheet';
+import type { PrintOptions } from '@/features/dashboards/printLayout';
 import { PageTabs } from '@/features/dashboards/PageTabs';
 import { PresentMode } from '@/features/dashboards/PresentMode';
 import { useDashboardPage } from '@/features/dashboards/useDashboardPage';
@@ -26,9 +29,13 @@ export default function DashboardDetailPage() {
   const refresh = useDashboardRefresh();
   const nav = useNavigate();
   const [aiOpen, setAiOpen] = useState(false);
+  const [printOpen, setPrintOpen] = useState(false);
+  const [printing, setPrinting] = useState<PrintOptions | null>(null);
+  const donePrinting = useCallback(() => setPrinting(null), []);
   if (!d.dashboard) return d.error ? <ErrorBanner message={d.error} /> : <Loading />;
 
   return (
+    <DashboardIdContext.Provider value={d.dashboard.id}>
     <RefreshContext.Provider value={refresh.tick}>
     <DashboardFilterProvider api={df.api}>
     <div className="flex flex-col gap-4">
@@ -44,6 +51,7 @@ export default function DashboardDetailPage() {
             showLineage={d.showLineage}
             onLineage={d.toggleLineage}
             onPresent={() => d.setPresenting(true)}
+            onPrint={() => setPrintOpen(true)}
             onAdd={() => d.setPickerOpen(true)}
             onAi={() => setAiOpen(true)}
             refresh={refresh.control}
@@ -89,6 +97,8 @@ export default function DashboardDetailPage() {
         />
       )}
       {d.presenting && <PresentMode dashboard={d.dashboard} pages={d.pages} onClose={() => d.setPresenting(false)} />}
+      <PrintDialog open={printOpen} pageCount={d.pages.length} onClose={() => setPrintOpen(false)} onPrint={(o) => { setPrintOpen(false); setPrinting(o); }} />
+      {printing && <PrintSheet dashboard={d.dashboard} pages={d.pages} options={printing} onDone={donePrinting} />}
       <DashboardAiPanel open={aiOpen} dashboardId={d.dashboard.id} onClose={() => setAiOpen(false)} onChanged={d.load} />
       <AddWidgetDialog open={d.pickerOpen} charts={d.charts} onPick={d.addWidget} onContent={(k) => { d.setPickerOpen(false); d.setContentNew(k); }} onClose={() => d.setPickerOpen(false)} />
       {(d.contentNew || d.contentEdit) && (
@@ -98,5 +108,6 @@ export default function DashboardDetailPage() {
     </div>
     </DashboardFilterProvider>
     </RefreshContext.Provider>
+    </DashboardIdContext.Provider>
   );
 }

@@ -31,11 +31,15 @@ class Store:
     def __init__(self, path: str):
         self._path = path
         self._lock = threading.Lock()
+        self._base: duckdb.DuckDBPyConnection | None = None   # one long-lived instance; each operation uses its own cursor
         self._versions: dict[str, int] = {}  # table -> write counter, so caches built from a table can tell it changed
         self._init()
 
     def _conn(self) -> duckdb.DuckDBPyConnection:
-        return duckdb.connect(self._path)
+        # opening the file for every read/write cost ~50 ms each; a cursor of the open instance costs microseconds
+        if self._base is None:
+            self._base = duckdb.connect(self._path)
+        return self._base.cursor()
 
     def _init(self) -> None:
         with self._lock, self._conn() as con:

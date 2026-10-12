@@ -162,6 +162,17 @@ try:
     raise SystemExit("expected AIError")
 except ai_svc.AIError as e:
     assert "rate-limiting" in str(e), str(e)
+# the whole dashboard's data in one request (parallel, identical queries run once), and fresh=true bypasses the cache
+from app.routers.dashboards import dashboard_data
+
+bundle = dashboard_data(done["dashboard_id"])
+chart_ids = [r["chart_id"] for r in store.list("dashboard_widgets", where="dashboard_id = ?", params=[done["dashboard_id"]], order=None) if r.get("chart_id")]
+assert set(bundle) == set(chart_ids) and len(chart_ids) == 3, (set(bundle), chart_ids)
+assert all("chart" in v and v["data"]["row_count"] >= 1 for v in bundle.values()), bundle
+again = dashboard_data(done["dashboard_id"])
+assert all(v["data"]["cached"] is True for v in again.values())
+assert all(v["data"]["cached"] is False for v in dashboard_data(done["dashboard_id"], fresh=True).values())
+
 # SSE routes must bypass the gzip middleware (it buffers streams: the live site sat on "Reading the data" until this was listed)
 from app.core.compression import STREAM_PATHS
 for path in ("/api/dashboards/generate/understand", "/api/dashboards/generate/plan", "/api/dashboards/generate/build", "/api/ai/agent"):

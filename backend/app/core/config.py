@@ -49,9 +49,10 @@ class Settings(BaseSettings):
     duckdb_threads: int = 3
     duckdb_temp_dir: str = str(DATA_DIR / "tmp")  # spill-to-disk location
     # In-process query-result cache (spec §53); invalidated on any data write
-    result_cache_entries: int = 128
-    result_cache_ttl_s: int = 300
-    result_cache_max_rows: int = 1000  # don't cache huge results
+    result_cache_entries: int = 512
+    result_cache_ttl_s: int = 900
+    result_cache_max_rows: int = 5000        # don't cache one huge result...
+    result_cache_total_rows: int = 300_000   # ...and never hold more than this many rows in all
     app_url: str = ""  # public address of the site (links in emails point here); empty = the first CORS origin
     cors_origins: list[str] = [
         "http://localhost:5174", "http://127.0.0.1:5174",

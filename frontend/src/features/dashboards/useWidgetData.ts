@@ -1,22 +1,35 @@
-import { useEffect, useState } from 'react';
-import { api } from '@/lib/api';
-import { useRefreshTick } from './dashboardRefresh';
-import type { Chart, QueryResult } from '@/lib/types';
+import { useContext, useEffect, useState } from 'react';
+import { ensureBundle, isFresh, loadChart, peek, type Entry } from '@/lib/dataCache';
+import { DashboardIdContext, useRefreshTick } from './dashboardRefresh';
 
+/**
+ * A widget's chart + data. Cached copies show instantly; stale ones refresh in the background; on a dashboard the first widget
+ * triggers one batch request that fills every widget; the Refresh button (tick > 0) bypasses the caches.
+ */
 export function useWidgetData(chartId: string | null | undefined) {
-  const [chart, setChart] = useState<Chart | null>(null);
-  const [data, setData] = useState<QueryResult | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const tick = useRefreshTick();
+  const dashboardId = useContext(DashboardIdContext);
+  const [entry, setEntry] = useState<Entry | undefined>(() => (chartId ? peek(chartId) : undefined));
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!chartId) return;
-    api.get<Chart>(`/charts/${chartId}`).then(setChart).catch((e) => setError(e.message));
-  }, [chartId]);
-  useEffect(() => {   // data re-runs on every dashboard refresh
-    if (!chartId) return;
-    api.get<QueryResult>(`/charts/${chartId}/data`).then((d) => { setData(d); setError(null); }).catch((e) => setError(e.message));
-  }, [chartId, tick]);
+    let alive = true;
+    const cached = peek(chartId);
+    if (cached) setEntry(cached);
+    if (tick === 0 && isFresh(cached)) return;
+    (async () => {
+      try {
+        if (dashboardId) await ensureBundle(dashboardId, `${dashboardId}:${tick}`, tick > 0);   // one request for the whole dashboard
+        const got = peek(chartId);
+        const e = got && (tick === 0 ? isFresh(got) : Date.now() - got.at < 10_000) ? got : await loadChart(chartId, tick > 0);
+        if (alive) { setEntry(e); setError(null); }
+      } catch (err) {
+        if (alive) setError((err as Error).message);
+      }
+    })();
+    return () => { alive = false; };
+  }, [chartId, tick, dashboardId]);
 
-  return { chart, data, error };
+  return { chart: entry?.chart ?? null, data: entry?.data ?? null, error };
 }

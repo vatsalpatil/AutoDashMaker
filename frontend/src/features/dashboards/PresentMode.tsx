@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { useMeasure } from '@/hooks/useMeasure';
 import type { Dashboard, Widget } from '@/lib/types';
+import { ContentCard, isContent } from './ContentCards';
 import { useWidgetData } from './useWidgetData';
 import { WidgetBody } from './WidgetBody';
 
@@ -17,9 +18,10 @@ function PresentSlide({ widget }: { widget: Widget }) {
       </div>
     );
   }
+  if (isContent(widget)) return <ContentCard widget={widget} editing={false} onRemove={() => undefined} onEdit={() => undefined} />;
   return (
-    <div className="flex flex-col overflow-hidden rounded-lg border border-slate-700 bg-card p-3">
-      <span className="mb-1 truncate text-sm font-semibold">{titleOverride ?? chart?.name ?? `Chart #${widget.chart_id}`}</span>
+    <div className="flex h-full flex-col overflow-hidden rounded-lg border border-slate-700 bg-card p-3">
+      <span className="mb-1 truncate text-sm font-semibold">{titleOverride ?? chart?.name ?? ''}</span>
       <div ref={bodyRef} className="min-h-0 flex-1 overflow-hidden">
         <WidgetBody widget={widget} height={bodySize.h} view="chart" fit />
       </div>
@@ -77,6 +79,10 @@ export function PresentMode({
 
   const page = pages[Math.min(pageIdx, count - 1)];
   const pageWidgets = (dashboard.widgets ?? []).filter((w) => (w.page ?? 'main') === page.id);
+  // the saved layout, scaled so the whole page fits the screen: every widget sits at its own column and row
+  const [gridRef, gridSize] = useMeasure();
+  const totalRows = Math.max(1, ...pageWidgets.map((w) => w.position.y + Math.max(w.position.h, 1)));
+  const rowUnit = gridSize.h > 0 ? Math.min(150, Math.max(64, (gridSize.h - 12 * (totalRows - 1)) / totalRows)) : 80;
 
   return (
     <div ref={overlayRef} className="fixed inset-0 z-[100] flex flex-col bg-slate-950 p-6">
@@ -107,13 +113,15 @@ export function PresentMode({
           </button>
         </div>
       </div>
-      <div className="grid min-h-0 flex-1 auto-rows-[80px] grid-cols-12 gap-3 overflow-auto">
+      <div ref={gridRef} className="min-h-0 flex-1 overflow-auto">
+      <div className="grid grid-cols-12 gap-3" style={{ gridTemplateRows: `repeat(${totalRows}, ${rowUnit}px)` }}>
         {pageWidgets.map((w) => (
           <div
             key={w.id}
+            className="min-h-0 min-w-0"
             style={{
-              gridColumn: `${Math.min(w.position.x, 11) + 1} / span ${Math.min(Math.max(w.position.w, 1), 12)}`,
-              gridRow: `span ${Math.max(w.position.h, 1)}`,
+              gridColumn: `${Math.min(w.position.x, 11) + 1} / span ${Math.min(Math.max(w.position.w, 1), 12 - Math.min(w.position.x, 11))}`,
+              gridRow: `${w.position.y + 1} / span ${Math.max(w.position.h, 1)}`,
             }}
           >
             <PresentSlide widget={w} />
@@ -122,6 +130,7 @@ export function PresentMode({
         {pageWidgets.length === 0 && (
           <div className="col-span-12 flex items-center justify-center text-sm text-muted-foreground/70">No widgets on this page.</div>
         )}
+      </div>
       </div>
       {count > 1 && (
         <div className="mt-4 flex justify-center gap-2">

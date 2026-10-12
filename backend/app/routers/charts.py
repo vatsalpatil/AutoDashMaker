@@ -51,15 +51,15 @@ def get_chart(chart_id: str):
 
 
 @router.get("/{chart_id}/data")
-def chart_data(chart_id: str):
-    """Re-execute the chart's query so widgets always show fresh data."""
+def chart_data(chart_id: str, fresh: bool = False):
+    """Run the chart's query (cached for a few minutes; `fresh=true` bypasses the cache)."""
     c = store.get("charts", chart_id)
     if not c:
         raise HTTPException(404, "chart not found")
     q = store.get("queries", c.get("query_id") or "") if c.get("query_id") else None
     if not q:
         raise HTTPException(400, "chart has no backing query")
-    return engine.execute(q["sql"])
+    return engine.execute(q["sql"], fresh=fresh)
 
 
 @router.get("/{chart_id}/lineage")

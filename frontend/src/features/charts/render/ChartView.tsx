@@ -1,6 +1,7 @@
 import { memo, useMemo, useState } from 'react';
 import { TrendingDown, TrendingUp } from 'lucide-react';
 import { useContainerWidth } from '@/hooks/useContainerWidth';
+import { DataGrid } from '@/components/common/DataGrid';
 import { DataTable } from '@/components/common/DataTable';
 import type { ChartSpec, QueryResult } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -37,10 +38,12 @@ interface Props {
   options?: Record<string, unknown>;
   /** Clicking a bar / slice / point reports the X field and the clicked value (dashboards use it to cross-filter). */
   onPick?: (field: string, value: string) => void;
+  /** Static output (print): tables render as a plain table instead of the interactive grid. */
+  plain?: boolean;
 }
 
 /** Renders any chart type from its spec + query result. The single entry point for charts, widgets and the studio. */
-function ChartViewBase({ spec, result, height = 320, options, onPick }: Props) {
+function ChartViewBase({ spec, result, height = 320, options, onPick, plain = false }: Props) {
   const [box, width] = useContainerWidth<HTMLDivElement>();
   const compact = width > 0 && width < 420;                 // narrow cards (phones, small dashboard tiles): lighter axes, no data labels
   const [range, setRange] = useState(0);                    // 0 = all points; the interactive range selector
@@ -69,9 +72,12 @@ function ChartViewBase({ spec, result, height = 320, options, onPick }: Props) {
 
   let body: React.ReactNode;
   if (spec.type === 'table') {
-    body = (
+    // interactive grid (sort, per-column filter, search, column visibility) on screen; a plain table when printing
+    body = plain ? (
       <DataTable columns={result.columns} rows={result.rows} fontSize={o.tableFontSize as 'xs' | 'sm' | 'md'}
-        density={o.tableDensity as 'compact' | 'comfortable'} striped={o.tableStriped === true} />
+        density={o.tableDensity as 'compact' | 'comfortable'} striped={o.tableStriped === true} maxRows={60} />
+    ) : (
+      <DataGrid columns={result.columns} rows={result.rows as Record<string, unknown>[]} bare expandable maxHeight={`${Math.max(h, 160)}px`} />
     );
   } else if (spec.type === 'pivot') body = <PivotTable spec={spec} result={result} o={o} />;
   else if (spec.type === 'kpi') body = <KpiCard spec={spec} result={result} o={o} height={h} />;

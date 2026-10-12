@@ -3,6 +3,11 @@ import { authFetch } from '@/lib/auth';
 
 const BASE = '/api';
 
+/** Anything that changes data (a non-GET, except the read-only batch `/data` calls) tells listeners, so caches never serve stale results. */
+const writeListeners = new Set<() => void>();
+export const onWrite = (fn: () => void) => { writeListeners.add(fn); };
+const isRead = (method: string, path: string) => method === 'GET' || /\/data(\?|$)/.test(path);
+
 async function request<T>(method: string, path: string, body?: unknown, isForm = false, signal?: AbortSignal): Promise<T> {
   const init: RequestInit = { method, headers: {}, signal };
   if (body !== undefined) {
@@ -25,6 +30,7 @@ async function request<T>(method: string, path: string, body?: unknown, isForm =
     }
     throw new Error(detail);
   }
+  if (!isRead(method, path)) writeListeners.forEach((fn) => fn());
   if (res.status === 204) return undefined as T;
   return (await res.json()) as T;
 }

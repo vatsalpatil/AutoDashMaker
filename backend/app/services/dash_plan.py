@@ -215,6 +215,6 @@ def plan(dataset_id: str, template: str, focus: str, understanding: str, answers
                         "type": str(s.get("type") or "").lower() if str(s.get("type") or "").lower() in CHART_TYPES else "table",
                         "why": str(s.get("why") or "").strip()[:300], "formula": str(s.get("formula") or "").strip()[:300],
                         "sql": str(s.get("sql") or "").strip()})
-    used = [p for p in pages if any(w["page"] == p["id"] for w in widgets)]
+    used = [{"id": p["id"], "name": p["name"]} for p in pages if any(w["page"] == p["id"] for w in widgets)]
     yield {"type": "step", "n": 3, "title": "Planning the dashboard", "done": True, "detail": f"{len(used)} pages, {len(widgets)} widgets proposed.", "items": thinking}
     yield {"type": "plan", "name": clean_title(name or model_name or f"{ds['name']} Dashboard"), "pages": used, "widgets": widgets}

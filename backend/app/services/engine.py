@@ -31,55 +31,103 @@ class QueryTimeout(Exception):
 class QueryEngine:
     def __init__(self, path: str):
         self._path = path
-        self._lock = threading.Lock()
+        self._base: duckdb.DuckDBPyConnection | None = None
+        self._base_lock = threading.Lock()
+        self._linked_lock = threading.RLock()   # sessions that attach a remote source (and writers) run one at a time
+        self._write_lock = threading.RLock()
+        self._flight_lock = threading.Lock()
+        self._inflight: dict[str, tuple[threading.Event, dict]] = {}
         # result cache: sql -> (expires_at, result). invalidate() clears it and bumps
         # _version so a query that was already running can't re-insert stale rows.
         self._cache: OrderedDict[str, tuple[float, dict[str, Any]]] = OrderedDict()
         self._cache_lock = threading.Lock()
+        self._cache_rows = 0
         self._version = 0
 
     # -- connections ------------------------------------------------------
-    def _open(self, read_only: bool = False, hint: str | None = None) -> duckdb.DuckDBPyConnection:
+    # One long-lived DuckDB instance per workspace; every piece of work gets its own cursor. Cursors run concurrently
+    # (DuckDB is MVCC: many readers plus a writer), and the instance keeps its buffer cache and Parquet metadata warm
+    # between queries, which a fresh `connect()` per query threw away. SQL is still validated read-only before it gets here.
+    def _config(self) -> dict[str, Any]:
         # Bound memory/CPU so analytics can't starve the rest of the server (§55).
-        if read_only and hint:
-            from . import remote
-            # a read-only main connection makes DuckDB open READ ONLY transactions on attached remotes, which some
-            # servers (TiDB) reject; queries touching a linked dataset use a normal connection (SQL is still guarded)
-            read_only = not remote.mentions_linked(hint)
-        con = duckdb.connect(self._path, read_only=read_only, config={
+        return {
             "memory_limit": settings.duckdb_memory_limit,
             "threads": int(settings.duckdb_threads),
             "preserve_insertion_order": False,
             "temp_directory": settings.duckdb_temp_dir.replace("\\", "/"),
-        })
-        if hint:  # linked (live) datasets: attach their remote sources when the SQL mentions them
-            from . import remote
-            try:
-                remote.attach_remotes(con, hint)
-            except Exception:
-                con.close()
-                raise
-        return con
+        }
 
-    def connect(self, read_only: bool = False, hint: str | None = None) -> duckdb.DuckDBPyConnection:
-        """Plain connection. Use `writer()` for anything that changes data."""
-        return self._open(read_only, hint)
+    def _shared(self) -> duckdb.DuckDBPyConnection:
+        with self._base_lock:
+            if self._base is None:
+                self._base = duckdb.connect(self._path, config=self._config())
+            return self._base
+
+    def close(self) -> None:
+        """Release the file (account deletion, shutdown). The next use reopens it."""
+        with self._base_lock:
+            if self._base is not None:
+                try:
+                    self._base.close()
+                except Exception:
+                    pass
+                self._base = None
+
+    @staticmethod
+    def _detach_remotes(con: duckdb.DuckDBPyConnection) -> None:
+        """Remote sources (MySQL/Postgres/SQLite) are attached to the shared instance only while a piece of work needs them."""
+        try:
+            names = [r[0] for r in con.execute("SELECT database_name FROM duckdb_databases() WHERE NOT internal AND type <> 'duckdb'").fetchall()]
+            for n in names:
+                con.execute(f'DETACH DATABASE IF EXISTS "{n}"')
+        except Exception:
+            pass  # nothing attached, or already gone
+
+    @contextmanager
+    def _session(self, hint: str | None = None) -> Iterator[duckdb.DuckDBPyConnection]:
+        """A connection for one piece of work. SQL that names a linked (live) dataset attaches its remote source for the
+        duration (those sessions are serialised and detach afterwards); everything else runs concurrently on its own cursor."""
+        from . import remote
+        if hint and remote.mentions_linked(hint):
+            with self._linked_lock:
+                con = self._shared().cursor()
+                try:
+                    remote.attach_remotes(con, hint)
+                    yield con
+                finally:
+                    self._detach_remotes(con)
+                    con.close()
+            return
+        con = self._shared().cursor()
+        try:
+            yield con
+        finally:
+            con.close()
+
+    def connect(self, read_only: bool = False, hint: str | None = None):
+        """Context manager yielding a connection. Use `writer()` for anything that changes data (`read_only` is kept for callers; reads are
+        guarded by validate_readonly)."""
+        return self._session(hint)
 
     @contextmanager
     def writer(self) -> Iterator[duckdb.DuckDBPyConnection]:
-        """Writable connection; cached results are dropped AFTER the write, so a read that
+        """Writable connection (one writer at a time); cached results are dropped AFTER the write, so a read that
         raced the write can't leave stale rows in the cache."""
-        try:
-            with self._open() as con:
+        with self._write_lock, self._linked_lock:
+            con = self._shared().cursor()
+            try:
                 yield con
-        finally:
-            self.invalidate()
+            finally:
+                self._detach_remotes(con)   # the writer may have attached a source to read from
+                con.close()
+                self.invalidate()
 
     # -- result cache (§53) ----------------------------------------------
     def invalidate(self) -> None:
         with self._cache_lock:
             self._version += 1
             self._cache.clear()
+            self._cache_rows = 0
 
     def _cache_get(self, key: str) -> dict[str, Any] | None:
         with self._cache_lock:
@@ -88,6 +136,7 @@ class QueryEngine:
                 return None
             if hit[0] < time.monotonic():
                 del self._cache[key]
+                self._cache_rows -= hit[1]["row_count"]
                 return None
             self._cache.move_to_end(key)
             return hit[1]
@@ -98,24 +147,60 @@ class QueryEngine:
         with self._cache_lock:
             if version != self._version:  # data changed while the query ran
                 return
+            old = self._cache.pop(key, None)
+            if old:
+                self._cache_rows -= old[1]["row_count"]
             self._cache[key] = (time.monotonic() + settings.result_cache_ttl_s, result)
-            while len(self._cache) > settings.result_cache_entries:
-                self._cache.popitem(last=False)
+            self._cache_rows += result["row_count"]
+            # bounded by entries AND by total rows held, so a few big results cannot eat the memory
+            while self._cache and (len(self._cache) > settings.result_cache_entries or self._cache_rows > settings.result_cache_total_rows):
+                _, (_, dropped) = self._cache.popitem(last=False)
+                self._cache_rows -= dropped["row_count"]
 
     # -- execution --------------------------------------------------------
-    def execute(self, sql: str, row_limit: int | None = None) -> dict[str, Any]:
+    def execute(self, sql: str, row_limit: int | None = None, fresh: bool = False) -> dict[str, Any]:
+        """`fresh=True` skips the result cache (the user pressed Refresh); the new result still refreshes the cache."""
         limit = row_limit or settings.default_row_limit
         from . import names
         safe_sql = validate_readonly(names.resolve(sql), limit)
-        cached = self._cache_get(safe_sql)
+        cached = None if fresh else self._cache_get(safe_sql)
         if cached is not None:
             return {**cached, "cached": True, "duration_ms": 0.0}
+        # single flight: the same query asked by several widgets at once runs once, the others take its result
+        with self._flight_lock:
+            flight = self._inflight.get(safe_sql)
+            leader = flight is None
+            if leader:
+                flight = self._inflight[safe_sql] = (threading.Event(), {})
+        event, holder = flight
+        if not leader:
+            event.wait(timeout=settings.query_timeout_s + 5)
+            if "result" in holder:
+                return {**holder["result"], "cached": True, "duration_ms": 0.0}
+            if "error" in holder:
+                raise holder["error"]
+        try:
+            result = self._run(safe_sql)
+            if leader:
+                holder["result"] = result
+            return result
+        except Exception as e:
+            if leader:
+                holder["error"] = e
+            raise
+        finally:
+            if leader:
+                with self._flight_lock:
+                    self._inflight.pop(safe_sql, None)
+                event.set()
+
+    def _run(self, safe_sql: str) -> dict[str, Any]:
         version = self._version  # plain int read; compared again under the lock in _cache_put
         t0 = time.perf_counter()
         from . import remote
         run_sql = remote.rewrite_sql(safe_sql)  # linked datasets read their remote table directly
-        with self._lock, self._open(hint=safe_sql) as con:
-            # Enforce the query timeout: interrupt() makes execute raise InterruptException.
+        with self._session(hint=safe_sql) as con:
+            # Enforce the query timeout: interrupt() makes execute raise InterruptException (this cursor only).
             timer = threading.Timer(settings.query_timeout_s, con.interrupt)
             timer.start()
             try:
@@ -143,26 +228,21 @@ class QueryEngine:
     # -- result validation (§20 of the blueprint) -------------------------
     @staticmethod
     def _profile_result(rows: list[dict], cols: list[str]) -> list[str]:
-        warnings = []
+        """Cheap sanity warnings. Column-wise and early-exit: on a 10,000-row result this used to build a set of sorted tuples
+        for every row, which cost more than the query."""
         n = len(rows)
         if n == 0:
-            warnings.append("empty_result: query returned zero rows")
-            return warnings
-        for c in cols:
-            nulls = sum(1 for r in rows if r.get(c) is None)
-            if n >= 20 and nulls / n > 0.5:
-                warnings.append(f"null_explosion: column '{c}' is {nulls/n:.0%} null")
-        if len(rows) > 1:
+            return ["empty_result: query returned zero rows"]
+        warnings = []
+        if n >= 20:
+            for c in cols:
+                nulls = sum(1 for r in rows if r.get(c) is None)
+                if nulls / n > 0.5:
+                    warnings.append(f"null_explosion: column '{c}' is {nulls/n:.0%} null")
+        if n > 1:
             try:
-                def _hashable(val: Any) -> Any:
-                    if isinstance(val, dict):
-                        return tuple(sorted((k, _hashable(v)) for k, v in val.items()))
-                    if isinstance(val, list):
-                        return tuple(_hashable(v) for v in val)
-                    return val
-
-                distinct_rows = {tuple((k, _hashable(v)) for k, v in sorted(r.items())) for r in rows}
-                if len(distinct_rows) == 1:
+                first = rows[0]
+                if all(r == first for r in rows[1:]):   # stops at the first row that differs
                     warnings.append("duplicate_rows: every row is identical")
             except Exception:
                 pass
@@ -174,7 +254,7 @@ class QueryEngine:
         if remote.is_linked(table):
             return self._describe_linked(table)
         ref = table
-        with self._lock, self._open(read_only=True, hint=table) as con:
+        with self._session(hint=table) as con:
             info = con.execute(f"PRAGMA table_info('{table}')").fetchall()
             names = [r[1] for r in info]
             # one table scan for every column's null/distinct stats (was 2 scans per column)
@@ -208,7 +288,7 @@ class QueryEngine:
         from . import remote
         from ..core.store import store
         ref = remote.table_ref(table)
-        with self._lock, self._open(read_only=True, hint=table) as con:
+        with self._session(hint=table) as con:
             rel = con.execute(f"SELECT * FROM {ref} LIMIT 100")
             names = [d[0] for d in rel.description]
             types = [str(d[1]) for d in rel.description]
@@ -238,7 +318,7 @@ class QueryEngine:
         if not src or not ds.get("remote_table"):
             return None
         try:
-            with self._lock, self._open(read_only=True, hint=ds["physical_name"]) as con:
+            with self._session(hint=ds["physical_name"]) as con:
                 return get_connector(src["type"], src["config"]).remote_profile(con, remote.alias_for(src["id"]), ds["remote_table"], names)
         except Exception:
             return None  # the sample-based profile is the fallback
@@ -254,7 +334,7 @@ class QueryEngine:
             safe = validate_readonly(names.resolve(sql), settings.default_row_limit)
         except UnsafeQueryError:
             return None
-        with self._lock, self._open(read_only=True, hint=safe) as con:
+        with self._session(hint=safe) as con:
             try:
                 from . import remote
                 con.execute(f"EXPLAIN {remote.rewrite_sql(safe)}")
@@ -263,11 +343,11 @@ class QueryEngine:
         return None
 
     def list_tables(self) -> list[str]:
-        with self._lock, self._open(read_only=True) as con:
+        with self._session() as con:
             return [r[0] for r in con.execute("SHOW TABLES").fetchall()]
 
     def drop_table(self, table: str) -> None:
-        with self._lock, self.writer() as con:
+        with self.writer() as con:
             try:
                 con.execute(f"DROP TABLE IF EXISTS {table}")
             except duckdb.CatalogException:  # linked (live) datasets are views
@@ -295,6 +375,13 @@ class _WorkspaceEngines:
                     duckdb.connect(path).close()
                 self._engines[ws] = QueryEngine(path)
             return self._engines[ws]
+
+    def close_workspace(self, ws: str) -> None:
+        """Close and forget a workspace's engine (its file is about to be deleted)."""
+        with self._lock:
+            eng = self._engines.pop(ws, None)
+        if eng:
+            eng.close()
 
     def __getattr__(self, name: str) -> Any:
         return getattr(self.for_workspace(tenant.current()), name)
