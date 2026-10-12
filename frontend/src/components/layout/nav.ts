@@ -30,4 +30,4 @@ export const CRUMB_LABELS: Record<string, string> = {
 };
 
 /** Pages that own the whole viewport (their own scroll regions) instead of scrolling as a document. */
-export const isFullBleed = (path: string) => path === '/ask' || path === '/sources/studio' || path.startsWith('/workbench') || path === '/builder' || /^\/charts\/[^/]+/.test(path);
+export const isFullBleed = (path: string) => path === '/ask' || path === '/sources/studio' || path.startsWith('/workbench') || path === '/builder' || path === '/dashboards/generate' || /^\/charts\/[^/]+/.test(path);

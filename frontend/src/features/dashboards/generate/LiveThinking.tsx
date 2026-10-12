@@ -14,7 +14,7 @@ export function LiveThinking({ reasoning, answer, label }: { reasoning: string; 
         {writing && <span className="font-normal text-muted-foreground">{answer.length.toLocaleString()} characters</span>}
       </div>
       {(reasoning || !writing) && (
-        <div ref={box} className="max-h-24 overflow-y-auto whitespace-pre-wrap italic leading-relaxed text-muted-foreground">{reasoning || 'Waiting for the model…'}</div>
+        <div ref={box} className="max-h-24 overflow-y-auto overflow-x-hidden whitespace-pre-wrap break-words italic leading-relaxed text-muted-foreground">{reasoning || 'Waiting for the model…'}</div>
       )}
       {writing && <pre className="mono mt-1.5 max-h-16 overflow-hidden whitespace-pre-wrap break-all text-[11px] text-foreground/80">{answer.slice(-220)}<span className="animate-pulse">▍</span></pre>}
     </div>

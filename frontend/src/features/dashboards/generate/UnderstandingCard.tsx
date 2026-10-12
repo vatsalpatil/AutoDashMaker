@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Check, Lightbulb } from 'lucide-react';
 import { Button, Card, TextArea, TextInput } from '@/components/ui/kit';
 import { cn } from '@/lib/utils';
@@ -45,17 +45,24 @@ function QuestionBlock({ q, value, onChange }: { q: Question; value: string; onC
 }
 
 /** Step 2: what the AI found (with the evidence it used) and the questions it wants you to settle before planning. */
-export function UnderstandingCard({ evidence, understanding, busy, onContinue }: {
+export function UnderstandingCard({ evidence, understanding, busy, onContinue, onAnswers }: {
   evidence: Evidence | null; understanding: Understanding | null; busy: boolean; onContinue: (answers: Record<string, string>) => void;
+  onAnswers?: (answers: Record<string, string>) => void;
 }) {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [notes, setNotes] = useState('');
+  useEffect(() => { onAnswers?.({ ...answers, ...(notes.trim() ? { notes: notes.trim() } : {}) }); }, [answers, notes, onAnswers]);
   const final = () => ({ ...answers, ...(notes.trim() ? { notes: notes.trim() } : {}) });
   return (
     <Card padding={4}>
       <div className="flex flex-col gap-4">
         <h2 className="text-base font-semibold">What the AI sees in your data</h2>
-        {evidence && <EvidenceTabs evidence={evidence} />}
+        {evidence && (
+          <details className="group rounded-lg border bg-muted/20 p-2">
+            <summary className="cursor-pointer select-none text-sm font-medium text-primary">Evidence the AI used — statistics, top rows, correlations</summary>
+            <div className="mt-2"><EvidenceTabs evidence={evidence} /></div>
+          </details>
+        )}
         {understanding && (<>
           <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
             <p className="text-sm">{understanding.understanding}</p>

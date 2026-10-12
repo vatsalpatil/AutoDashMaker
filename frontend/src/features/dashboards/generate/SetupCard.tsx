@@ -10,7 +10,7 @@ import type { Setup } from './useGenerateSession';
 interface Template { id: string; name: string; description: string; pages: string[] }
 
 /** Step 1: which dataset, which template, any special focus. Collapses to a one-line summary once the AI is working. */
-export function SetupCard({ initialDataset, locked, onStart }: { initialDataset?: string; locked: Setup | null; onStart: (s: Setup) => void }) {
+export function SetupCard({ initialDataset, locked, onStart, onDraft }: { initialDataset?: string; locked: Setup | null; onStart: (s: Setup) => void; onDraft?: (s: Setup) => void }) {
   const datasetsApi = useApi<Dataset[]>('/datasets');
   const datasets = datasetsApi.data ?? [];
   const templates = useApi<Template[]>('/dashboards/ai/templates').data ?? [];
@@ -18,7 +18,9 @@ export function SetupCard({ initialDataset, locked, onStart }: { initialDataset?
   const [template, setTemplate] = useState('auto');
   const [focus, setFocus] = useState('');
   useEffect(() => { if (!datasetId && datasets.length > 0) setDatasetId(datasets[0].id); }, [datasets, datasetId]);
+  useEffect(() => { onDraft?.({ dataset_id: datasetId, template, focus }); }, [onDraft, datasetId, template, focus]);
 
+  if (locked && onDraft) return null;   // in the chat, the choice shows as your message instead
   if (locked) {
     const ds = datasets.find((d) => d.id === locked.dataset_id);
     const tpl = templates.find((t) => t.id === locked.template);
@@ -49,8 +51,10 @@ export function SetupCard({ initialDataset, locked, onStart }: { initialDataset?
             </button>
           ))}
         </div>
-        <TextArea label="Anything specific? (optional)" value={focus} onChange={setFocus} rows={2} placeholder="e.g. focus on profit by region and highlight the weakest months" />
-        <div className="flex justify-end"><Button variant="primary" label="Start" onClick={() => onStart({ dataset_id: datasetId, template, focus })} isDisabled={!datasetId} /></div>
+        {!onDraft && <>
+          <TextArea label="Anything specific? (optional)" value={focus} onChange={setFocus} rows={2} placeholder="e.g. focus on profit by region and highlight the weakest months" />
+          <div className="flex justify-end"><Button variant="primary" label="Start" onClick={() => onStart({ dataset_id: datasetId, template, focus })} isDisabled={!datasetId} /></div>
+        </>}
       </div>
     </Card>
   );

@@ -9,7 +9,7 @@ export const STEP_TITLES = ['Reading the data', 'Understanding the data', 'Plann
 const ENTER = 'animate-in fade-in slide-in-from-bottom-2 duration-300 fill-mode-both';
 
 /** The AI's process, top to bottom: all steps are listed up front; the active one pulses, finished ones turn green, pending ones wait dimmed. */
-export function GenerationTimeline({ steps, widgets, busy, live = {} }: { steps: GenStep[]; widgets: GenWidget[]; busy: boolean; live?: LiveLanes }) {
+export function GenerationTimeline({ steps, widgets, busy, live = {}, only }: { steps: GenStep[]; widgets: GenWidget[]; busy: boolean; live?: LiveLanes; only?: number[] }) {
   const now = useTicker(busy);
   const byN = new Map(steps.map((s) => [s.n, s]));
   const nextN = Math.max(0, ...steps.filter((x) => x.done).map((x) => x.n)) + 1;   // the step waiting to start
@@ -17,6 +17,7 @@ export function GenerationTimeline({ steps, widgets, busy, live = {} }: { steps:
     <ol className="flex flex-col gap-1">
       {STEP_TITLES.map((title, i) => {
         const n = i + 1;
+        if (only && !only.includes(n)) return null;
         const s = byN.get(n);
         const done = !!s?.done;
         const running = busy && !done && (!!s || n === nextN);
