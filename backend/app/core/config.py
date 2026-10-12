@@ -46,6 +46,10 @@ class Settings(BaseSettings):
     query_timeout_s: int = 30
     # DuckDB resource limits (spec §55: 4 CPU / 20 GB box shared with other services)
     duckdb_memory_limit: str = "6GB"
+    # "Copy a live table into the app" runs in its own process with its own small limits (a failure there must not take the server down)
+    copy_memory_limit: str = "1GB"
+    copy_threads: int = 2
+    copy_timeout_s: int = 3600
     duckdb_threads: int = 3
     duckdb_temp_dir: str = str(DATA_DIR / "tmp")  # spill-to-disk location
     # In-process query-result cache (spec §53); invalidated on any data write

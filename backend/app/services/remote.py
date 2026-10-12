@@ -11,13 +11,23 @@ table directly.
 """
 from __future__ import annotations
 
+import json
+import os
+import shutil
+import subprocess
+import sys
+import tempfile
 import threading
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 from ..connectors import ConnectorError, get_connector
+from ..connectors.base import redact
+from ..core import tenant
+from ..core.config import _env_file, settings
 from ..core.store import DEFAULT_ORG, DEFAULT_USER, DEFAULT_WS, store
-from . import audit, columnar
+from . import audit, columnar, disk, quota
 from .ingest import safe_table_name
 
 _lock = threading.Lock()
@@ -196,19 +206,74 @@ def convert_to_linked(ds: dict[str, Any], remote_name: str | None = None) -> dic
     return store.get("datasets", ds["id"])
 
 
+WORKER_CMD = [sys.executable, "-m", "app.services.copy_worker"]   # tests swap this to simulate a crashed / killed worker
+_BACKEND_ROOT = Path(__file__).resolve().parents[2]
+
+
+def _why_worker_failed(code: int, stderr: str) -> str:
+    """A readable reason for a worker that did not finish. Killed (SIGKILL / 137) is the signature of the out-of-memory killer."""
+    last = redact((stderr.strip().splitlines() or [""])[-1])[:300]
+    if code in (137, -9):
+        return "The copy was stopped by the system, almost certainly because the server ran out of memory. Nothing was changed; the dataset is still a live link."
+    if code < 0 or code in (134, 139) or code > 255:   # a signal, or a Windows access violation
+        return f"The copy process crashed (exit code {code}). Nothing was changed; the dataset is still a live link." + (f" Last message: {last}" if last else "")
+    return last or f"The copy process failed (exit code {code})."
+
+
+def _run_copy_worker(src: dict[str, Any], remote_name: str, out: Path) -> dict[str, Any]:
+    """Run the copy in a child process (see copy_worker.py); returns {rows, columns} or raises ConnectorError."""
+    spec = {"type": src["type"], "config": src["config"], "remote": remote_name, "out": str(out), "memory_limit": settings.copy_memory_limit,
+            "threads": settings.copy_threads, "temp_dir": settings.duckdb_temp_dir, "workspace": None if tenant.current() == tenant.ALL else tenant.current()}
+    scratch = tempfile.mkdtemp(prefix="copy_worker_")
+    # the server holds the real metadata file open, so the worker gets a throwaway one; it reads the same settings file as the server
+    env = {**os.environ, "METADATA_DB": os.path.join(scratch, "metadata.duckdb"), "DASHTOR_ENV_FILE": _env_file() or ""}
+    try:
+        proc = subprocess.run(WORKER_CMD, input=json.dumps(spec), capture_output=True, text=True, cwd=_BACKEND_ROOT, env=env, timeout=settings.copy_timeout_s)
+    except subprocess.TimeoutExpired:
+        limit = f"{settings.copy_timeout_s // 60} minutes" if settings.copy_timeout_s >= 120 else f"{settings.copy_timeout_s} seconds"
+        raise ConnectorError(f"The copy took longer than {limit} and was stopped. Nothing was changed.") from None
+    finally:
+        shutil.rmtree(scratch, ignore_errors=True)
+    if proc.returncode != 0:
+        raise ConnectorError(_why_worker_failed(proc.returncode, proc.stderr))
+    try:
+        return json.loads(proc.stdout.strip().splitlines()[-1])
+    except (ValueError, IndexError):
+        raise ConnectorError("The copy process finished without a result.") from None
+
+
 def convert_to_copy(ds: dict[str, Any]) -> dict[str, Any]:
     """Inverse of convert_to_linked: copy the live table's rows into a stored Parquet file under the same name.
 
-    Charts, queries and dashboards keep working (same table name) but read local data, so they are fast and no longer
-    depend on the source database being reachable. Quotas and the disk guard apply like any import."""
-    from .ingest import ingest_source
+    The rows are streamed by a separate worker process straight into the Parquet file (low memory; a crash cannot take the server
+    down). Only when it has finished and the quotas pass is the file swapped in and the linked view replaced, so a failed copy
+    leaves the dataset exactly as it was. Charts, queries and dashboards keep working (same table name) but read local data."""
+    from .engine import engine
 
     src = store.get("datasources", ds["source_id"]) if ds.get("source_id") else None
     if not src or not ds.get("remote_table"):
         raise ConnectorError("this dataset is not a live link to a database table")
-    result = ingest_source(src, ds["name"], discover_name=ds["remote_table"], target_table=ds["physical_name"])
+    disk.ensure_room()
+    quota.ensure_fits()
+    table = ds["physical_name"]
+    final = columnar.parquet_path(table)
+    final.parent.mkdir(parents=True, exist_ok=True)
+    tmp = final.with_name(final.name + ".copy.tmp")
+    try:
+        result = _run_copy_worker(src, ds["remote_table"], tmp)
+        quota.check_rows(result["rows"])
+        quota.ensure_fits(tmp.stat().st_size - (final.stat().st_size if final.exists() else 0))
+        os.replace(tmp, final)
+    finally:
+        tmp.unlink(missing_ok=True)
+    with engine.writer() as con:
+        columnar.drop_relation(con, table)   # the linked view goes, a view over the Parquet file takes its name
+        con.execute(f"CREATE VIEW {table} AS SELECT * FROM read_parquet('{columnar._lit(final)}')")   # noqa: SLF001
     store.execute("UPDATE datasets SET remote_table = NULL WHERE id = ?", [ds["id"]])
-    store.update("datasets", ds["id"], {"row_count": result["row_count"], "column_count": len(result["columns"]), "refreshed_at": datetime.now(timezone.utc)})
+    store.execute("DELETE FROM columns_meta WHERE dataset_id = ?", [ds["id"]])
+    for c in result["columns"]:
+        store.insert("columns_meta", {"dataset_id": ds["id"], **c})
+    store.update("datasets", ds["id"], {"row_count": result["rows"], "column_count": len(result["columns"]), "refreshed_at": datetime.now(timezone.utc)})
     invalidate()
-    audit.record("dataset.copy", entity_type="dataset", entity_id=ds["id"], detail=f"{ds['name']} copied from the live source ({result['row_count']} rows)")
+    audit.record("dataset.copy", entity_type="dataset", entity_id=ds["id"], detail=f"{ds['name']} copied from the live source ({result['rows']} rows)")
     return store.get("datasets", ds["id"])

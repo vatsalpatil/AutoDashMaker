@@ -79,6 +79,75 @@ db.commit()
 assert engine.execute(f"SELECT COUNT(*) AS n FROM {ds2['physical_name']}")["rows"][0]["n"] == 3
 engine.drop_table(ds2["physical_name"])
 
+# 4b. the copy runs in a separate worker process; if that process dies, only the copy fails and the dataset stays a working live link
+import time as _time
+
+from app.connectors import ConnectorError
+from app.core.config import settings as _settings
+from app.services import remote as _r
+
+_real_cmd = _r.WORKER_CMD
+ds3 = remote.link_source(src, "sales", "sales_fail")
+phys3 = ds3["physical_name"]
+for cmd, expect in [
+    ([sys.executable, "-c", "import os; os._exit(137)"], "out of memory"),                       # SIGKILL / OOM killer
+    ([sys.executable, "-c", "import os; os._exit(139)"], "crashed"),                             # segfault
+    ([sys.executable, "-c", "import sys; sys.stderr.write('Boom: no route to host\\n'); sys.exit(1)"], "Boom: no route to host"),
+    ([sys.executable, "-c", "print('no json here')"], "without a result"),
+]:
+    _r.WORKER_CMD = cmd
+    try:
+        _r.convert_to_copy(store.get("datasets", ds3["id"]))
+        raise SystemExit(f"expected a failure for {expect!r}")
+    except ConnectorError as e:
+        assert expect in str(e), (expect, str(e))
+    after = store.get("datasets", ds3["id"])
+    assert after["remote_table"] == "sales" and remote.is_linked(phys3), after          # still a live link
+    assert not columnar.parquet_path(phys3).exists() and not columnar.parquet_path(phys3).with_name(phys3 + ".parquet.copy.tmp").exists()
+    assert engine.execute(f"SELECT COUNT(*) AS n FROM {phys3}")["rows"][0]["n"] == 0    # and it still answers (the source table was emptied above)
+
+# a worker that hangs is stopped
+_r.WORKER_CMD = [sys.executable, "-c", "import time; time.sleep(30)"]
+_settings.copy_timeout_s = 1
+t0 = _time.monotonic()
+try:
+    _r.convert_to_copy(store.get("datasets", ds3["id"]))
+    raise SystemExit("expected a timeout")
+except ConnectorError as e:
+    assert "seconds" in str(e) and _time.monotonic() - t0 < 10, str(e)
+_settings.copy_timeout_s = 3600
+
+# the real worker, but the table does not exist (any source-side error comes back as a message)
+_r.WORKER_CMD = _real_cmd
+store.update("datasets", ds3["id"], {"remote_table": "no_such_table"})
+try:
+    _r.convert_to_copy(store.get("datasets", ds3["id"]))
+    raise SystemExit("expected an error for a missing table")
+except ConnectorError as e:
+    assert str(e) and "Traceback" not in str(e), str(e)
+store.update("datasets", ds3["id"], {"remote_table": "sales"})
+engine.drop_table(phys3)
+
+# a bigger table streams through the worker: 2M rows in, the same 2M rows readable from Parquet, and quickly
+db.execute("CREATE TABLE big (id INTEGER, region TEXT, amount REAL)")
+db.execute("WITH RECURSIVE c(x) AS (SELECT 1 UNION ALL SELECT x + 1 FROM c WHERE x < 2000000) INSERT INTO big SELECT x, CASE x % 4 WHEN 0 THEN 'N' WHEN 1 THEN 'S' WHEN 2 THEN 'E' ELSE 'W' END, x * 0.5 FROM c")
+db.commit()
+dsb = remote.link_source(src, "big", "big_live")
+t0 = _time.monotonic()
+copy_jobs.start(store.get("datasets", dsb["id"]))
+for _ in range(900):
+    if copy_jobs.state(dsb["id"])["state"] != "running":
+        break
+    _time.sleep(0.1)
+took = _time.monotonic() - t0
+assert copy_jobs.state(dsb["id"]) == {"state": "done"}, copy_jobs.state(dsb["id"])
+rowsb = engine.execute(f"SELECT COUNT(*) AS n, SUM(amount) AS s FROM {dsb['physical_name']}")["rows"][0]
+assert rowsb["n"] == 2000000 and rowsb["s"] == sum(x * 0.5 for x in range(1, 2000001)), rowsb
+assert store.get("datasets", dsb["id"])["row_count"] == 2000000 and not store.get("datasets", dsb["id"]).get("remote_table")
+assert took < 60, f"2M-row copy took {took:.1f}s"
+assert {c["name"] for c in store.list("columns_meta", where="dataset_id = ?", params=[dsb["id"]], order=None)} == {"id", "region", "amount"}
+engine.drop_table(dsb["physical_name"])
+
 # 5. delete drops the view
 engine.drop_table(ds["physical_name"])
 with engine.connect(read_only=True) as con:
