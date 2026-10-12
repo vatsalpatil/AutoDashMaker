@@ -145,4 +145,8 @@ try:
     raise SystemExit("expected AIError")
 except ai_svc.AIError as e:
     assert "rate-limiting" in str(e), str(e)
+# SSE routes must bypass the gzip middleware (it buffers streams: the live site sat on "Reading the data" until this was listed)
+from app.core.compression import STREAM_PATHS
+for path in ("/api/dashboards/generate/understand", "/api/dashboards/generate/plan", "/api/dashboards/generate/build", "/api/ai/agent"):
+    assert path.startswith(STREAM_PATHS), path
 print("dash_gen tests OK")

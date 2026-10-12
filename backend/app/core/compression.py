@@ -5,7 +5,8 @@ Starlette 0.38 would buffer Server-Sent Events inside the compressor, so streami
 from starlette.middleware.gzip import GZipMiddleware
 from starlette.types import Receive, Scope, Send
 
-STREAM_PATHS = ("/api/ai/agent", "/api/studio/stream")
+# every Server-Sent Events route must be listed here (prefix match), or gzip holds its events back until the stream ends
+STREAM_PATHS = ("/api/ai/agent", "/api/studio/stream", "/api/dashboards/generate")
 
 
 class ApiGZipMiddleware(GZipMiddleware):
