@@ -1,4 +1,13 @@
 """AutoDashMaker — FastAPI entrypoint."""
+import os
+
+if __name__ == "__main__":
+    # `python Main.py` (auto-reload for development): this process only watches files and launches the worker. It must NOT import the app,
+    # because importing opens the metadata database and DuckDB allows one process per file: the worker would then fail to open it.
+    import uvicorn
+    uvicorn.run("Main:app", host="0.0.0.0", port=int(os.environ.get("PORT", 8000)), reload=True)
+    raise SystemExit(0)
+
 from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI
@@ -49,8 +58,4 @@ app.include_router(auth.router)  # public: /api/auth/config; /api/auth/me checks
 def health():
     return {"status": "ok", "app": settings.app_name, "version": "2.0.0"}
 
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run("Main:app", host="0.0.0.0", port=8000, reload=True)
 

@@ -217,3 +217,4 @@ Format: `YYYY-MM-DD · tool · files · what + why`
 - 2026-10-12 · Breadcrumbs.tsx · no name lookup for /dashboards/generate (was a harmless 404 per page view)
 - 2026-10-12 · services/copy_worker.py (new), remote.convert_to_copy (child process, atomic Parquet swap, clear failure reasons), config copy_* limits, tests · live 'Copy data' returned 502 (server stopped mid-copy): copy now isolated; verified through the UI against a running server
 - 2026-10-12 · dash_repair.py (new), dash_ai/dash_gen (fixed count), ResultCard (multi-select suggestions applied as one numbered instruction, select all/clear), changes.ts + test, GenerationTimeline auto-fixed mark, tests
+- 2026-10-12 · backend/Main.py · FIX local 'python Main.py' reload crash (watcher process opened metadata.duckdb before the worker): launcher moved above all app imports; PORT env; tested start + reload
