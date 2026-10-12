@@ -15,6 +15,7 @@ from typing import Any, Iterator
 from ..core.store import store
 from . import ai as ai_svc, ai_stream
 from .dash_ai import _layout, _materialize, _store_widget
+from .dash_critic import has_time, review_dashboard
 from .dash_pages import MAX_PARALLEL
 from .dash_plan import ask_json, clean_title, plan as plan_phase, understand
 from .dash_profile import profile
@@ -110,14 +111,17 @@ def build(dataset_id: str, name: str, pages: list[dict[str, str]], widgets: list
                 w["title"], w["page"] = title, page
                 done_by_idx[i] = w
                 yield {"type": "widget", "title": title, "status": "ok", "page": page_name[page], "chart": w["chart"]["type"], "ms": w.get("ms"), "fixed": w.get("fixed", 0),
-                       "why": str(spec.get("why") or ""), "formula": str(spec.get("formula") or ""), "sql": w["sql"]}
+                       "notes": w.get("notes", []), "why": str(spec.get("why") or ""), "formula": str(spec.get("formula") or ""), "sql": w["sql"]}
             yield {"type": "step", "n": 4, "title": "Building and checking each widget",
                    "detail": f"Checked {len(done_by_idx) + len(skipped)} of {total} widgets (several at the same time)…"}
     built = [done_by_idx[i] for i in sorted(done_by_idx)]   # plan order, whatever order they finished in
     if not built:
         raise ai_svc.AIError("None of the planned widgets could be built: " + "; ".join(s["reason"] for s in skipped)[:300])
+    rev = review_dashboard(built, skipped, has_time(built, prof["text"]))   # self-review: drop duplicates, score coverage
+    built = rev["kept"]
+    yield {"type": "review", "score": rev["score"], "checks": rev["checks"], "dropped": rev["dropped"]}
     yield {"type": "step", "n": 4, "title": "Building and checking each widget", "done": True,
-           "detail": f"{len(built)} widgets built" + (f", {len(skipped)} skipped." if skipped else ".")}
+           "detail": f"{len(built)} widgets built" + (f", {len(skipped)} skipped" if skipped else "") + f". Quality score {rev['score']}/100."}
 
     dash_name = clean_title(name)
     yield {"type": "step", "n": 5, "title": "Writing insights", "detail": "The AI reads the real results (and thinks of improvements at the same time); it may only quote numbers that appear in them."}
@@ -144,7 +148,7 @@ def build(dataset_id: str, name: str, pages: list[dict[str, str]], widgets: list
         out.append({"title": "Key Insights", "type": "text", "page": "Insights"})
     yield {"type": "step", "n": 6, "title": "Saving the dashboard", "done": True, "detail": f"“{dash_name}” saved with {len(used)} pages."}
     yield {"type": "done", "dashboard_id": dash["id"], "name": dash_name, "pages": [p["name"] for p in used], "widgets": out,
-           "skipped": skipped, "suggestions": suggestions}
+           "skipped": skipped, "suggestions": suggestions, "score": rev["score"], "checks": rev["checks"]}
 
 
 def generate(dataset_id: str, template: str, focus: str, provider_id: str | None, name: str | None = None) -> dict[str, Any]:

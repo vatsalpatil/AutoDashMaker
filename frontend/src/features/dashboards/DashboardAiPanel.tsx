@@ -1,22 +1,19 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowUp, Check, Loader2, Sparkles } from 'lucide-react';
+import { AlertTriangle, ArrowUp, Check, Lightbulb, RotateCw, Sparkles, Undo2 } from 'lucide-react';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { api } from '@/lib/api';
+import { AiRunLog } from './ai/AiRunLog';
+import { useAiRun, type OpLine } from './ai/useAiRun';
 
-interface EditResult {
-  status: 'ok' | 'no_provider' | 'failed';
-  detail?: string;
-  message?: string;
-  applied?: string[];
-  page?: string;   // the page that changed: the dashboard switches to it so the result is visible
-  skipped?: { title: string; reason: string }[];
-}
-interface Turn { instruction: string; result?: EditResult; error?: string }
+interface EditDone { message: string; applied: string[]; skipped: { title: string; reason: string }[]; page?: string; next: string[]; can_undo: boolean }
+interface Turn { instruction: string; result?: EditDone; ops: OpLine[]; error?: string; noProvider?: boolean; undone?: boolean }
 
-const IDEAS = ['Add a KPI for the total', 'Change the line chart to an area chart', 'Add a pie of the top categories', 'Remove the table'];
+const STEPS = ['Reading the dashboard', 'Planning the change', 'Applying and checking', 'Verifying the result'];
+const IDEAS = ['Add KPIs for the headline totals in one row', 'Add a monthly trend after the KPIs', 'Change the pie to a bar chart and make it wider',
+  'Add a notes box at the top summarising the dashboard', 'Add a new page "Details" with a table of the top 20 rows'];
 
-/** Chat with the dashboard: describe a change, the AI adds / updates / removes widgets (each query is checked first). */
+/** Chat with the dashboard: the AI plans the change, applies it with every query checked and self-reviewed, verifies the layout, and can undo. */
 export function DashboardAiPanel({ open, dashboardId, activePage, onClose, onChanged }: {
   open: boolean;
   dashboardId: string;
@@ -26,42 +23,43 @@ export function DashboardAiPanel({ open, dashboardId, activePage, onClose, onCha
   onChanged: (page?: string) => void;
 }) {
   const [turns, setTurns] = useState<Turn[]>([]);
+  const [pending, setPending] = useState<string | null>(null);
   const [text, setText] = useState('');
-  const [busy, setBusy] = useState(false);
+  const run = useAiRun<EditDone>();
   const end = useRef<HTMLDivElement>(null);
-  useEffect(() => { end.current?.scrollIntoView({ block: 'end' }); }, [turns, busy]);
+  useEffect(() => { end.current?.scrollIntoView({ block: 'end' }); }, [turns, run.steps, run.ops]);
 
   async function send(instruction: string) {
     const t = instruction.trim();
-    if (!t || busy) return;
+    if (!t || run.busy) return;
     setText('');
-    setBusy(true);
-    setTurns((all) => [...all, { instruction: t }]);
-    const patch = (p: Partial<Turn>) => setTurns((all) => all.map((x, i) => (i === all.length - 1 ? { ...x, ...p } : x)));
-    try {
-      // the earlier turns, so "it" / "that chart" in a follow-up make sense
-      const history = turns.flatMap((x) => [{ role: 'user', text: x.instruction },
-        ...(x.result?.status === 'ok' ? [{ role: 'assistant', text: [x.result.message, ...(x.result.applied ?? [])].filter(Boolean).join(' — ') }] : [])]);
-      const r = await api.post<EditResult>(`/dashboards/${dashboardId}/ai-edit`, { instruction: t, history, page: activePage });
-      patch({ result: r });
-      if (r.status === 'ok' && r.applied?.length) onChanged(r.page);
-    } catch (e) {
-      patch({ error: (e as Error).message });
-    } finally {
-      setBusy(false);
-    }
+    setPending(t);
+    // the earlier turns, so "it" / "that chart" in a follow-up make sense
+    const history = turns.flatMap((x) => [{ role: 'user', text: x.instruction },
+      ...(x.result ? [{ role: 'assistant', text: [x.result.message, ...x.result.applied].filter(Boolean).join(' — ') }] : [])]);
+    const { done: r, ops, error } = await run.run(`/api/dashboards/${dashboardId}/ai-edit/stream`, { instruction: t, history, page: activePage });
+    setPending(null);
+    setTurns((all) => [...all, { instruction: t, result: r ?? undefined, ops, error: error?.message, noProvider: error?.noProvider }]);
+    if (r?.applied.length) onChanged(r.page);
   }
 
+  async function undo(i: number) {
+    await api.post(`/dashboards/${dashboardId}/ai-edit/undo`);
+    setTurns((all) => all.map((x, k) => (k === i ? { ...x, undone: true } : x)));
+    onChanged();
+  }
+
+  const last = turns.length - 1;
   return (
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
-      <SheetContent className="flex w-[26rem] flex-col gap-0 p-0 sm:max-w-md">
+      <SheetContent className="flex w-[28rem] flex-col gap-0 p-0 sm:max-w-md">
         <SheetHeader className="border-b">
           <SheetTitle className="flex items-center gap-2"><Sparkles className="size-4 text-primary" /> Edit with AI</SheetTitle>
-          <SheetDescription>Tell the AI what to add, change or remove. It checks every query before applying it.</SheetDescription>
+          <SheetDescription>Add, change, move, resize or remove widgets, add notes and pages, rename. Every query is checked and self-reviewed; you can undo.</SheetDescription>
         </SheetHeader>
 
         <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4">
-          {turns.length === 0 && (
+          {turns.length === 0 && !pending && (
             <div className="flex flex-col gap-1.5">
               {IDEAS.map((i) => <button key={i} type="button" onClick={() => send(i)} className="rounded-lg border bg-card px-3 py-1.5 text-left text-sm hover:border-primary hover:text-primary">{i}</button>)}
             </div>
@@ -69,32 +67,53 @@ export function DashboardAiPanel({ open, dashboardId, activePage, onClose, onCha
           {turns.map((t, i) => (
             <div key={i} className="flex flex-col gap-2">
               <div className="ml-auto max-w-[85%] rounded-2xl rounded-br-sm bg-primary px-3 py-1.5 text-sm text-primary-foreground">{t.instruction}</div>
-              {t.error && <p className="rounded-lg bg-destructive/10 p-2 text-sm text-destructive">{t.error}</p>}
-              {t.result?.status !== undefined && t.result.status !== 'ok' && (
+              {t.error && (
                 <p className="rounded-lg bg-destructive/10 p-2 text-sm text-destructive">
-                  {t.result.detail}{t.result.status === 'no_provider' && <> <Link to="/settings" className="underline">Open Settings</Link></>}
+                  {t.error}{t.noProvider && <> <Link to="/settings" className="underline">Open Settings</Link></>}
                 </p>
               )}
-              {t.result?.status === 'ok' && (
+              {t.result && (
                 <div className="rounded-lg border bg-muted/40 p-2.5 text-sm">
                   <p>{t.result.message}</p>
-                  {t.result.applied?.map((a) => <p key={a} className="mt-1 flex items-center gap-1.5 text-xs text-success"><Check className="size-3.5" />{a}</p>)}
-                  {t.result.skipped?.map((s) => <p key={s.title + s.reason} className="mt-1 text-xs text-muted-foreground">Skipped <b>{s.title}</b>: {s.reason}</p>)}
+                  {t.ops.map((o, k) => (
+                    <p key={k} className="mt-1 flex items-start gap-1.5 text-xs">
+                      {o.op === 'retry' ? <RotateCw className="mt-0.5 size-3.5 shrink-0 text-primary" /> : o.status === 'ok' ? <Check className="mt-0.5 size-3.5 shrink-0 text-success" /> : <AlertTriangle className="mt-0.5 size-3.5 shrink-0 text-warning" />}
+                      <span>{o.text}{o.detail && <span className="text-muted-foreground"> — {o.detail}</span>}</span>
+                    </p>
+                  ))}
+                  {i === last && t.result.can_undo && !t.undone && (
+                    <button type="button" onClick={() => undo(i)} className="mt-2 flex items-center gap-1 text-xs text-primary hover:underline"><Undo2 className="size-3.5" /> Undo this change</button>
+                  )}
+                  {t.undone && <p className="mt-2 text-xs text-muted-foreground">Undone — the dashboard is back as it was.</p>}
+                  {i === last && t.result.next.length > 0 && (
+                    <div className="mt-2 flex flex-col gap-1">
+                      <p className="flex items-center gap-1 text-xs font-medium text-muted-foreground"><Lightbulb className="size-3.5" /> Next ideas</p>
+                      {t.result.next.map((n) => <button key={n} type="button" onClick={() => send(n)} disabled={run.busy}
+                        className="rounded-md border bg-card px-2 py-1 text-left text-xs hover:border-primary hover:text-primary">{n}</button>)}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
           ))}
-          {busy && <p className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="size-4 animate-spin" /> Working on it…</p>}
+          {pending && (
+            <div className="flex flex-col gap-2">
+              <div className="ml-auto max-w-[85%] rounded-2xl rounded-br-sm bg-primary px-3 py-1.5 text-sm text-primary-foreground">{pending}</div>
+              <div className="rounded-lg border p-2"><AiRunLog run={run} titles={STEPS} compact /></div>
+            </div>
+          )}
           <div ref={end} />
         </div>
 
         <div className="border-t p-3">
           <div className="flex items-end gap-2 rounded-xl border bg-card p-1.5 focus-within:ring-2 focus-within:ring-ring/40">
-            <textarea value={text} rows={2} onChange={(e) => setText(e.target.value)} placeholder="e.g. add a bar chart of profit by country"
+            <textarea value={text} rows={2} onChange={(e) => setText(e.target.value)} placeholder="e.g. add a bar chart of profit by country after the KPIs"
               onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(text); } }}
               className="min-w-0 flex-1 resize-none bg-transparent px-1.5 py-1 text-sm outline-none placeholder:text-muted-foreground" />
-            <button type="button" onClick={() => send(text)} disabled={busy || !text.trim()} aria-label="Send"
-              className="grid size-8 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground disabled:opacity-40"><ArrowUp className="size-4" /></button>
+            {run.busy
+              ? <button type="button" onClick={run.stop} className="h-8 shrink-0 rounded-full border px-3 text-xs">Stop</button>
+              : <button type="button" onClick={() => send(text)} disabled={!text.trim()} aria-label="Send"
+                className="grid size-8 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground disabled:opacity-40"><ArrowUp className="size-4" /></button>}
           </div>
         </div>
       </SheetContent>

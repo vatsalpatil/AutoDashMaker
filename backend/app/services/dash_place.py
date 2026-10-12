@@ -54,3 +54,17 @@ def grid_positions(count: int, columns: int, start_y: int, height: int = 2) -> l
     columns = min(max(int(columns), 1), 6)
     width = 12 // columns
     return [{"x": (i % columns) * width, "y": start_y + (i // columns) * height, "w": width, "h": height} for i in range(count)]
+
+
+def resolve_overlaps(index: dict[str, dict[str, Any]], page: str) -> list[tuple[str, int]]:
+    """(widget id, new y) for widgets on `page` that overlap one placed above them: each moves down just below it."""
+    placed: list[dict[str, int]] = []
+    moves = []
+    for wid, p in sorted(_page_items(index, page, None), key=lambda t: (t[1]["y"], t[1]["x"])):
+        y = p["y"]
+        while hit := [q for q in placed if q["x"] < p["x"] + p["w"] and p["x"] < q["x"] + q["w"] and q["y"] < y + p["h"] and y < q["y"] + q["h"]]:
+            y = max(q["y"] + q["h"] for q in hit)
+        if y != p["y"]:
+            moves.append((wid, y))
+        placed.append({**p, "y": y})
+    return moves

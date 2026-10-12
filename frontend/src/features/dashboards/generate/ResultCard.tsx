@@ -7,6 +7,7 @@ import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { combineChanges } from './changes';
 import type { GenResult } from './useGenerateSession';
+import { ReviewChecklist } from '../ai/ReviewChecklist';
 
 interface EditReply { status: string; detail?: string; message?: string; applied?: string[]; skipped?: { title: string; reason: string }[] }
 
@@ -38,6 +39,7 @@ export function ResultCard({ result, onRestart }: { result: GenResult; onRestart
           <p className="text-sm text-muted-foreground">{result.widgets.length} widgets across {result.pages.join(', ')}.
             {result.skipped.length > 0 && ` ${result.skipped.length} skipped (${result.skipped.map((s) => s.title).join(', ')}).`}</p>
         </div>
+        {result.score !== undefined && result.checks && <ReviewChecklist score={result.score} checks={result.checks} />}
         {result.suggestions.length > 0 && (
           <div>
             <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">

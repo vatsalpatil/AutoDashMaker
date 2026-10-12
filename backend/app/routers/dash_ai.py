@@ -9,7 +9,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from ..core.security import UnsafeQueryError
-from ..services import ai as ai_svc, audit, dash_ai, dash_gen, dash_plan, live
+from ..services import ai as ai_svc, audit, dash_ai, dash_create, dash_edit, dash_gen, dash_plan, live
 from ..services.ai_errors import friendly
 from ..services.dash_templates import template_list
 
@@ -170,3 +170,34 @@ def generate_build(body: BuildIn):
     """Phase 3 (SSE): validate, run and save the plan; ends with `done` (dashboard id, insights, suggested improvements)."""
     return _sse(lambda: dash_gen.build(body.dataset_id, body.name, body.pages, body.widgets, body.provider_id),
                 lambda ev: audit.record("dashboard.ai", entity_type="dashboard", entity_id=ev["dashboard_id"], detail=f"generated from dataset {body.dataset_id}"))
+
+
+@router.post("/ai/create/stream")
+def ai_create_stream(body: CreateIn):
+    """Create with AI (SSE): read → design → build & check → self-review → insights → save, each phase reported live."""
+    if not body.prompt.strip():
+        raise HTTPException(400, "describe the dashboard you want")
+    return _sse(lambda: dash_create.create_stream(body.prompt.strip(), body.dataset_id, body.provider_id),
+                lambda ev: audit.record("dashboard.ai", entity_type="dashboard", entity_id=ev["dashboard_id"], detail=f"created from: {body.prompt[:200]}"))
+
+
+@router.post("/{dashboard_id}/ai-edit/stream")
+def ai_edit_stream(dashboard_id: str, body: EditIn):
+    """Edit with AI (SSE): read → plan → apply & check (self-correcting) → verify layout; ends with `done` (applied, next ideas, can_undo)."""
+    if not body.instruction.strip():
+        raise HTTPException(400, "tell me what to change")
+    return _sse(lambda: dash_edit.edit_stream(dashboard_id, body.instruction.strip(), body.provider_id, body.history, body.page),
+                lambda ev: audit.record("dashboard.ai", entity_type="dashboard", entity_id=dashboard_id, detail=f"edit: {body.instruction[:200]} -> {ev['applied']}"))
+
+
+@router.post("/{dashboard_id}/ai-edit/undo")
+def ai_edit_undo(dashboard_id: str):
+    """Restore the dashboard to how it was before the last AI edit."""
+    try:
+        out = dash_edit.undo(dashboard_id)
+    except LookupError as e:
+        raise HTTPException(404, str(e))
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    audit.record("dashboard.ai", entity_type="dashboard", entity_id=dashboard_id, detail="undo AI edit")
+    return out

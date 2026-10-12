@@ -169,13 +169,14 @@ TREND_SQL = "SELECT DATE_TRUNC('month', d) AS month, SUM(amount) AS total FROM s
 holder = {"ops": [], "prompt": ""}
 
 
-def fake_edit_ask(system, user, provider):
+def fake_edit_ask(system, user, provider, key="ops", **_):
     holder["prompt"] = user
     return {"message": "ok", "ops": holder["ops"]}
 
 
-_real_ask = _da._ask
-_da._ask = fake_edit_ask
+from app.services import dash_edit as _de
+_real_ask = _de.ask_json
+_de.ask_json = fake_edit_ask
 edit_id = done["dashboard_id"]   # pages: overview, breakdown, insights
 
 
@@ -318,7 +319,7 @@ except ai_svc.AIError as e:
     assert "daily limit" in str(e), str(e)
 assert sleeps == [], f"a daily quota must not be retried (slept {sleeps})"
 
-_da._ask = _real_ask
+_de.ask_json = _real_ask
 
 # self-healing: widgets orphaned on a page the dashboard does not have (the old Edit-with-AI bug) come back on the first page, same position
 from app.routers.dashboards import get_dashboard

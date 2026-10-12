@@ -1,16 +1,18 @@
 import { useCallback, useRef, useState } from 'react';
 import { streamPost } from '@/lib/sse';
+import type { ReviewCheck } from '../ai/ReviewChecklist';
+import { applyStep, applyThink, stopSteps, type StepEvent, type ThinkEvent } from './streamState';
 
 /** `spentMs` = finished time on this step; `startedAt` = when its current run began (unset when not running). */
 export interface GenStep { n: number; title: string; detail: string; items?: string[]; done: boolean; spentMs: number; startedAt?: number }
-export interface GenWidget { title: string; status: 'ok' | 'skipped'; detail?: string; page?: string; chart?: string; ms?: number | null; fixed?: number; why?: string; formula?: string; sql?: string }
+export interface GenWidget { title: string; status: 'ok' | 'skipped'; detail?: string; page?: string; chart?: string; ms?: number | null; fixed?: number; why?: string; formula?: string; sql?: string; notes?: string[]; replacement?: boolean }
 export interface DescribeRow { column: string; type: string; role: string; empty_pct: number; distinct: number; min: unknown; p25: unknown; median: unknown; p75: unknown; max: unknown; mean: unknown; std: unknown }
 export interface Evidence { table: string; rows: number; describe: DescribeRow[]; sample: { columns: string[]; rows: Record<string, unknown>[] }; correlations: { a: string; b: string; r: number }[] }
 export interface Question { id: string; question: string; why: string; options: string[]; multi: boolean }
 export interface Understanding { understanding: string; thinking: string[]; questions: Question[]; ideas: string[] }
 export interface PlanWidget { idx: number; page: string; title: string; type: string; why: string; formula: string; sql: string }
 export interface Plan { name: string; pages: { id: string; name: string }[]; widgets: PlanWidget[] }
-export interface GenResult { dashboard_id: string; name: string; pages: string[]; widgets: { title: string; type: string; page: string }[]; skipped: { title: string; reason: string }[]; suggestions: string[] }
+export interface GenResult { dashboard_id: string; name: string; pages: string[]; widgets: { title: string; type: string; page: string }[]; skipped: { title: string; reason: string }[]; suggestions: string[]; score?: number; checks?: ReviewCheck[] }
 export interface LiveText { reasoning: string; answer: string; label: string }
 /** step number -> lane (one per parallel model call, e.g. one per page) -> that call's streaming text */
 export type LiveLanes = Record<number, Record<string, LiveText>>
@@ -19,12 +21,13 @@ export interface Setup { dataset_id: string; template: string; focus: string }
 export type Phase = 'setup' | 'understanding' | 'questions' | 'planning' | 'plan' | 'building' | 'done';
 
 type Ev =
-  | ({ type: 'step' } & Omit<GenStep, 'done'> & { done?: boolean })
+  | StepEvent
   | ({ type: 'profile' } & Evidence)
   | ({ type: 'understanding' } & Understanding)
   | ({ type: 'plan' } & Plan)
   | ({ type: 'widget' } & GenWidget)
-  | { type: 'think'; n: number; kind: 'reasoning' | 'answer' | 'reset'; text: string; lane: string; label: string }
+  | ThinkEvent
+  | { type: 'review'; score: number; checks: ReviewCheck[] }
   | ({ type: 'done' } & GenResult)
   | { type: 'error'; kind?: string; message: string };
 
@@ -48,30 +51,15 @@ export function useGenerateSession() {
 
   const handle = useCallback((ev: Ev) => {
     if (ev.type === 'step') {
-      const { type: _t, done, ...rest } = ev;
-      if (done) setLive((l) => { const { [ev.n]: _gone, ...rest } = l; return rest; });   // the finished step shows its result instead
-      const now = Date.now();
-      setSteps((st) => {
-        const cur = st.find((x) => x.n === ev.n);
-        if (!cur) return [...st, { ...rest, done: !!done, spentMs: 0, startedAt: done ? undefined : now }];
-        const running = cur.startedAt !== undefined;
-        const next: GenStep = { ...cur, ...rest, done: !!done };
-        if (done && running) { next.spentMs = cur.spentMs + (now - cur.startedAt!); next.startedAt = undefined; }   // finished: freeze the timer
-        else if (!done && !running) next.startedAt = now;                                                          // a revised plan re-runs its step
-        return st.map((x) => (x.n === ev.n ? next : x));
-      });
+      if (ev.done) setLive((l) => { const { [ev.n]: _gone, ...rest } = l; return rest; });   // the finished step shows its result instead
+      setSteps((st) => applyStep(st, ev, Date.now()));
     } else if (ev.type === 'think') {
-      setLive((l) => {
-        const lanes = l[ev.n] ?? {};
-        const cur = lanes[ev.lane] ?? { reasoning: '', answer: '', label: ev.label };
-        const next = ev.kind === 'reset' ? { reasoning: '', answer: '', label: ev.label }   // a retry starts: begin a fresh box
-          : { ...cur, label: ev.label || cur.label, [ev.kind]: (cur[ev.kind] + ev.text).slice(-6000) };
-        return { ...l, [ev.n]: { ...lanes, [ev.lane]: next } };
-      });
+      setLive((l) => applyThink(l, ev));
     } else if (ev.type === 'profile') { const { type: _t, ...e } = ev; setEvidence(e); }
     else if (ev.type === 'understanding') { const { type: _t, ...u } = ev; setUnderstanding(u); setPhase('questions'); }
     else if (ev.type === 'plan') { const { type: _t, ...p } = ev; setPlan(p); setPhase('plan'); }
     else if (ev.type === 'widget') { const { type: _t, ...w } = ev; setWidgets((ws) => [...ws, w]); }
+    else if (ev.type === 'review') { /* shown from the final result */ }
     else if (ev.type === 'done') { const { type: _t, ...r } = ev; setResult(r); setPhase('done'); }
     else { setError({ message: ev.message, noProvider: ev.kind === 'no_provider' }); }
   }, []);
@@ -91,7 +79,7 @@ export function useGenerateSession() {
     }
     if (failed) {
       const now = Date.now();   // freeze the timers of whatever was running, and drop the stale 'studying…' text
-      setSteps((st) => st.map((x) => (x.done ? x : { ...x, detail: 'Stopped before it finished.', spentMs: x.spentMs + (x.startedAt ? now - x.startedAt : 0), startedAt: undefined })));
+      setSteps((st) => stopSteps(st, now));
       setLive({});
       setPhase(back);
     }

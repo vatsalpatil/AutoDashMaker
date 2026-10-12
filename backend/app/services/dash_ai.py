@@ -23,7 +23,8 @@ CHART_TYPES = ["kpi", "bar", "line", "area", "pie", "scatter", "table", "pivot",
 WIDE = {"line", "area", "table", "pivot", "composed"}
 MAX_WIDGETS = 10
 
-_WIDGET_FORMAT = ('{"title": string, "type": one of ' + "|".join(CHART_TYPES) + ', "sql": one read-only DuckDB SELECT}')
+_WIDGET_FORMAT = ('{"title": string, "type": one of ' + "|".join(CHART_TYPES) + ', "sql": one read-only DuckDB SELECT, '
+                  '"why": one short sentence on the business question it answers}')
 _SQL_RULES = (
     "Use ONLY the listed tables and columns. kpi = exactly one row with one numeric column. line/area = first column the "
     "time (or ordered category), then the measures. bar/pie/funnel/treemap = a category column then one measure "
@@ -32,12 +33,15 @@ _SQL_RULES = (
 CREATE_SYSTEM = (
     "You are a BI designer inside a DuckDB analytics app. Design a dashboard of 4 to 8 widgets that answers the user's "
     f"request. Reply with ONLY one JSON object, no prose, no markdown: {{\"name\": string, \"widgets\": [{_WIDGET_FORMAT}]}}. "
-    "Put KPI widgets first when sensible. " + _SQL_RULES)
+    "Design like a senior analyst: 2-4 headline KPIs first, then a trend over time when the data has dates, then the main breakdowns "
+    "(top categories, shares, comparisons), and a detail table last only if useful. Every widget must answer a different question; "
+    "no two widgets with the same query. Follow every explicit requirement in the request (named metrics, chart types, filters, periods). "
+    + _SQL_RULES)
 
 EDIT_SYSTEM = (
     "You edit an existing dashboard. You are given its widgets and the user's instruction. Reply with ONLY one JSON "
-    'object, no prose: {"message": a short sentence saying what you changed, "ops": [ ... ]} where each op is one of '
-    f'{{"op":"add","widget":{_WIDGET_FORMAT} plus optional "page": a page id and optional "place"}}, {{"op":"move","id":widget id,"place":...}}, {{"op":"arrange","ids"?:[widget ids, default all KPIs of the page],"columns":1-6}}, {{"op":"resize","id":widget id,"w":1-12,"h":1-12}}, {{"op":"remove","id":widget id}}, '
+    'object, no prose: {"message": a short sentence saying what you changed, "ops": [ ... ], "next": up to 3 short follow-up instructions that would improve this dashboard further} where each op is one of '
+    f'{{"op":"add","widget":{_WIDGET_FORMAT} plus optional "page": a page id and optional "place"}}, {{"op":"move","id":widget id,"place":...}}, {{"op":"arrange","ids"?:[widget ids, default all KPIs of the page],"columns":1-6}}, {{"op":"resize","id":widget id,"w":1-12,"h":1-12}}, {{"op":"remove","id":widget id}}, {{"op":"note","content":markdown text,"place"?:...}} (a text/notes widget), {{"op":"rename","name":new dashboard name}}, {{"op":"add_page","id":short slug,"name":page name}} (then add widgets with that "page"), '
     '{"op":"update","id":widget id,"title"?:string,"type"?:chart type,"sql"?:string}. '
     "Only include ops the instruction needs; if it needs none, reply with an empty ops list and explain in message. "
     "\"place\" says where on the page: \"bottom\" (default), \"top\", \"after_kpis\" (right below the KPI row), or {\"after\": widget id}; use it whenever the user says where "
@@ -120,8 +124,8 @@ def _tidy(rows: list) -> list:
     return [{k: (round(v, 2) if isinstance(v, float) else v) for k, v in r.items()} if isinstance(r, dict) else r for r in rows]
 
 
-def _materialize(spec: dict[str, Any], context: str, provider_id: str | None) -> dict[str, Any]:
-    """Validated, executed widget: {title, sql, chart: {type, encoding, options}}. Raises ValueError with the reason."""
+def _materialize(spec: dict[str, Any], context: str, provider_id: str | None, review: bool = True) -> dict[str, Any]:
+    """Validated, executed and self-reviewed widget: {title, sql, chart: {type, encoding, options}, notes}. Raises ValueError with the reason."""
     title = str(spec.get("title") or "Untitled").strip()[:80]
     sql = str(spec.get("sql") or "").strip()
     if not sql:
@@ -137,7 +141,11 @@ def _materialize(spec: dict[str, Any], context: str, provider_id: str | None) ->
     chart = {"type": ctype, "encoding": encode(ctype, cols, rows), "options": suggested["options"] if ctype == suggested["type"] else {}}
     if ctype == "kpi":
         chart["options"] = {"numberFormat": "compact"}
-    return {"title": title, "sql": result["sql"], "chart": chart, "columns": cols, "preview": _tidy(rows[:6]), "all_rows": _tidy(rows[:400]), "ms": result.get("duration_ms"), "fixed": fixes}
+    out = {"title": title, "sql": result["sql"], "chart": chart, "columns": cols, "preview": _tidy(rows[:6]), "all_rows": _tidy(rows[:400]), "ms": result.get("duration_ms"), "fixed": fixes}
+    if not review:
+        return out
+    from .dash_critic import polish   # lazy: it calls back into this module
+    return polish({**spec, "title": title}, out, context, provider_id)
 
 
 def _store_widget(dash_id: str, widget: dict[str, Any], position: dict[str, int], dataset_id: str | None, page: str = "main") -> dict[str, Any]:
@@ -176,23 +184,9 @@ def _layout(widgets: list[dict[str, Any]], start_y: int = 0) -> list[dict[str, i
 
 
 def create_dashboard(prompt: str, dataset_id: str | None, provider_id: str | None) -> dict[str, Any]:
-    context = f"{workbench_context(dataset_id, prompt)}\n\n{semantic_context(dataset_id)}"
-    plan = _ask(CREATE_SYSTEM, f"{context}\n\nDashboard request: {prompt}", provider_id)
-    specs = widgets_of(plan)[:MAX_WIDGETS]
-    if not specs:
-        raise ai_svc.AIError(f"The model's plan had no widgets (it replied with: {', '.join(list(plan)[:6]) or 'nothing'}). Try again or pick another model.")
-    built, skipped = [], []
-    for spec in specs:
-        try:
-            built.append(_materialize(spec, context, provider_id))
-        except ValueError as e:
-            skipped.append({"title": str(spec.get("title", "?")), "reason": str(e)})
-    if not built:
-        raise ai_svc.AIError("None of the proposed widgets could be built: " + "; ".join(s["reason"] for s in skipped)[:300])
-    name = str(plan.get("name") or prompt)[:80]
-    dash = store.insert("dashboards", {"name": name, "description": f"Built by AI from: {prompt[:200]}"})
-    widgets = [_store_widget(dash["id"], w, p, dataset_id) for w, p in zip(built, _layout(built))]
-    return {"dashboard_id": dash["id"], "name": name, "widgets": widgets, "skipped": skipped}
+    """Non-streaming create (API use and tests): runs every phase of dash_create.create_stream."""
+    from .dash_create import create_stream
+    return _last(create_stream(prompt, dataset_id, provider_id))
 
 
 def _describe(dash_id: str) -> tuple[str, dict[str, dict]]:
@@ -209,103 +203,14 @@ def _describe(dash_id: str) -> tuple[str, dict[str, dict]]:
 
 
 def edit_dashboard(dash_id: str, instruction: str, provider_id: str | None, history: list[dict] | None = None, page: str | None = None) -> dict[str, Any]:
-    """Apply a chat instruction to a dashboard. New widgets land on the page being viewed (or the one named), updated widgets keep
-    their own page; `history` is the earlier conversation so the model can resolve "it" / "that chart"."""
-    dash = store.get("dashboards", dash_id)
-    if not dash:
-        raise LookupError("dashboard not found")
-    pages = [p for p in (dash.get("pages") or []) if isinstance(p, dict) and p.get("id")] or [{"id": "main", "name": "Overview"}]
-    page_ids = [p["id"] for p in pages]
-    page_name = {p["id"]: p.get("name", p["id"]) for p in pages}
-    viewing = page if page in page_ids else page_ids[0]
-    listing, index = _describe(dash_id)
-    context = f"{workbench_context(None, instruction)}\n\n{semantic_context(None)}"
-    talk = "\n".join(f'{"User" if t.get("role") == "user" else "You"}: {str(t.get("text", ""))[:300]}' for t in (history or [])[-8:])
-    user = (f"{context}\n\nDashboard \"{dash['name']}\". Pages: " + ", ".join(f"{pid} ({page_name[pid]})" for pid in page_ids)
-            + f". The user is viewing page: {viewing}.\nWidgets:\n{listing}\n" + (f"\nConversation so far:\n{talk}\n" if talk else "") + f"\nInstruction: {instruction}")
-    plan = _ask(EDIT_SYSTEM, user, provider_id)
-    applied, skipped, touched = [], [], viewing
+    """Non-streaming edit (API use and tests): runs every phase of dash_edit.edit_stream."""
+    from .dash_edit import edit_stream
+    return _last(edit_stream(dash_id, instruction, provider_id, history, page))
 
-    def put(w: dict[str, Any], target: str, place: Any, exclude: str | None = None, size: dict[str, int] | None = None) -> dict[str, int]:
-        """Position for a widget on `target` (fills a gap when it fits, else pushes the widgets below down) and register it in `index`."""
-        pos = dict(size) if size else _layout([w], 0)[0]
-        pos["y"] = anchor_y(index, target, place, exclude)
-        for other, new_y in make_room(index, target, pos["y"], pos["h"], exclude):
-            index[other]["widget"]["position"] = {**index[other]["widget"]["position"], "y": new_y}
-            store.update("dashboard_widgets", other, {"position": index[other]["widget"]["position"]})
-        return pos
 
-    for op in [o for o in plan.get("ops", []) if isinstance(o, dict)][:MAX_WIDGETS]:
-        kind, wid = op.get("op"), str(op.get("id", ""))
-        try:
-            if kind == "remove" and wid in index:
-                store.delete("dashboard_widgets", wid)
-                touched = index[wid]["widget"].get("page") or touched
-                applied.append(f'removed "{index[wid]["chart"]["name"]}"')
-                del index[wid]
-            elif kind == "add" and isinstance(op.get("widget"), dict):
-                w = _materialize(op["widget"], context, provider_id)
-                target = op["widget"].get("page") if op["widget"].get("page") in page_ids else viewing
-                pos = put(w, target, op["widget"].get("place") or op.get("place"))
-                new = _store_widget(dash_id, w, pos, None, target)
-                index[new["id"]] = {"widget": {"id": new["id"], "page": target, "position": pos}, "chart": {"name": w["title"], "spec": w["chart"]}, "sql": w["sql"]}
-                touched = target
-                applied.append(f'added "{w["title"]}" on {page_name[target]}')
-            elif kind == "move" and wid in index:
-                cur = index[wid]
-                where = cur["widget"].get("page") or "main"
-                pos = put({}, where, op.get("place"), exclude=wid, size=cur["widget"].get("position"))
-                cur["widget"]["position"] = pos
-                store.update("dashboard_widgets", wid, {"position": pos})
-                touched = where
-                applied.append(f'moved "{cur["chart"]["name"]}"')
-            elif kind == "arrange":
-                ids = [str(i) for i in op.get("ids", []) if str(i) in index] if isinstance(op.get("ids"), list) else []
-                if not ids:   # default: every KPI of the page being viewed
-                    ids = [i for i, e in index.items() if (e["widget"].get("page") or "main") == viewing and e["chart"].get("spec", {}).get("type") == "kpi"]
-                if not ids:
-                    skipped.append({"title": "arrange", "reason": "no widgets to arrange"})
-                    continue
-                where = index[ids[0]]["widget"].get("page") or "main"
-                ids.sort(key=lambda i: ((index[i]["widget"].get("position") or {}).get("y", 0), (index[i]["widget"].get("position") or {}).get("x", 0)))
-                cols = min(max(int(op.get("columns") or 4), 1), 6)
-                base = min((index[i]["widget"].get("position") or {}).get("y", 0) for i in ids)
-                cells = grid_positions(len(ids), cols, base)
-                block_h = max(c["y"] + c["h"] for c in cells) - base
-                for other, new_y in make_room(index, where, base, block_h, exclude=set(ids)):   # anything in the way moves below the block
-                    index[other]["widget"]["position"] = {**index[other]["widget"]["position"], "y": new_y}
-                    store.update("dashboard_widgets", other, {"position": index[other]["widget"]["position"]})
-                for wid2, cell in zip(ids, cells):
-                    index[wid2]["widget"]["position"] = cell
-                    store.update("dashboard_widgets", wid2, {"position": cell})
-                touched = where
-                applied.append(f"arranged {len(ids)} widgets in rows of {cols}")
-            elif kind == "resize" and wid in index:
-                cur = index[wid]
-                pos = dict(cur["widget"].get("position") or {"x": 0, "y": 0, "w": 6, "h": 4})
-                pos["w"] = min(max(int(op.get("w") or pos["w"]), 1), 12)
-                pos["h"] = min(max(int(op.get("h") or pos["h"]), 1), 12)
-                pos["x"] = min(pos["x"], 12 - pos["w"])
-                cur["widget"]["position"] = pos
-                store.update("dashboard_widgets", wid, {"position": pos})
-                touched = cur["widget"].get("page") or touched
-                applied.append(f'resized "{cur["chart"]["name"]}" to {pos["w"]}x{pos["h"]}')
-            elif kind == "update" and wid in index:
-                cur = index[wid]
-                where = cur["widget"].get("page") or "main"
-                spec = {"title": op.get("title") or cur["chart"]["name"], "type": op.get("type") or cur["chart"]["spec"]["type"],
-                        "sql": op.get("sql") or cur["sql"]}
-                w = _materialize(spec, context, provider_id)
-                # a new chart (not an in-place edit): the old one may be shared with other dashboards; it keeps its page and position
-                pos = cur["widget"].get("position") or put(w, where, "bottom")
-                new = _store_widget(dash_id, w, pos, None, where)
-                store.delete("dashboard_widgets", wid)
-                del index[wid]
-                index[new["id"]] = {"widget": {"id": new["id"], "page": where, "position": pos}, "chart": {"name": w["title"], "spec": w["chart"]}, "sql": w["sql"]}
-                touched = where
-                applied.append(f'updated "{w["title"]}" ({new["type"]})')
-            else:
-                skipped.append({"title": kind or "?", "reason": "unknown widget or operation"})
-        except ValueError as e:
-            skipped.append({"title": str(op.get("title") or op.get("widget", {}).get("title") or wid or kind), "reason": str(e)})
-    return {"message": str(plan.get("message") or ("Done." if applied else "Nothing to change.")), "applied": applied, "skipped": skipped, "page": touched}
+def _last(events) -> dict[str, Any]:
+    done = {}
+    for ev in events:
+        if ev["type"] == "done":
+            done = ev
+    return {k: v for k, v in done.items() if k != "type"}

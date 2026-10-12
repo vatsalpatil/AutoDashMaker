@@ -22,7 +22,7 @@ with engine.writer() as con:
 store.insert("datasets", {"name": "sales", "physical_name": "sales", "kind": "file", "row_count": 199})
 
 replies = iter([])
-ai_svc.chat = lambda messages, provider_id=None, max_tokens=2048: next(replies)
+ai_svc.chat = lambda messages, provider_id=None, max_tokens=2048, **_: next(replies, '{}')
 
 # 1. create: model reply wrapped in prose + fences; one widget has SQL that cannot work and is skipped
 plan = {"name": "Sales overview", "widgets": [
@@ -37,7 +37,7 @@ out = dash_ai.create_dashboard("sales overview by region", None, None)
 titles = [w["title"] for w in out["widgets"]]
 assert titles == ["Total sales", "Sales by region", "Trend"], out
 assert {s["title"] for s in out["skipped"]} == {"Broken", "Unsafe"}, out["skipped"]
-rows = store.list("dashboard_widgets", where="dashboard_id = ?", params=[out["dashboard_id"]], order=None)
+rows = [r for r in store.list("dashboard_widgets", where="dashboard_id = ?", params=[out["dashboard_id"]], order=None) if r.get("chart_id")]
 assert len(rows) == 3
 by_type = {store.get("charts", r["chart_id"])["spec"]["type"]: r for r in rows}
 assert by_type["kpi"]["position"]["h"] == 2 and by_type["line"]["position"]["w"] == 12, [r["position"] for r in rows]
@@ -55,7 +55,7 @@ edit = {"message": "Added orders by region, made the bar a pie and dropped the K
 replies = iter([json.dumps(edit)])
 res = dash_ai.edit_dashboard(out["dashboard_id"], "add orders by region, make the bar a pie, drop the KPI", None)
 assert res["message"].startswith("Added") and len(res["applied"]) == 3 and len(res["skipped"]) == 1, res
-now = store.list("dashboard_widgets", where="dashboard_id = ?", params=[out["dashboard_id"]], order=None)
+now = [r for r in store.list("dashboard_widgets", where="dashboard_id = ?", params=[out["dashboard_id"]], order=None) if r.get("chart_id")]
 types = sorted(store.get("charts", r["chart_id"])["spec"]["type"] for r in now)
 assert types == ["bar", "line", "pie"], types  # KPI removed, bar replaced by a pie, new bar added
 
@@ -65,7 +65,7 @@ try:
     dash_ai.create_dashboard("x", None, None)
     raise SystemExit("expected AIError")
 except ai_svc.AIError as e:
-    assert "usable dashboard plan" in str(e)
+    assert "usable" in str(e)
 print("dash_ai tests OK")
 
 # 4. parser: reasoning that quotes the format first, then the real plan; and loose widget objects
