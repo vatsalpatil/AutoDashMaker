@@ -90,3 +90,4 @@ Never add `caddy` to `nixPkgs` when the app has a Caddyfile: Nixpacks adds it it
 - Redeploy crash 'Could not set lock ... Conflicting lock is held in PID 0' = Dokploy started the new backend before the old one stopped (DuckDB = one process per file). core/duck.connect waits up to 120 s; if it still fails, stop the old container / use stop-first updates.
 - Every SSE route must bypass gzip (core/compression.py: STREAM_PATHS or path ending in /stream), or events arrive only at the end and proxies drop the request.
 - Long single model calls (minutes) over SSE get cut by the network/proxy (ERR_HTTP2_PROTOCOL_ERROR). Split work into parallel per-page calls instead.
+- The site is behind Cloudflare: any non-streaming request silent for ~100 s fails with HTTP 524. Long AI work must use an SSE endpoint (pings every 8 s).
