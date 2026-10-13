@@ -280,3 +280,11 @@ div.pointer-events-auto.touch-none > .bg-border:hover, div.pointer-events-auto.t
   .print-page:last-child { break-after: auto; }
   .print-widget { break-inside: avoid; }
 }
+
+/* Dashboard grid: smooth moves, and no expensive chart repaint under the cursor while a widget is being resized/dragged */
+.react-grid-item { transition: transform 180ms ease, width 180ms ease, height 180ms ease; }
+.react-grid-item.resizing, .react-grid-item.react-draggable-dragging { transition: none; z-index: 30; will-change: width, height, transform; }
+.react-grid-item.resizing > *, .react-grid-item.react-draggable-dragging > * { pointer-events: none; }
+.react-grid-item.react-grid-placeholder { background: var(--primary); opacity: .15; border-radius: .75rem; }
+.react-grid-item > .react-resizable-handle { opacity: 0; transition: opacity 150ms; }
+.react-grid-item:hover > .react-resizable-handle { opacity: 1; }

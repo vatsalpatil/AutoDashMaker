@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Markdown } from '@/components/common/Markdown';
 import type { Widget } from '@/lib/types';
 import { useDashboardFilters } from './dashboardFilters';
+import { InsightCards, type Insight } from './InsightCards';
 
 export const isContent = (w: Widget) => w.kind === 'text' || w.kind === 'link' || w.kind === 'iframe';
 
@@ -18,6 +19,7 @@ export function ContentBody({ widget }: { widget: Widget }) {
   const filters = useDashboardFilters();
   const s = widget.settings ?? {};
   const values = filters?.values ?? {};
+  if (widget.kind === 'text' && Array.isArray(s.insights) && s.insights.length) return <InsightCards items={s.insights as Insight[]} lookNext={s.look_next ? String(s.look_next) : undefined} />;
   if (widget.kind === 'text') return <div className="h-full overflow-auto text-sm"><Markdown text={fill(String(s.content ?? ''), values)} /></div>;
   const url = safeUrl(s.url);
   if (!url) return <p className="text-xs text-muted-foreground">Set a link (http://, https:// or a path like /charts).</p>;

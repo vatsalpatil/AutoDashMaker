@@ -40,31 +40,43 @@ def _context(prof: dict[str, Any]) -> str:
     return "\n".join(l for l in prof["text"].splitlines() if l.startswith("Table") or "[time]" in l)[:800]
 
 
-def _insights(name: str, built: list[dict[str, Any]], prof: dict[str, Any], provider_id: str | None) -> str | None:
-    """Grounded insights: the model sees the real results and may only state what they show."""
+INSIGHT_SYSTEM = (
+    "You are a data analyst. From the dashboard results below, pick the 5 to 8 most useful insights. Reply with ONLY JSON, no prose: "
+    '{"insights": [{"label": 2-4 word title, "value": the headline number formatted for people (e.g. "$25.5M", "40.0%", "Toronto"), '
+    '"detail": one short sentence with the supporting numbers, "tone": "up" | "down" | "neutral" | "warn", '
+    '"kind": "total" | "trend" | "rank" | "share" | "compare" | "risk"}], "look_next": one follow-up question the data can answer}. '
+    "Every number must appear in the results; never invent figures, periods or causes. Use the dataset context for the time span and do "
+    "not treat a partial latest period as a real drop. Thousands separators, at most 2 decimals, currency or % where obvious.")
+TONES, KINDS = {"up", "down", "neutral", "warn"}, {"total", "trend", "rank", "share", "compare", "risk"}
+
+
+def _insights(name: str, built: list[dict[str, Any]], prof: dict[str, Any], provider_id: str | None) -> dict[str, Any] | None:
+    """Grounded insights as structured cards {items, look_next, markdown}: the model sees the real results and may only state what
+    they show. JSON keeps a reasoning model's thinking out of the text."""
     facts = "\n".join(_summary(w) for w in built if w["chart"]["type"] != "scatter")[:10000]
-    messages = [
-        {"role": "system", "content": "You are a data analyst. Write 5 to 7 short markdown bullets of insights from the dashboard results below. "
-         "Every bullet must quote concrete numbers that appear in the results; never invent figures, periods or causes. Use the dataset "
-         "context for the time span and do not treat a partial latest period as a real drop. Format numbers for people (thousands separators, "
-         "at most 2 decimals, currency or % where obvious). Lead each bullet with a bold label (e.g. **Top region:**). Finish with one "
-         "bullet starting **Look next:** suggesting a follow-up question the data can answer. Reply with the bullets only."},
-        {"role": "user", "content": f"Dataset context:\n{_context(prof)}\n\nDashboard: {name}\n\n{facts}"},
-    ]
-    tokens = 1500
-    for attempt in range(3):   # rate limit -> pause; reasoning model with an empty answer -> bigger budget
-        try:
-            text = ai_svc._THINK.sub("", ai_svc._ANSI.sub("", ai_stream.chat_live(messages, provider_id=provider_id, max_tokens=tokens, timeout=180, step=5))).strip()
-            return text or None
-        except Exception as e:
-            msg = str(e)
-            if "empty content" in msg:
-                tokens = 8000
-            elif "429" in msg or "rate" in msg.lower():
-                time.sleep(5 * (attempt + 1))
-            else:
-                break
-    return None  # insights are a bonus: the dashboard is still complete without them
+    try:
+        raw = ask_json(INSIGHT_SYSTEM, f"Dataset context:\n{_context(prof)}\n\nDashboard: {name}\n\n{facts}", provider_id, "insights", step=5)
+    except Exception:
+        return None   # insights are a bonus: the dashboard is still complete without them
+    items = []
+    for it in raw.get("insights") or []:
+        if not isinstance(it, dict) or not it.get("label"):
+            continue
+        items.append({"label": str(it["label"])[:40], "value": str(it.get("value") or "")[:32], "detail": str(it.get("detail") or "")[:240],
+                      "tone": it.get("tone") if it.get("tone") in TONES else "neutral", "kind": it.get("kind") if it.get("kind") in KINDS else "total"})
+    if not items:
+        return None
+    look = str(raw.get("look_next") or "")[:200]
+    md = "\n".join(f"- **{x['label']}:** {x['value']} — {x['detail']}" for x in items) + (f"\n- **Look next:** {look}" if look else "")
+    return {"items": items[:8], "look_next": look, "markdown": md}
+
+
+def insight_widget(dash_id: str, ins: dict[str, Any]) -> None:
+    """The Insights page's widget: stat cards (markdown kept for older viewers, exports and the editor)."""
+    rows = (len(ins["items"]) + 3) // 4
+    store.insert("dashboard_widgets", {"dashboard_id": dash_id, "kind": "text", "title": "Key Insights", "page": "insights",
+                                       "position": {"x": 0, "y": 0, "w": 12, "h": 1 + 2 * rows},
+                                       "settings": {"content": ins["markdown"], "insights": ins["items"], "look_next": ins["look_next"]}})
 
 
 def _suggestions(name: str, built: list[dict[str, Any]], insights: str | None, prof: dict[str, Any], provider_id: str | None) -> list[str]:
@@ -143,8 +155,7 @@ def build(dataset_id: str, name: str, pages: list[dict[str, str]], widgets: list
             _store_widget(dash["id"], w, pos, dataset_id, p["id"])
             out.append({"title": w["title"], "type": w["chart"]["type"], "page": p["name"]})
     if insights:
-        store.insert("dashboard_widgets", {"dashboard_id": dash["id"], "kind": "text", "title": "Key Insights", "page": "insights",
-                                           "position": {"x": 0, "y": 0, "w": 12, "h": 6}, "settings": {"content": insights}})
+        insight_widget(dash["id"], insights)
         out.append({"title": "Key Insights", "type": "text", "page": "Insights"})
     yield {"type": "step", "n": 6, "title": "Saving the dashboard", "done": True, "detail": f"“{dash_name}” saved with {len(used)} pages."}
     yield {"type": "done", "dashboard_id": dash["id"], "name": dash_name, "pages": [p["name"] for p in used], "widgets": out,

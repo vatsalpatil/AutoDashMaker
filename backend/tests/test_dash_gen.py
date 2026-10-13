@@ -51,6 +51,9 @@ def fake_ask_json(system, user, provider, key, step=None, lane=None, label=None)
                 "ideas": ["Regional performance"]}
     if key == "suggestions":
         return {"suggestions": ["Add average order value by region"]}
+    if key == "insights":
+        return {"insights": [{"label": "Top region", "value": "N", "detail": "N leads.", "tone": "up", "kind": "rank"}, {"nope": 1}],
+                "look_next": "Which month grew most?"}
     if key == "widgets" and "Your page:" in user:   # one call per page: only that page's widgets
         page = user.split('Your page: "')[1].split('"')[0].lower()
         return {"widgets": [w for w in PLAN["widgets"] if w["page"].lower() == page]}

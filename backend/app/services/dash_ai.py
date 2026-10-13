@@ -27,7 +27,7 @@ _WIDGET_FORMAT = ('{"title": string, "type": one of ' + "|".join(CHART_TYPES) + 
                   '"why": one short sentence on the business question it answers}')
 _SQL_RULES = (
     "Use ONLY the listed tables and columns. kpi = exactly one row with one numeric column. line/area = first column the "
-    "time (or ordered category), then the measures. bar/pie/funnel/treemap = a category column then one measure "
+    "time (or ordered category), then the measures. bar/pie/funnel/treemap = a category column then one measure; pivot = row field, column field, then EVERY measure the user asked for as separate columns (viewers switch between them) "
     "(ORDER BY the measure DESC LIMIT 15). Give every column a short alias. Never write anything but SELECT.")
 
 CREATE_SYSTEM = (
@@ -155,6 +155,12 @@ def _store_widget(dash_id: str, widget: dict[str, Any], position: dict[str, int]
     return {"id": row["id"], "title": widget["title"], "type": widget["chart"]["type"]}
 
 
+def _table_height(w: dict[str, Any]) -> int:
+    """Grid rows (80 px each) a table needs: toolbar + header + its rows, capped so a long table scrolls instead of filling the page."""
+    rows = len(w.get("all_rows") or [])
+    return 3 if rows <= 4 else 4 if rows <= 8 else 5 if rows <= 14 else 6
+
+
 def _layout(widgets: list[dict[str, Any]], start_y: int = 0) -> list[dict[str, int]]:
     """KPIs share a row, wide charts take a full row, the rest pair up two per row."""
     kpis = [i for i, w in enumerate(widgets) if w["chart"]["type"] == "kpi"]
@@ -172,7 +178,7 @@ def _layout(widgets: list[dict[str, Any]], start_y: int = 0) -> list[dict[str, i
         if w["chart"]["type"] in WIDE:
             if half:
                 y, half = y + 4, 0
-            h = 7 if w["chart"]["type"] in ("table", "pivot") else 4   # tables need room for rows
+            h = _table_height(w) if w["chart"]["type"] in ("table", "pivot") else 4
             pos[i] = {"x": 0, "y": y, "w": 12, "h": h}
             y += h
         else:

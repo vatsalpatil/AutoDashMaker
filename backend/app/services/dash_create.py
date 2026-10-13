@@ -70,7 +70,7 @@ def _profile_like(context: str, built: list[dict[str, Any]]) -> dict[str, Any]:
 
 
 def create_stream(prompt: str, dataset_id: str | None, provider_id: str | None) -> Iterator[dict[str, Any]]:
-    from .dash_gen import _insights, _suggestions   # lazy: dash_gen imports dash_ai helpers too
+    from .dash_gen import _insights, _suggestions, insight_widget   # lazy: dash_gen imports dash_ai helpers too
     yield _step(1, "Collecting the tables, columns, saved queries and business definitions the AI may use.")
     context = f"{workbench_context(dataset_id, prompt)}\n\n{semantic_context(dataset_id)}"
     tables = sum(1 for l in context.splitlines() if l.lower().startswith(("table", "- table", "## ")))
@@ -123,8 +123,7 @@ def create_stream(prompt: str, dataset_id: str | None, provider_id: str | None) 
     dash = store.insert("dashboards", {"name": name, "pages": pages, "description": f"Built by AI from: {prompt[:200]}"})
     widgets = [_store_widget(dash["id"], w, p, dataset_id) for w, p in zip(built, _layout(built))]
     if insights:
-        store.insert("dashboard_widgets", {"dashboard_id": dash["id"], "kind": "text", "title": "Key Insights", "page": "insights",
-                                           "position": {"x": 0, "y": 0, "w": 12, "h": 6}, "settings": {"content": insights}})
+        insight_widget(dash["id"], insights)
     yield _step(6, f"“{name}” saved with {len(widgets)} widgets.", True)
     yield {"type": "done", "dashboard_id": dash["id"], "name": name, "widgets": widgets, "skipped": skipped,
            "score": rev["score"], "checks": rev["checks"], "suggestions": suggestions}

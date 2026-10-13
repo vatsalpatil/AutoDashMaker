@@ -36,6 +36,8 @@ export function WidgetGrid({ widgets, layout, editing, onLayoutChange, onRemove,
       rowHeight={80}
       margin={[12, 12]}
       draggableHandle=".widget-drag-handle"
+      resizeHandles={['se', 'e', 's']}
+      useCSSTransforms
       isDraggable={editing}
       isResizable={editing}
       onLayoutChange={onLayoutChange}
