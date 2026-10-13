@@ -11,6 +11,7 @@ import { MessageImages } from '@/features/ai/attachments/Attachments';
 import { PlanCard } from './PlanCard';
 import { ResultCard } from './ResultCard';
 import { SetupCard } from './SetupCard';
+import { SessionPanel } from './SessionPanel';
 import { ThinkingBlock } from './ThinkingBlock';
 import { UnderstandingCard } from './UnderstandingCard';
 import type { Setup, useGenerateSession } from './useGenerateSession';
@@ -74,9 +75,10 @@ export function GenerateThread({ s, initialDataset }: { s: Session; initialDatas
 
   const ds = datasets.find((d) => d.id === s.setup?.dataset_id);
   return (
-    <div className="relative flex h-full min-h-0 flex-col">
+    <div className="flex h-full min-h-0">
+    <div className="relative flex min-w-0 flex-1 flex-col">
       <div ref={scroll.ref} className="min-h-0 flex-1 overflow-y-auto">
-        <div ref={scroll.contentRef} className="mx-auto flex w-full max-w-3xl flex-col gap-5 px-4 py-6">
+        <div ref={scroll.contentRef} className="mx-auto flex w-full max-w-5xl flex-col gap-5 px-4 py-6 lg:px-8">
           <Ai>
             <p className="flex items-center gap-2 text-sm"><Sparkles className="size-4 text-primary" />
               Hi! Pick the data and a style. I’ll study it, ask what matters to you, propose a plan you can edit, then build and check every widget.</p>
@@ -134,6 +136,8 @@ export function GenerateThread({ s, initialDataset }: { s: Session; initialDatas
       <div className="bg-gradient-to-t from-background via-background/95 to-transparent pt-4">
         <Composer {...composer} busy={s.busy || edit.busy} onStop={() => { s.stop(); edit.stop(); }} onSend={send} actions={actions} />
       </div>
+    </div>
+    <SessionPanel s={s} datasetName={ds?.name} />
     </div>
   );
 }
