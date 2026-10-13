@@ -40,5 +40,12 @@ export function useAskThread() {
     }
   }, [scope]);
 
-  return { turns, ask, scope, setScope, clear: () => setTurns([]), busy: turns.some((t) => t.response === null) };
+  /** Reopen a saved conversation (answers keep their first rows only, to stay small). */
+  const restore = useCallback((saved: { turns: AskTurn[]; scope?: string }) => {
+    const ts = (saved.turns ?? []).filter((t) => t.response);
+    nextId.current = Math.max(0, ...ts.map((t) => t.id)) + 1;
+    setTurns(ts);
+    setScope(saved.scope ?? '');
+  }, []);
+  return { turns, ask, scope, setScope, restore, clear: () => setTurns([]), busy: turns.some((t) => t.response === null) };
 }

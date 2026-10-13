@@ -19,10 +19,11 @@ from ..services.ai_context import semantic_context, table_schema_text, with_note
 from ..services.engine import engine
 from ..services.explain import explain_sql
 from ..services.insights import detect_insights
-from . import ai_agent, ai_chat, ai_providers
+from . import ai_agent, ai_chat, ai_providers, ai_sessions
 
 router = APIRouter(prefix="/api/ai", tags=["ai"])
 router.include_router(ai_providers.router)
+router.include_router(ai_sessions.router)
 router.include_router(ai_chat.router)
 router.include_router(ai_agent.router)
 

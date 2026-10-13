@@ -33,6 +33,14 @@ type Ev =
 
 const BASE = '/api/dashboards/generate';
 
+/** Everything needed to reopen a session later (saved chat history). */
+export interface SavedGen { phase: Phase; setup: Setup | null; steps: GenStep[]; evidence: Evidence | null; understanding: Understanding | null;
+  answers: Record<string, string>; plan: Plan | null; widgets: GenWidget[]; result: GenResult | null }
+/** A phase that was still running when saved reopens at the point where the user can act again. */
+const SETTLED: Partial<Record<Phase, (v: SavedGen) => Phase>> = {
+  understanding: () => 'setup', planning: (v) => (v.plan ? 'plan' : v.understanding ? 'questions' : 'setup'), building: () => 'plan',
+};
+
 /** The whole interactive generation: three streamed AI phases with a pause for the user after the first two. */
 export function useGenerateSession() {
   const [phase, setPhase] = useState<Phase>('setup');
@@ -110,7 +118,15 @@ export function useGenerateSession() {
   }, [setup, plan, run]);
 
   const stop = useCallback(() => abort.current?.abort(), []);
+  const snapshot = (): SavedGen => ({ phase, setup, steps, evidence, understanding, answers, plan, widgets, result });
+  const restore = useCallback((v: SavedGen) => {
+    abort.current?.abort();
+    const phaseNow = SETTLED[v.phase]?.(v) ?? v.phase;
+    setPhase(phaseNow); setSetup(phaseNow === 'setup' ? null : v.setup); setSteps(stopSteps(v.steps ?? [], Date.now()).map((x) => (x.done ? x : { ...x, detail: x.detail })));
+    setEvidence(v.evidence); setUnderstanding(v.understanding); setAnswers(v.answers ?? {}); setPlan(v.plan); setWidgets(v.widgets ?? []);
+    setResult(v.result); setLive({}); setError(null);
+  }, []);
   const restart = useCallback(() => { abort.current?.abort(); setPhase('setup'); setSetup(null); setSteps([]); setEvidence(null); setUnderstanding(null); setPlan(null); setWidgets([]); setResult(null); setError(null); }, []);
 
-  return { phase, setup, steps, live, evidence, understanding, answers, plan, widgets, result, error, busy, start, makePlan, build, stop, restart };
+  return { snapshot, restore, phase, setup, steps, live, evidence, understanding, answers, plan, widgets, result, error, busy, start, makePlan, build, stop, restart };
 }

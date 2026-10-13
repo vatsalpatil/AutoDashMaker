@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { AlertTriangle, ArrowUp, Check, Lightbulb, RotateCw, Sparkles, Undo2 } from 'lucide-react';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { api } from '@/lib/api';
+import { SessionHistory } from '@/features/ai/history/SessionHistory';
+import { useAiSessions } from '@/features/ai/history/useAiSessions';
 import { AttachImageButton, AttachmentTray, MessageImages } from '@/features/ai/attachments/Attachments';
 import { useImageAttachments } from '@/features/ai/attachments/useImageAttachments';
 import { AiRunLog } from './ai/AiRunLog';
@@ -29,6 +31,12 @@ export function DashboardAiPanel({ open, dashboardId, activePage, onClose, onCha
   const att = useImageAttachments();
   const [text, setText] = useState('');
   const run = useAiRun<EditDone>();
+  const history = useAiSessions<{ turns: Turn[] }>('edit', dashboardId);
+  useEffect(() => {
+    if (run.busy || !turns.length) return;
+    history.autosave({ turns }, turns[0].instruction.slice(0, 80), `${turns.length} change request${turns.length > 1 ? 's' : ''}`);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [turns, run.busy]);
   const end = useRef<HTMLDivElement>(null);
   useEffect(() => { end.current?.scrollIntoView({ block: 'end' }); }, [turns, run.steps, run.ops]);
 
@@ -58,7 +66,11 @@ export function DashboardAiPanel({ open, dashboardId, activePage, onClose, onCha
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
       <SheetContent className="flex w-[28rem] flex-col gap-0 p-0 sm:max-w-md">
         <SheetHeader className="border-b">
-          <SheetTitle className="flex items-center gap-2"><Sparkles className="size-4 text-primary" /> Edit with AI</SheetTitle>
+          <SheetTitle className="flex items-center gap-2"><Sparkles className="size-4 text-primary" /> Edit with AI
+            <SessionHistory h={history} busy={run.busy} className="ml-auto mr-6" label="Chats"
+              onOpen={async (id) => { const v = await history.open(id); if (v) setTurns(v.turns ?? []); }}
+              onNew={() => { history.startNew(); setTurns([]); }} />
+          </SheetTitle>
           <SheetDescription>Add, change, move, resize or remove widgets, add notes and pages, rename. Every query is checked and self-reviewed; you can undo.</SheetDescription>
         </SheetHeader>
 

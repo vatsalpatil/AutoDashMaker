@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowDown, Hammer, RotateCcw, SkipForward, Sparkles } from 'lucide-react';
 import { useApi } from '@/hooks/useApi';
@@ -8,15 +8,19 @@ import { AiRunLog } from '../ai/AiRunLog';
 import { useAiRun } from '../ai/useAiRun';
 import { ActionChip, Composer } from './Composer';
 import { MessageImages } from '@/features/ai/attachments/Attachments';
+import { SessionHistory } from '@/features/ai/history/SessionHistory';
+import { useAiSessions } from '@/features/ai/history/useAiSessions';
 import { PlanCard } from './PlanCard';
 import { ResultCard } from './ResultCard';
 import { SetupCard } from './SetupCard';
 import { SessionPanel } from './SessionPanel';
 import { ThinkingBlock } from './ThinkingBlock';
 import { UnderstandingCard } from './UnderstandingCard';
-import type { Setup, useGenerateSession } from './useGenerateSession';
+import type { SavedGen, Setup, useGenerateSession } from './useGenerateSession';
 
 type Session = ReturnType<typeof useGenerateSession>;
+interface SavedThread extends SavedGen { revisions: { text: string; images: string[] }[]; follow: { text: string; images?: string[]; message?: string; error?: string }[]; notesImages: string[] }
+const PHASE_LABEL: Record<string, string> = { setup: 'not started', understanding: 'studying data', questions: 'waiting for your answers', planning: 'planning', plan: 'plan ready', building: 'building', done: 'dashboard built' };
 interface FollowUp { text: string; images?: string[]; log?: ReturnType<typeof snapshot>; error?: string; message?: string }
 const EDIT_STEPS = ['Reading the dashboard', 'Planning the change', 'Applying and checking', 'Verifying the result'];
 const snapshot = (r: ReturnType<typeof useAiRun<unknown>>) => ({ steps: r.steps, live: {}, plan: r.plan, widgets: r.widgets, ops: r.ops, review: r.review, busy: false });
@@ -36,6 +40,22 @@ export function GenerateThread({ s, initialDataset }: { s: Session; initialDatas
   const [follow, setFollow] = useState<FollowUp[]>([]);
   const edit = useAiRun<{ message: string; applied: string[] }>();
   const scroll = useStickToBottom();
+  const history = useAiSessions<SavedThread>('generate');
+  const dsName = datasets.find((d) => d.id === s.setup?.dataset_id)?.name;
+  // autosave the conversation whenever it settles (not on every streamed token)
+  useEffect(() => {
+    if (s.busy || !s.setup) return;
+    const state: SavedThread = { ...s.snapshot(), revisions, notesImages, follow: follow.map(({ text, images, message, error }) => ({ text, images, message, error })) };
+    history.autosave(state, s.result?.name ?? s.plan?.name ?? `${dsName ?? 'Dashboard'} — AI session`, PHASE_LABEL[s.phase] ?? s.phase);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [s.busy, s.phase, s.plan, s.result, s.answers, revisions, follow, notesImages]);
+  async function openSaved(id: string) {
+    const v = await history.open(id);
+    if (!v) return;
+    s.restore(v); setRevisions(v.revisions ?? []); setFollow(v.follow ?? []); setNotesImages(v.notesImages ?? []);
+    scroll.jump(false);
+  }
+  const newChat = () => { history.startNew(); setRevisions([]); setFollow([]); setNotesImages([]); s.restart(); };
   const onDraft = useCallback((d: Setup) => { draft.current = d; }, []);
   const onAnswers = useCallback((a: Record<string, string>) => { answers.current = a; }, []);
   const phase = s.phase;
@@ -67,9 +87,10 @@ export function GenerateThread({ s, initialDataset }: { s: Session; initialDatas
     done: { placeholder: 'Keep editing the dashboard: add a chart, move the KPIs, add a page…', sendLabel: 'Apply', hint: 'Each change is checked; undo is in the dashboard’s Edit with AI panel' },
   }[phase];
   const actions = <>
+    <SessionHistory h={history} busy={s.busy || edit.busy} onOpen={openSaved} onNew={newChat} />
     {phase === 'questions' && <ActionChip label="Skip questions" icon={<SkipForward className="size-3.5" />} onClick={() => s.makePlan({})} />}
     {phase === 'plan' && s.plan && <ActionChip label={`Build all ${s.plan.widgets.length} widgets`} icon={<Hammer className="size-3.5" />} onClick={() => s.build(new Set(s.plan!.widgets.map((w) => w.idx)))} />}
-    {phase !== 'setup' && !s.busy && <ActionChip label="New session" icon={<RotateCcw className="size-3.5" />} onClick={() => { setRevisions([]); setFollow([]); s.restart(); }} />}
+    {phase !== 'setup' && !s.busy && <ActionChip label="New session" icon={<RotateCcw className="size-3.5" />} onClick={newChat} />}
     {phase === 'done' && s.result && <Link to={`/dashboards/${s.result.dashboard_id}`} className="flex items-center gap-1.5 rounded-full bg-primary px-3 py-1 text-xs font-medium text-primary-foreground">Open dashboard</Link>}
   </>;
 

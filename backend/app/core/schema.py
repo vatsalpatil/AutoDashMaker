@@ -57,6 +57,10 @@ CREATE TABLE IF NOT EXISTS ai_usage (
     feature TEXT, run_id TEXT, ok BOOLEAN, status INTEGER, tokens_in INTEGER, tokens_out INTEGER,
     ms INTEGER, error TEXT, created_at TIMESTAMP
 );
+CREATE TABLE IF NOT EXISTS ai_sessions (
+    id TEXT PRIMARY KEY, workspace_id TEXT, kind TEXT, ref_id TEXT, title TEXT, summary TEXT,
+    state TEXT DEFAULT '{}', created_at TIMESTAMP, updated_at TIMESTAMP
+);
 CREATE TABLE IF NOT EXISTS conversations (
     id TEXT PRIMARY KEY, workspace_id TEXT, state TEXT DEFAULT '{}',
     created_at TIMESTAMP
