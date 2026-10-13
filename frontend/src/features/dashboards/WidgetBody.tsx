@@ -34,7 +34,7 @@ export function WidgetBody({
       <DataTable columns={data.columns} rows={data.rows} maxRows={60} fontSize={(s.tableFontSize as 'xs' | 'sm' | 'md') ?? 'sm'}
         density={(s.tableDensity as 'compact' | 'comfortable') ?? 'compact'} striped={s.tableStriped === true} />
     ) : (
-      <DataGrid columns={data.columns} rows={data.rows as Record<string, unknown>[]} bare expandable maxHeight={`${Math.max(height ?? 300, 160)}px`} />
+      <DataGrid columns={data.columns} rows={data.rows as Record<string, unknown>[]} bare expandable fill />
     );
   // fit: exactly the measured container height; scroll: natural grid height
   const natural = Math.max(widget.position.h * 80 - 60, 160);

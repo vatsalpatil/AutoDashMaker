@@ -3,7 +3,7 @@ import { opt, toNumber, type Opts } from './format';
 import { tidyDateLabels } from './dateLabels';
 
 type Row = Record<string, unknown>;
-export type Agg = 'none' | 'sum' | 'avg' | 'count' | 'min' | 'max';
+export type Agg = 'none' | 'sum' | 'avg' | 'count' | 'min' | 'max' | 'median' | 'stdev' | 'variance' | 'range';
 
 export interface Series { key: string; label: string }
 /** Chart-ready data: one row per X value, `x` plus `s0..sN` (one numeric column per series). */
@@ -24,6 +24,17 @@ export function aggregate(values: number[], agg: Agg): number {
     case 'avg': return values.reduce((a, b) => a + b, 0) / values.length;
     case 'min': return Math.min(...values);
     case 'max': return Math.max(...values);
+    case 'range': return Math.max(...values) - Math.min(...values);
+    case 'median': {
+      const v = [...values].sort((a, b) => a - b);
+      const m = Math.floor(v.length / 2);
+      return v.length % 2 ? v[m] : (v[m - 1] + v[m]) / 2;
+    }
+    case 'variance': case 'stdev': {
+      const mean = values.reduce((a, b) => a + b, 0) / values.length;
+      const variance = values.length > 1 ? values.reduce((a, b) => a + (b - mean) ** 2, 0) / (values.length - 1) : 0;
+      return agg === 'stdev' ? Math.sqrt(variance) : variance;
+    }
     default: return values.reduce((a, b) => a + b, 0);
   }
 }

@@ -3,6 +3,11 @@ import type { Layout } from 'react-grid-layout';
 import { api } from '@/lib/api';
 import type { BriefResponse, Chart, Dashboard, Widget } from '@/lib/types';
 
+/** Grid resolution: stored positions use 12 columns × 80 px rows; the editor works at 2× columns and 4× rows. */
+export const GRID_X = 2;
+export const GRID_Y = 4;
+const fromGrid = (l: Layout) => ({ x: l.x / GRID_X, y: l.y / GRID_Y, w: l.w / GRID_X, h: l.h / GRID_Y });
+
 export interface LineageNode {
   [key: string]: unknown;
 }
@@ -60,14 +65,15 @@ export function useDashboardPage(id: string | undefined) {
     return all.filter((w) => (w.page ?? 'main') === activePage);
   }, [dashboard, activePage]);
 
+  // the grid is finer than the stored positions (24 columns, quarter rows) so drag/resize moves in small, smooth steps
   const layout: Layout[] = useMemo(
     () =>
       widgets.map((w) => ({
         i: w.id,
-        x: w.position.x,
-        y: w.position.y,
-        w: Math.min(Math.max(w.position.w, 1), 12),
-        h: Math.max(w.position.h, 1),
+        x: Math.round(w.position.x * GRID_X),
+        y: Math.round(w.position.y * GRID_Y),
+        w: Math.round(Math.min(Math.max(w.position.w, 0.5), 12) * GRID_X),
+        h: Math.round(Math.max(w.position.h, 0.5) * GRID_Y),
         static: !editing,
       })),
     [widgets, editing],
@@ -85,7 +91,7 @@ export function useDashboardPage(id: string | undefined) {
     pendingLayout.current = null;
     api
       .put(`/dashboards/${id}/layout`, {
-        layout: pending.map((l) => ({ id: l.i, x: l.x, y: l.y, w: l.w, h: l.h, page: activePage })),
+        layout: pending.map((l) => ({ id: l.i, ...fromGrid(l), page: activePage })),
       })
       .catch((e) => setError(e.message));
   }, [id, activePage]);
@@ -102,7 +108,7 @@ export function useDashboardPage(id: string | undefined) {
           ...prev,
           widgets: (prev.widgets ?? []).map((w) => {
             const l = byId.get(w.id);
-            return l ? { ...w, position: { x: l.x, y: l.y, w: l.w, h: l.h } } : w;
+            return l ? { ...w, position: fromGrid(l) } : w;
           }),
         };
       });

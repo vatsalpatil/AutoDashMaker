@@ -77,7 +77,7 @@ function ChartViewBase({ spec, result, height = 320, options, onPick, plain = fa
       <DataTable columns={result.columns} rows={result.rows} fontSize={o.tableFontSize as 'xs' | 'sm' | 'md'}
         density={o.tableDensity as 'compact' | 'comfortable'} striped={o.tableStriped === true} maxRows={60} />
     ) : (
-      <DataGrid columns={result.columns} rows={result.rows as Record<string, unknown>[]} bare expandable maxHeight={`${Math.max(h, 160)}px`} />
+      <div style={{ height: Math.max(h, 160) }}><DataGrid columns={result.columns} rows={result.rows as Record<string, unknown>[]} bare expandable fill /></div>
     );
   } else if (spec.type === 'pivot') body = <PivotTable spec={spec} result={result} o={o} />;
   else if (spec.type === 'kpi') body = <KpiCard spec={spec} result={result} o={o} height={h} />;

@@ -5,6 +5,7 @@ import { useMeasure } from '@/hooks/useMeasure';
 import type { Widget } from '@/lib/types';
 import { ContentCard, isContent } from './ContentCards';
 import { WidgetView } from './WidgetView';
+import { GRID_X, GRID_Y } from './useDashboardPage';
 
 /** The draggable / resizable 12-column grid of widgets for one dashboard page. */
 export function WidgetGrid({ widgets, layout, editing, onLayoutChange, onRemove, onFullscreen, onSettings }: {
@@ -32,11 +33,14 @@ export function WidgetGrid({ widgets, layout, editing, onLayoutChange, onRemove,
       className="layout"
       layouts={{ lg: layout }}
       breakpoints={{ lg: 0 }}
-      cols={{ lg: 12 }}
-      rowHeight={80}
+      cols={{ lg: 12 * GRID_X }}
+      rowHeight={(80 + 12) / GRID_Y - 12}   // 4 fine rows = one old 80 px row, margins included
       margin={[12, 12]}
       draggableHandle=".widget-drag-handle"
-      resizeHandles={['se', 'e', 's']}
+      resizeHandles={['se', 'e', 's', 'w']}
+      compactType={null}            // widgets stay where you put them: nothing jumps up to fill gaps
+      preventCollision={false}
+      draggableCancel="button, input, textarea, select, a"
       useCSSTransforms
       isDraggable={editing}
       isResizable={editing}

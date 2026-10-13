@@ -1,11 +1,13 @@
 import { useState } from 'react';
-import { cn } from '@/lib/utils';
+import { SelectField } from '@/components/common/SelectField';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import type { ChartSpec, QueryResult } from '@/lib/types';
 import { pivot } from '../chartData';
 import { formatValue, opt, toNumber, type Opts } from '../format';
 
 /** Ratios and averages must be averaged, not summed, in totals. */
+const CALCS: [string, string][] = [['sum', 'Sum'], ['avg', 'Average'], ['median', 'Median'], ['min', 'Minimum'], ['max', 'Maximum'],
+  ['count', 'Count'], ['stdev', 'Std. deviation'], ['variance', 'Variance'], ['range', 'Range (max − min)']];
 const AVERAGED = /(avg|average|mean|margin|ratio|rate|pct|percent|share|price)/i;
 
 const SIZE = { xs: 'text-xs', sm: 'text-sm', md: 'text-base' } as const;
@@ -17,8 +19,9 @@ export function PivotTable({ spec, result, o }: { spec: ChartSpec; result: Query
   const metrics = result.columns.filter((c) => c !== x && c !== color
     && result.rows.slice(0, 20).some((r) => r[c] !== null && r[c] !== '' && Number.isFinite(toNumber(r[c]))));
   const [picked, setPicked] = useState<string | null>(null);
+  const [calc, setCalc] = useState<string | null>(null);
   const metric = picked && metrics.includes(picked) ? picked : (metrics.includes(spec.encoding.y) ? spec.encoding.y : metrics[0] ?? spec.encoding.y);
-  const agg = o.pivotAgg ?? (AVERAGED.test(metric) ? 'avg' : 'sum');
+  const agg = calc ?? o.pivotAgg ?? (AVERAGED.test(metric) ? 'avg' : 'sum');
   const p = pivot(result, { ...spec, encoding: { ...spec.encoding, y: metric } }, { ...o, pivotAgg: agg });
   const heat = o.pivotHeatmap === true;
   const pad = opt.str(o.tableDensity, 'compact') === 'comfortable' ? 'px-3 py-2.5' : 'px-3 py-1.5';
@@ -31,18 +34,16 @@ export function PivotTable({ spec, result, o }: { spec: ChartSpec; result: Query
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-1.5">
-    {metrics.length > 1 && (
-      <div className="flex shrink-0 flex-wrap items-center gap-1" role="radiogroup" aria-label="Metric">
-        <span className="mr-1 text-[11px] text-muted-foreground">Show</span>
-        {metrics.map((m) => (
-          <button key={m} type="button" role="radio" aria-checked={m === metric} onClick={() => setPicked(m)}
-            className={cn('rounded-full border px-2.5 py-0.5 text-xs transition-colors', m === metric ? 'border-primary bg-primary text-primary-foreground' : 'hover:border-primary hover:text-primary')}>
-            {m.replace(/_/g, ' ')}
-          </button>
-        ))}
-        <span className="ml-auto text-[10px] text-muted-foreground">{agg === 'avg' ? 'totals = average' : 'totals = sum'}</span>
-      </div>
-    )}
+    <div className="flex shrink-0 flex-wrap items-end gap-2">
+      {metrics.length > 1 && (
+        <div className="w-48"><SelectField label="Metric" value={metric} onChange={(e) => setPicked(e.target.value)}>
+          {metrics.map((m) => <option key={m} value={m}>{m.replace(/_/g, ' ')}</option>)}
+        </SelectField></div>
+      )}
+      <div className="w-44"><SelectField label="Calculation" value={String(agg)} onChange={(e) => setCalc(e.target.value)}>
+        {CALCS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+      </SelectField></div>
+    </div>
     <div className="min-h-0 flex-1 overflow-auto rounded-lg border">
       <Table className={SIZE[opt.str(o.tableFontSize, 'sm') as keyof typeof SIZE] ?? 'text-sm'}>
         <TableHeader className="sticky top-0 z-10 bg-muted">
