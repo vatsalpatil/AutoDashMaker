@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { SelectField } from '@/components/common/SelectField';
 import { Button, Card, TextArea } from '@/components/ui/kit';
 import { CopyLiveData } from '@/features/sources/CopyLiveData';
@@ -17,7 +18,10 @@ export function SetupCard({ initialDataset, locked, onStart, onDraft }: { initia
   const [datasetId, setDatasetId] = useState(initialDataset ?? '');
   const [template, setTemplate] = useState('auto');
   const [focus, setFocus] = useState('');
-  useEffect(() => { if (!datasetId && datasets.length > 0) setDatasetId(datasets[0].id); }, [datasets, datasetId]);
+  // pick the first dataset when none is chosen or the chosen one no longer exists (e.g. an old ?dataset= link)
+  useEffect(() => {
+    if (datasets.length > 0 && !datasets.some((d) => d.id === datasetId)) setDatasetId(datasets[0].id);
+  }, [datasets, datasetId]);
   useEffect(() => { onDraft?.({ dataset_id: datasetId, template, focus }); }, [onDraft, datasetId, template, focus]);
 
   if (locked && onDraft) return null;   // in the chat, the choice shows as your message instead
@@ -37,7 +41,14 @@ export function SetupCard({ initialDataset, locked, onStart, onDraft }: { initia
           <h2 className="text-base font-semibold">What should the AI build a dashboard from?</h2>
           <p className="text-sm text-muted-foreground">It will study the data, ask you a few questions, propose a plan for your approval, then build and check every query.</p>
         </div>
-        <SelectField label="Dataset" value={datasetId} onChange={(e) => setDatasetId(e.target.value)}>
+        {datasetsApi.loading ? <p className="text-sm text-muted-foreground">Loading your datasets…</p>
+          : datasets.length === 0 ? (
+          <p className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground">
+            {datasetsApi.error ? `Could not load your datasets: ${datasetsApi.error}` : 'You have no datasets yet.'}{' '}
+            <Link to="/sources" className="font-medium text-primary underline">Add data</Link> first, then come back here.
+          </p>
+        ) : null}
+        <SelectField label="Dataset" value={datasetId} placeholder="Choose a dataset" onChange={(e) => setDatasetId(e.target.value)}>
           {datasets.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
         </SelectField>
         {datasets.find((d) => d.id === datasetId)?.remote_table && <CopyLiveData datasetId={datasetId} variant="notice" onDone={datasetsApi.reload} />}
