@@ -19,6 +19,7 @@ import { PageTabs } from '@/features/dashboards/PageTabs';
 import { PresentMode } from '@/features/dashboards/PresentMode';
 import { useDashboardPage } from '@/features/dashboards/useDashboardPage';
 import { WidgetGrid } from '@/features/dashboards/WidgetGrid';
+import { SNAPS, type SnapId } from '@/features/dashboards/useDashboardPage';
 import { DashboardFilterProvider, useDashboardFilterState } from '@/features/dashboards/dashboardFilters';
 
 /** One dashboard: pages, an editable widget grid, brief/lineage panels, present mode. Logic is in useDashboardPage. */
@@ -77,7 +78,21 @@ export default function DashboardDetailPage() {
       {d.showBrief && <BriefCard brief={d.brief} />}
       {d.showLineage && <LineageCard lineage={d.lineage} />}
 
+      {d.editing && (
+        <div className="flex flex-wrap items-center gap-1 text-xs" role="radiogroup" aria-label="Grid snap">
+          <span className="mr-1 text-muted-foreground">Grid snap</span>
+          {(Object.keys(SNAPS) as SnapId[]).map((k) => (
+            <button key={k} type="button" role="radio" aria-checked={d.snap === k} onClick={() => d.setSnap(k)}
+              className={d.snap === k ? 'rounded-full bg-primary px-2.5 py-0.5 text-primary-foreground' : 'rounded-full border px-2.5 py-0.5 hover:border-primary hover:text-primary'}>
+              {SNAPS[k].label}
+            </button>
+          ))}
+          <span className="ml-2 text-muted-foreground">finer = smaller, smoother steps when moving and resizing</span>
+        </div>
+      )}
       <WidgetGrid
+        gridX={d.gridX}
+        gridY={d.gridY}
         widgets={d.widgets}
         layout={d.layout}
         editing={d.editing}

@@ -91,4 +91,4 @@ Never add `caddy` to `nixPkgs` when the app has a Caddyfile: Nixpacks adds it it
 - Every SSE route must bypass gzip (core/compression.py: STREAM_PATHS or path ending in /stream), or events arrive only at the end and proxies drop the request.
 - Long single model calls (minutes) over SSE get cut by the network/proxy (ERR_HTTP2_PROTOCOL_ERROR). Split work into parallel per-page calls instead.
 - The site is behind Cloudflare: any non-streaming request silent for ~100 s fails with HTTP 524. Long AI work must use an SSE endpoint (pings every 8 s).
-- Dashboard grid: stored positions stay in 12 cols × 80 px rows (may be fractional); the editor scales by GRID_X/GRID_Y in useDashboardPage. Don't change rowHeight without keeping 4 fine rows = 80 px.
+- Dashboard grid: stored positions stay in 12 cols × 92 px rows (may be fractional); the editor scales by the user snap (SNAPS in useDashboardPage, localStorage dashboard.snap). RGL margin is 0, gaps come from p-1.5 on each cell, rowHeight = 92 / gridY.

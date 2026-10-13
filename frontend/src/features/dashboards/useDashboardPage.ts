@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Layout } from 'react-grid-layout';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { api } from '@/lib/api';
 import type { BriefResponse, Chart, Dashboard, Widget } from '@/lib/types';
 
-/** Grid resolution: stored positions use 12 columns × 80 px rows; the editor works at 2× columns and 4× rows. */
-export const GRID_X = 2;
-export const GRID_Y = 4;
-const fromGrid = (l: Layout) => ({ x: l.x / GRID_X, y: l.y / GRID_Y, w: l.w / GRID_X, h: l.h / GRID_Y });
+/** Grid snap: stored positions use 12 columns × 92 px rows (80 px + gap); the editor multiplies both by the chosen factors
+ * so widgets move and resize in smaller steps. */
+export const SNAPS = { coarse: { label: 'Coarse', x: 1, y: 1 }, normal: { label: 'Normal', x: 2, y: 4 }, fine: { label: 'Fine', x: 4, y: 8 }, free: { label: 'Free', x: 8, y: 16 } } as const;
+export type SnapId = keyof typeof SNAPS;
+const fromGrid = (l: Layout, gx: number, gy: number) => ({ x: l.x / gx, y: l.y / gy, w: l.w / gx, h: l.h / gy });
 
 export interface LineageNode {
   [key: string]: unknown;
@@ -22,6 +24,10 @@ function slugify(name: string): string {
 
 /** All state and actions of the dashboard detail page: data, pages, layout editing, widgets, brief, lineage. */
 export function useDashboardPage(id: string | undefined) {
+  const [snap, setSnap] = useLocalStorage<SnapId>('dashboard.snap', 'normal');
+  const { x: GRID_X, y: GRID_Y } = SNAPS[snap] ?? SNAPS.normal;
+  const grid = useRef({ x: GRID_X, y: GRID_Y });
+  grid.current = { x: GRID_X, y: GRID_Y };
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
   const [charts, setCharts] = useState<Chart[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -76,7 +82,7 @@ export function useDashboardPage(id: string | undefined) {
         h: Math.round(Math.max(w.position.h, 0.5) * GRID_Y),
         static: !editing,
       })),
-    [widgets, editing],
+    [widgets, editing, GRID_X, GRID_Y],
   );
 
   const pendingLayout = useRef<Layout[] | null>(null);
@@ -91,7 +97,7 @@ export function useDashboardPage(id: string | undefined) {
     pendingLayout.current = null;
     api
       .put(`/dashboards/${id}/layout`, {
-        layout: pending.map((l) => ({ id: l.i, ...fromGrid(l), page: activePage })),
+        layout: pending.map((l) => ({ id: l.i, ...fromGrid(l, grid.current.x, grid.current.y), page: activePage })),
       })
       .catch((e) => setError(e.message));
   }, [id, activePage]);
@@ -108,7 +114,7 @@ export function useDashboardPage(id: string | undefined) {
           ...prev,
           widgets: (prev.widgets ?? []).map((w) => {
             const l = byId.get(w.id);
-            return l ? { ...w, position: fromGrid(l) } : w;
+            return l ? { ...w, position: fromGrid(l, grid.current.x, grid.current.y) } : w;
           }),
         };
       });
@@ -251,6 +257,7 @@ export function useDashboardPage(id: string | undefined) {
     setShowBrief((s) => !s);
   }
   return {
+    snap, setSnap, gridX: GRID_X, gridY: GRID_Y,
     dashboard, charts, error, setError, load, pages, widgets, layout, activePage, setActivePage,
     editing, setEditing, finishEditing, onLayoutChange,
     pickerOpen, setPickerOpen, fullscreenWidget, setFullscreenWidget,

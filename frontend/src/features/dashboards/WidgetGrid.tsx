@@ -5,10 +5,11 @@ import { useMeasure } from '@/hooks/useMeasure';
 import type { Widget } from '@/lib/types';
 import { ContentCard, isContent } from './ContentCards';
 import { WidgetView } from './WidgetView';
-import { GRID_X, GRID_Y } from './useDashboardPage';
 
 /** The draggable / resizable 12-column grid of widgets for one dashboard page. */
-export function WidgetGrid({ widgets, layout, editing, onLayoutChange, onRemove, onFullscreen, onSettings }: {
+export function WidgetGrid({ widgets, layout, editing, onLayoutChange, onRemove, onFullscreen, onSettings, gridX = 2, gridY = 4 }: {
+  gridX?: number;
+  gridY?: number;
   widgets: Widget[];
   layout: Layout[];
   editing: boolean;
@@ -33,9 +34,9 @@ export function WidgetGrid({ widgets, layout, editing, onLayoutChange, onRemove,
       className="layout"
       layouts={{ lg: layout }}
       breakpoints={{ lg: 0 }}
-      cols={{ lg: 12 * GRID_X }}
-      rowHeight={(80 + 12) / GRID_Y - 12}   // 4 fine rows = one old 80 px row, margins included
-      margin={[12, 12]}
+      cols={{ lg: 12 * gridX }}
+      rowHeight={92 / gridY}   // one stored row = 92 px whatever the snap; gaps come from each cell's padding
+      margin={[0, 0]}
       draggableHandle=".widget-drag-handle"
       resizeHandles={['se', 'e', 's', 'w']}
       compactType={null}            // widgets stay where you put them: nothing jumps up to fill gaps
@@ -47,7 +48,7 @@ export function WidgetGrid({ widgets, layout, editing, onLayoutChange, onRemove,
       onLayoutChange={onLayoutChange}
     >
       {widgets.map((w) => (
-        <div key={w.id}>
+        <div key={w.id} className="p-1.5">
           {isContent(w)
             ? <ContentCard widget={w} editing={editing} onRemove={() => onRemove(w.id)} onEdit={() => onSettings(w)} />
             : <WidgetView widget={w} editing={editing} onRemove={() => onRemove(w.id)} onFullscreen={() => onFullscreen(w)} onSettings={() => onSettings(w)} />}
