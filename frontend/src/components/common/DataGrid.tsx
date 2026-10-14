@@ -12,6 +12,8 @@ import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { downloadRows } from '@/lib/exportRows';
 import { cn } from '@/lib/utils';
 import { DataGridColumnsMenu } from './DataGridColumnsMenu';
+import { DataGridTotals } from './DataGridTotals';
+import type { Agg } from '@/features/charts/chartData';
 import { buildColumns, cellText, type Row } from './dataGridColumns';
 
 const PAGE_SIZES = [10, 25, 50, 100, 250, 500, 1000];
@@ -29,13 +31,16 @@ interface DataGridProps {
   leftAlign?: boolean;
   /** Show the full-screen button (opens the same data in a large popup). On by default; the popup itself turns it off. */
   expandable?: boolean;
+  /** Show a Total row (per numeric column, over the filtered rows) with a calculation picker. */
+  totals?: boolean;
 }
 
 /**
  * Results table on ReUI's Data Grid (TanStack Table): global search, per-column pick-list filters, sort,
  * pin / hide / resize / reorder columns, page size + pagination, CSV/JSON export of what you are looking at.
  */
-export function DataGrid({ columns, rows, maxHeight = '65vh', fill = false, bare = false, leftAlign = false, expandable = true }: DataGridProps) {
+export function DataGrid({ columns, rows, maxHeight = '65vh', fill = false, bare = false, leftAlign = false, expandable = true, totals = false }: DataGridProps) {
+  const [calc, setCalc] = useState<Agg | 'auto'>('auto');
   const [full, setFull] = useState(false);
   const [pageSize, setPageSize] = useLocalStorage('datagrid.pageSize', 25);
   const [toolbarOpen, setToolbarOpen] = useGridToolbar();   // search / columns / export row; shared and remembered
@@ -154,7 +159,7 @@ export function DataGrid({ columns, rows, maxHeight = '65vh', fill = false, bare
         <div className={cn('min-h-0', fill && 'flex-1')} style={fill ? undefined : { maxHeight }}>
           <DataGridContainer className={fill ? 'h-full' : undefined}>
             <DataGridScrollArea className={fill ? 'h-full' : undefined} style={fill ? undefined : { maxHeight }}>
-              <DataGridTable />
+              <DataGridTable footerContent={totals && rows.length > 0 ? <DataGridTotals table={table} calc={calc} onCalc={setCalc} /> : undefined} />
             </DataGridScrollArea>
           </DataGridContainer>
         </div>
@@ -166,7 +171,7 @@ export function DataGrid({ columns, rows, maxHeight = '65vh', fill = false, bare
       <Dialog isOpen onOpenChange={setFull} className="!top-0 !left-0 !h-svh !w-screen !max-w-none !translate-x-0 !translate-y-0 !rounded-none ring-0 sm:!max-w-none">
         <div className="flex h-full min-h-0 min-w-0 flex-col gap-2 overflow-hidden p-3 pt-4">
           <p className="pr-10 text-sm font-semibold">Full table <span className="font-normal text-muted-foreground">· {rows.length.toLocaleString()} rows × {columns.length} columns</span></p>
-          <div className="min-h-0 min-w-0 flex-1"><DataGrid columns={columns} rows={rows} fill expandable={false} leftAlign={leftAlign} /></div>
+          <div className="min-h-0 min-w-0 flex-1"><DataGrid columns={columns} rows={rows} fill expandable={false} leftAlign={leftAlign} totals={totals} /></div>
         </div>
       </Dialog>
     )}

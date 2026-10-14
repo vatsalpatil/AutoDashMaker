@@ -1,14 +1,11 @@
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
+import { ArrowDown, ArrowUp, ArrowUpDown, Search } from 'lucide-react';
 import { SelectField } from '@/components/common/SelectField';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import type { ChartSpec, QueryResult } from '@/lib/types';
-import { pivot } from '../chartData';
+import { AVERAGED, CALCS, pivot } from '../chartData';
 import { formatValue, opt, toNumber, type Opts } from '../format';
 
-/** Ratios and averages must be averaged, not summed, in totals. */
-const CALCS: [string, string][] = [['sum', 'Sum'], ['avg', 'Average'], ['median', 'Median'], ['min', 'Minimum'], ['max', 'Maximum'],
-  ['count', 'Count'], ['stdev', 'Std. deviation'], ['variance', 'Variance'], ['range', 'Range (max − min)']];
-const AVERAGED = /(avg|average|mean|margin|ratio|rate|pct|percent|share|price)/i;
 
 const SIZE = { xs: 'text-xs', sm: 'text-sm', md: 'text-base' } as const;
 
@@ -31,6 +28,25 @@ export function PivotTable({ spec, result, o }: { spec: ChartSpec; result: Query
     return { background: `color-mix(in oklab, var(--primary) ${Math.round(8 + t * 55)}%, transparent)` };
   };
   const rowLabel = spec.encoding.x || 'Rows';
+  // viewer-side search over row labels and click-to-sort on any header ('' = row label, '__total' = Total column)
+  const [q, setQ] = useState('');
+  const [sort, setSort] = useState<{ key: string; dir: 1 | -1 } | null>(null);
+  const valueOf = (r: string, k: string) => (k === '' ? r : k === '__total' ? p.rowTotal(r) : p.cell(r, k));
+  const rows = p.rowKeys.filter((r) => !q || String(r).toLowerCase().includes(q.toLowerCase()));
+  if (sort) rows.sort((a, b) => {
+    const va = valueOf(a, sort.key), vb = valueOf(b, sort.key);
+    if (va === null || va === '') return 1;
+    if (vb === null || vb === '') return -1;
+    return (typeof va === 'number' && typeof vb === 'number' ? va - vb : String(va).localeCompare(String(vb), undefined, { numeric: true })) * sort.dir;
+  });
+  const cycle = (key: string) => setSort((s) => (s?.key !== key ? { key, dir: key === '' ? 1 : -1 } : s.dir === (key === '' ? 1 : -1) ? { key, dir: s.dir === 1 ? -1 : 1 } : null));
+  const head = (key: string, label: string, right = true) => (
+    <TableHead className={`${pad} font-semibold ${right ? 'text-right' : ''}`}>
+      <button type="button" onClick={() => cycle(key)} className={`inline-flex items-center gap-1 hover:text-primary ${right ? 'flex-row-reverse' : ''}`} title="Sort">
+        {label}{sort?.key === key ? (sort.dir === 1 ? <ArrowUp className="size-3" /> : <ArrowDown className="size-3" />) : <ArrowUpDown className="size-3 opacity-40" />}
+      </button>
+    </TableHead>
+  );
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-1.5">
@@ -43,18 +59,23 @@ export function PivotTable({ spec, result, o }: { spec: ChartSpec; result: Query
       <div className="w-44"><SelectField label="Calculation" value={String(agg)} onChange={(e) => setCalc(e.target.value)}>
         {CALCS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
       </SelectField></div>
+      <div className="relative ml-auto w-52">
+        <Search className="pointer-events-none absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={`Filter ${rowLabel}…`} aria-label="Filter rows"
+          className="h-9 w-full rounded-lg border border-input bg-background pl-8 pr-2 text-sm outline-none focus-visible:border-ring" />
+      </div>
     </div>
     <div className="min-h-0 flex-1 overflow-auto rounded-lg border">
       <Table className={SIZE[opt.str(o.tableFontSize, 'sm') as keyof typeof SIZE] ?? 'text-sm'}>
         <TableHeader className="sticky top-0 z-10 bg-muted">
           <TableRow>
-            <TableHead className={`${pad} font-semibold`}>{rowLabel}</TableHead>
-            {p.colKeys.map((c) => <TableHead key={c} className={`${pad} text-right font-semibold`}>{c || '(blank)'}</TableHead>)}
-            {o.pivotRowTotals !== false && <TableHead className={`${pad} text-right font-semibold`}>Total</TableHead>}
+            {head('', rowLabel, false)}
+            {p.colKeys.map((c) => <Fragment key={c}>{head(c, c || '(blank)')}</Fragment>)}
+            {o.pivotRowTotals !== false && head('__total', 'Total')}
           </TableRow>
         </TableHeader>
         <TableBody>
-          {p.rowKeys.map((r, i) => (
+          {rows.map((r, i) => (
             <TableRow key={r} className={o.tableStriped === true && i % 2 ? 'bg-muted/40' : ''}>
               <TableCell className={`${pad} font-medium`}>{r || '(blank)'}</TableCell>
               {p.colKeys.map((c) => {

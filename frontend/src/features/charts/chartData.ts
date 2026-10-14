@@ -11,6 +11,11 @@ export interface Prepared { rows: Row[]; series: Series[] }
 
 const MAX_SERIES = 12;
 
+/** Calculations offered for totals (pivot and table). Ratios and averages are averaged, not summed, by default. */
+export const CALCS: [Agg, string][] = [['sum', 'Sum'], ['avg', 'Average'], ['median', 'Median'], ['min', 'Minimum'], ['max', 'Maximum'],
+  ['count', 'Count'], ['stdev', 'Std. deviation'], ['variance', 'Variance'], ['range', 'Range (max − min)']];
+export const AVERAGED = /(avg|average|mean|margin|ratio|rate|pct|percent|share|price)/i;
+
 export const measuresOf = (spec: ChartSpec): string[] => {
   const e = spec.encoding;
   const list = e.ys?.length ? e.ys : [e.y];
