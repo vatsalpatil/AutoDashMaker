@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { Responsive, type Layout } from 'react-grid-layout';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
@@ -28,7 +29,11 @@ export function WidgetGrid({ widgets, layout, editing, onLayoutChange, onRemove,
 }) {
   const [ref, { w: width }] = useMeasure();
   const push = useResizePush(12 * gridX);
-  const ins = useDropInsert(12 * gridX);
+  const canvas = useRef<HTMLDivElement>(null);
+  const ins = useDropInsert(12 * gridX, (e) => {
+    const r = canvas.current?.getBoundingClientRect();
+    return r && e ? { x: (e.clientX - r.left) / (r.width / (12 * gridX)), y: (e.clientY - r.top) / (92 / gridY) } : null;
+  });
   const boxes = boxesOf(widgets);
   const byId = new Map(widgets.map((w) => [w.id, w]));
   const gridLayout = editing ? layout.map((l) => (byId.get(l.i) && isLocked(byId.get(l.i)!) ? { ...l, static: true } : l)) : layout;
@@ -42,7 +47,7 @@ export function WidgetGrid({ widgets, layout, editing, onLayoutChange, onRemove,
   return (
     // measured with a ResizeObserver: the sidebar opening/closing resizes the container without a window resize
     <div ref={ref} className="min-w-0">
-    <div className={`relative ${editing ? 'min-h-[60vh]' : ''}`}>
+    <div ref={canvas} className={`relative ${editing ? 'min-h-[60vh]' : ''}`}>
     {editing && width > 0 && <InsertLine hint={ins.hint} colW={width / (12 * gridX)} rowH={92 / gridY} />}
     {editing && width > 0 && <BoxFrames boxes={boxes} layout={layout} colW={width / (12 * gridX)} rowH={92 / gridY} />}
     {width > 0 && <Responsive
@@ -67,7 +72,7 @@ export function WidgetGrid({ widgets, layout, editing, onLayoutChange, onRemove,
       onDrop={(l: Layout[], item: Layout | undefined) => item && onDropWidget?.(l.filter((x) => x.i !== '__drop__'), item)}
       onDragStart={ins.onDragStart}
       onDrag={ins.onDrag}
-      onDragStop={(l, o, n) => { g.onDragStop(l, o, n); ins.onDragStop(l, o, n); }}
+      onDragStop={(l, o, n, p, e) => { g.onDragStop(l, o, n); ins.onDragStop(l, o, n, p, e); }}
       onResizeStart={push.onResizeStart}
       onResize={push.onResize}
       onLayoutChange={(l) => onLayoutChange(g.applyGroupMove(ins.apply(l, g.hasMates)))}

@@ -2,31 +2,34 @@ import { useRef, useState } from 'react';
 import type { Layout } from 'react-grid-layout';
 import { makeRoom } from './resizePush';
 
-/** Drag-to-insert: while dragging nothing else moves (the grid allows overlap); the widget under the dragged one's centre
- *  shows a highlight line on the side it will be inserted (left/right, or top/bottom near its top/bottom quarter).
+/** Drag-to-insert: while dragging nothing else moves (the grid allows overlap); the widget under the MOUSE POINTER
+ *  (not the dragged widget's centre: a tall widget's centre sits far below where you aim) shows a highlight line on the side it will be inserted (left/right, or top/bottom near its top/bottom quarter).
  *  On drop the widget takes that slot and the others shift right (if there is room) or down to open space. */
 type Edge = 'left' | 'right' | 'top' | 'bottom';
 export interface InsertTarget { target: Layout; edge: Edge }
 
-function findTarget(layout: Layout[], item: Layout): InsertTarget | null {
-  const cx = item.x + item.w / 2, cy = item.y + item.h / 2;
+type Pt = { x: number; y: number } | null;
+function findTarget(layout: Layout[], item: Layout, pt: Pt): InsertTarget | null {
+  if (!pt) return null;
+  const cx = pt.x, cy = pt.y;
   const t = layout.find((l) => l.i !== item.i && cx >= l.x && cx < l.x + l.w && cy >= l.y && cy < l.y + l.h);
   if (!t) return null;
   const px = (cx - t.x) / t.w, py = (cy - t.y) / t.h;
   return { target: t, edge: py < 0.25 ? 'top' : py > 0.75 ? 'bottom' : px < 0.5 ? 'left' : 'right' };
 }
 
-export function useDropInsert(cols: number) {
+/** `toGrid` converts a mouse event to grid units (columns, rows) on the canvas. */
+export function useDropInsert(cols: number, toGrid: (e: MouseEvent) => Pt) {
   const [hint, setHint] = useState<InsertTarget | null>(null);
   const done = useRef<{ id: string; at: InsertTarget | null } | null>(null);
   return {
     hint,
     onDragStart: () => { done.current = null; },
-    onDrag: (layout: Layout[], _o: Layout, item: Layout) => {
-      const n = findTarget(layout, item);
+    onDrag: (layout: Layout[], _o: Layout, item: Layout, _p: Layout, e: MouseEvent) => {
+      const n = findTarget(layout, item, toGrid(e));
       setHint((h) => (h?.target.i === n?.target.i && h?.edge === n?.edge ? h : n));
     },
-    onDragStop: (layout: Layout[], _o: Layout, item: Layout) => { done.current = { id: item.i, at: findTarget(layout, item) }; setHint(null); },
+    onDragStop: (layout: Layout[], _o: Layout, item: Layout, _p: Layout, e: MouseEvent) => { done.current = { id: item.i, at: findTarget(layout, item, toGrid(e)) }; setHint(null); },
     /** Turn the raw dropped layout into the inserted one. Skipped for group/selection moves (those keep relative positions). */
     apply: (layout: Layout[], hasMates: (id: string) => boolean): Layout[] => {
       const d = done.current;
