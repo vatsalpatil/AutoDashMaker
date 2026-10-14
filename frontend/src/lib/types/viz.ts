@@ -28,6 +28,8 @@ export interface Chart {
   spec: ChartSpec;
   query_id?: string;
   created_at?: string;
+  /** How many dashboards show this chart (0 = a leftover you can clean up). */
+  used_in?: number;
 }
 
 export interface ChartLineage {

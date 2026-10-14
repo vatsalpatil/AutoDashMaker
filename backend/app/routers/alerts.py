@@ -72,8 +72,9 @@ def runs(alert_id: str):
 
 @router.delete("/{alert_id}")
 def delete_alert(alert_id: str):
-    store.delete("alerts", alert_id)
-    store.execute("DELETE FROM alert_runs WHERE alert_id = ?", [alert_id])
+    if store.get("alerts", alert_id):   # only the caller's own alert: alert_runs has no workspace column
+        store.delete("alerts", alert_id)
+        store.execute("DELETE FROM alert_runs WHERE alert_id = ?", [alert_id])
     return {"ok": True}
 
 

@@ -5,7 +5,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from ..core.store import store
-from ..services import dash_data
+from ..services import dash_data, lifecycle
 from ..services.lineage import dashboard_lineage
 from ..services.brief import dashboard_brief
 
@@ -178,7 +178,26 @@ def duplicate_dashboard(dashboard_id: str):
 
 
 @router.delete("/{dashboard_id}")
-def delete_dashboard(dashboard_id: str):
-    store.delete("dashboards", dashboard_id)
-    store.execute("DELETE FROM dashboard_widgets WHERE dashboard_id = ?", [dashboard_id])
-    return {"ok": True}
+def delete_dashboard(dashboard_id: str, cleanup: bool = False):
+    """Delete a dashboard + its widgets (only the caller's: never a raw unscoped DELETE). `cleanup=true` also removes charts
+    and queries that no other dashboard shows."""
+    return {"ok": True, **lifecycle.delete_dashboard(dashboard_id, cleanup)}
+
+
+class NewWidgetIn(BaseModel):
+    name: str
+    sql: str
+    spec: dict[str, Any]
+    page: str = "main"
+    position: dict[str, float] | None = None
+
+
+@router.post("/{dashboard_id}/widgets/new")
+def create_widget(dashboard_id: str, body: NewWidgetIn):
+    """Query + chart + widget in one call; the SQL runs first so a broken widget is never saved."""
+    try:
+        return lifecycle.create_widget(dashboard_id, body.name, body.sql, body.spec, body.page, body.position)
+    except LookupError as e:
+        raise HTTPException(404, str(e)) from e
+    except Exception as e:
+        raise HTTPException(400, str(e)[:500]) from e

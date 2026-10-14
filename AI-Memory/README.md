@@ -22,6 +22,7 @@ Purpose: give any AI the full project picture in the fewest tokens. Entry point 
 - Bug → 04 first (may already be known), then 02 known-bugs.
 - "Continue previous work" → 02, then `tail -n 15 05-changelog.md`, then newest `sessions/` file.
 - Building charts/dashboards or a new widget type → `07-dashboard-patterns.md` (pattern library + build order).
+- Data/chart/dashboard lifecycle, deletes, cleanup, "what comes next" → `08-data-lifecycle.md`.
 
 ## Update rules (every AI, after every task that changed something)
 1. **Changelog line (always):** `YYYY-MM-DD · <ai/tool> · <files> · <what + why in ≤25 words>`.

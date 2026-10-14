@@ -47,7 +47,9 @@ export default function DashboardsPage() {
   });
   const [remove] = useAsyncAction(async (d: Dashboard) => {
     if (!confirm(`Delete dashboard “${d.name}”?`)) return;
-    await api.del(`/dashboards/${d.id}`);
+    // its charts usually exist only for it: offer to remove those too (charts on other dashboards are always kept)
+    const cleanup = confirm('Also delete the charts that were only on this dashboard? OK = delete them too, Cancel = keep them in Charts.');
+    await api.del(`/dashboards/${d.id}${cleanup ? '?cleanup=true' : ''}`);
     reload();
   });
 

@@ -32,17 +32,25 @@ export default function ChartsPage() {
   const filters = useFieldFilters(FIELDS);
 
   async function remove(c: Chart) {
-    if (!confirm(`Delete chart “${c.name}”?`)) return;
+    const n = c.used_in ?? 0;
+    if (!confirm(n ? `Delete chart “${c.name}”? It is shown on ${n} dashboard${n > 1 ? 's' : ''}; those widgets are removed too.` : `Delete chart “${c.name}”?`)) return;
     await api.del(`/charts/${c.id}`);
     reload();
   }
+  async function cleanup(ids: string[]) {
+    if (!confirm(`Delete ${ids.length} chart${ids.length > 1 ? 's' : ''} that are on no dashboard (and their queries)? Charts used on a dashboard are kept.`)) return;
+    await api.post('/charts/unused/cleanup', { ids });
+    reload();
+  }
   if (!charts) return error ? <ErrorBanner message={error} /> : <Loading />;
+  const unused = charts.filter((c) => (c.used_in ?? 0) === 0).map((c) => c.id);
 
   const shown = filters.apply(filter(charts, (c) => [c.name, c.spec.type, c.spec.encoding.x, c.spec.encoding.y]));
   const columns: ListColumn<Chart>[] = [
     { header: 'Chart', cell: (c) => <Link to={`/charts/${c.id}`} className="font-semibold text-primary hover:underline">{c.name}</Link> },
     { header: 'Type', cell: (c) => <Badge variant="purple" label={kindOf(c.spec.type).label} /> },
     { header: 'Mapping', className: 'mono text-xs', cell: mapping },
+    { header: 'Used in', className: 'text-xs', cell: (c) => (c.used_in ? `${c.used_in} dashboard${c.used_in > 1 ? 's' : ''}` : <span className="text-muted-foreground">not used</span>) },
     { header: 'Created', className: 'text-xs text-muted-foreground', cell: (c) => date(c.created_at) },
     {
       header: 'Actions', align: 'right',
@@ -58,7 +66,10 @@ export default function ChartsPage() {
   return (
     <div className="flex flex-col gap-4">
       <PageHeader title="Charts" description="Build, style and reuse visualizations backed by live queries."
-        actions={<Button variant="primary" icon={<Plus className="size-4" />} label="New chart" onClick={() => nav('/charts/new')} />} />
+        actions={<>
+          {unused.length > 0 && <Button variant="secondary" icon={<Trash2 className="size-4" />} label={`Clean up ${unused.length} unused`} onClick={() => cleanup(unused)} />}
+          <Button variant="primary" icon={<Plus className="size-4" />} label="New chart" onClick={() => nav('/charts/new')} />
+        </>} />
       <div className="flex flex-wrap items-center gap-3">
         <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Saved charts <Badge label={String(charts.length)} /></span>
         <div className="ml-auto flex items-center gap-2">

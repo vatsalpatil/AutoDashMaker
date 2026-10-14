@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from typing import Any
 
 from ..core.store import store
+from ..services import lifecycle
 from ..services.engine import engine
 from ..services.lineage import chart_lineage
 
@@ -19,7 +20,8 @@ class ChartIn(BaseModel):
 
 @router.get("")
 def list_charts():
-    return store.list("charts")
+    used = lifecycle.usage()   # how many dashboards show each chart (0 = a leftover you can clean up)
+    return [{**c, "used_in": len(used.get(c["id"], []))} for c in store.list("charts")]
 
 
 @router.post("")
@@ -72,5 +74,24 @@ def lineage(chart_id: str):
 
 @router.delete("/{chart_id}")
 def delete_chart(chart_id: str):
-    store.delete("charts", chart_id)
-    return {"ok": True}
+    """Delete a chart, the widgets that show it (no broken widgets left behind) and its query if nothing else uses it."""
+    return {"ok": True, "widgets_removed": lifecycle.delete_chart(chart_id)}
+
+
+@router.get("/unused/list")
+def unused_charts():
+    """Charts that are on no dashboard (left over from generations, experiments, deleted dashboards)."""
+    return lifecycle.unused_charts()
+
+
+class CleanupIn(BaseModel):
+    ids: list[str]
+
+
+@router.post("/unused/cleanup")
+def cleanup_unused(body: CleanupIn):
+    unused = {c["id"] for c in lifecycle.unused_charts()}
+    removed = [cid for cid in body.ids if cid in unused]   # only charts that really are unused
+    for cid in removed:
+        lifecycle.delete_chart(cid)
+    return {"removed": len(removed)}
