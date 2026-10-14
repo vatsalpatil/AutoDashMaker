@@ -279,3 +279,4 @@ Format: `YYYY-MM-DD · tool · files · what + why`
 - 2026-10-15 · NEW frontend/Dockerfile + .dockerignore, backend/Dockerfile + .dockerignore · builds no longer need nixpkgs downloads from GitHub (server could not fetch them).
 - 2026-10-15 · routers/queries.py run+save keeps the original SQL when it has {{placeholders}} (was saving the rendered SQL = parameter frozen), test_shares now saves via /api/queries/run · found while preparing the live test.
 - 2026-10-15 · live test fixes: treemap skipped Recharts' root node (blank '· total' tile), timebreak detail column shows 'several' when an item has different values (was first value), split column hidden from detail columns.
+- 2026-10-15 · ReconcileView redesign after user feedback (labels/values were cut off, empty table when all matched): verdict line, auto-fit compact tiles with exact value on hover, all rows shown when nothing differs.
