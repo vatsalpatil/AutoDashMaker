@@ -7,7 +7,8 @@ import { ContentCard, isContent } from './ContentCards';
 import { WidgetView } from './WidgetView';
 import { AutoLayoutBar, autoLayout } from './autoLayouts';
 import type { Chart } from '@/lib/types';
-import { GroupBar, groupOf, useWidgetGroups } from './widgetGroups';
+import { groupOf, useWidgetGroups } from './widgetGroups';
+import { BoxFrames, BoxList, boxesOf, isLocked, joinBox } from './widgetBoxes';
 
 /** The draggable / resizable 12-column grid of widgets for one dashboard page. */
 export function WidgetGrid({ widgets, layout, editing, onLayoutChange, onRemove, onFullscreen, onSettings, onSetting, charts = [], gridX = 2, gridY = 4 }: {
@@ -24,8 +25,11 @@ export function WidgetGrid({ widgets, layout, editing, onLayoutChange, onRemove,
   onSettings: (w: Widget) => void;
 }) {
   const [ref, { w: width }] = useMeasure();
-  const g = useWidgetGroups(widgets, onSetting);
-  const selectedGrouped = widgets.some((w) => g.selected.has(w.id) && groupOf(w));
+  const g = useWidgetGroups(widgets);
+  const boxes = boxesOf(widgets);
+  const chartName = new Map(charts.map((c) => [c.id, c.name]));
+  const byId = new Map(widgets.map((w) => [w.id, w]));
+  const gridLayout = editing ? layout.map((l) => (byId.get(l.i) && isLocked(byId.get(l.i)!) ? { ...l, static: true } : l)) : layout;
   if (widgets.length === 0) {
     return (
       <p className="rounded-lg border border-dashed border-input p-8 text-center text-sm text-muted-foreground">
@@ -40,11 +44,15 @@ export function WidgetGrid({ widgets, layout, editing, onLayoutChange, onRemove,
       const type = new Map(charts.map((c) => [c.id, c.spec?.type as string | undefined]));
       onLayoutChange(autoLayout(p, widgets, (w) => type.get(w.chart_id), gridX, gridY));
     }} />}
-    {editing && <GroupBar count={g.selected.size} canUngroup={selectedGrouped} onGroup={() => g.setGroup(`g${Date.now().toString(36)}`)} onUngroup={() => g.setGroup(null)} onClear={g.clear} />}
+    {editing && <BoxList boxes={boxes} selected={g.selected} set={onSetting}
+      nameOf={(w) => String(w.settings?.title || w.title || chartName.get(w.chart_id) || 'Widget')}
+      onCreate={() => { joinBox(g.selected, { id: `g${Date.now().toString(36)}`, name: `Box ${boxes.length + 1}`, locked: false }, onSetting); g.clear(); }} />}
+    <div className="relative">
+    {editing && width > 0 && <BoxFrames boxes={boxes} layout={layout} colW={width / (12 * gridX)} rowH={92 / gridY} />}
     {width > 0 && <Responsive
       width={width}
       className="layout"
-      layouts={{ lg: layout }}
+      layouts={{ lg: gridLayout }}
       breakpoints={{ lg: 0 }}
       cols={{ lg: 12 * gridX }}
       rowHeight={92 / gridY}   // one stored row = 92 px whatever the snap; gaps come from each cell's padding
@@ -71,6 +79,7 @@ export function WidgetGrid({ widgets, layout, editing, onLayoutChange, onRemove,
         </div>
       ))}
     </Responsive>}
+    </div>
     </div>
   );
 }
