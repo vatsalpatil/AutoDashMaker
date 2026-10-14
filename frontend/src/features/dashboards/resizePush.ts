@@ -6,15 +6,15 @@ import type { Layout } from 'react-grid-layout';
  *  Every frame starts from the positions at resize start, so shrinking back lets neighbours return. */
 const hit = (a: Layout, b: Layout) => a.i !== b.i && a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
 
-function makeRoom(layout: Layout[], moved: Layout, cols: number, depth = 0) {
+export function makeRoom(layout: Layout[], moved: Layout, cols: number, down = false, depth = 0) {
   if (depth > 50) return;
   for (const c of layout) {
     if (c.static || !hit(moved, c)) continue;
     const right = moved.x + moved.w;
-    const fitsRight = c.x >= moved.x && right + c.w <= cols && !layout.some((o) => o !== c && o !== moved && hit({ ...c, x: right }, o));
+    const fitsRight = !down && c.x >= moved.x && right + c.w <= cols && !layout.some((o) => o !== c && o !== moved && hit({ ...c, x: right }, o));
     if (fitsRight) c.x = right;
     else c.y = moved.y + moved.h;
-    makeRoom(layout, c, cols, depth + 1);
+    makeRoom(layout, c, cols, down, depth + 1);
   }
 }
 

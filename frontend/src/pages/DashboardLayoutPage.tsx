@@ -13,6 +13,7 @@ import { DashboardFilterProvider, useDashboardFilterState } from '@/features/das
 import { DashboardIdContext } from '@/features/dashboards/dashboardRefresh';
 import { LayoutInspector } from '@/features/dashboards/layoutEditor/LayoutInspector';
 import { LayoutSidebar } from '@/features/dashboards/layoutEditor/LayoutSidebar';
+import { makeRoom } from '@/features/dashboards/resizePush';
 import { nudge } from '@/features/dashboards/layoutEditor/layoutOps';
 import { useEditorKeys } from '@/features/dashboards/layoutEditor/useEditorKeys';
 import { useLayoutHistory } from '@/features/dashboards/layoutEditor/useLayoutHistory';
@@ -47,7 +48,10 @@ export default function DashboardLayoutPage() {
     if (!dragging) return;
     const p = dragging.position;
     d.updateWidgetSetting(dragging.id, 'parked', false);
-    h.commit([...rest, { i: dragging.id, x: Math.min(item.x, cols - Math.round(p.w * d.gridX)), y: item.y, w: Math.round(p.w * d.gridX), h: Math.round(p.h * d.gridY) }]);
+    const me = { i: dragging.id, x: Math.min(item.x, cols - Math.round(p.w * d.gridX)), y: item.y, w: Math.round(p.w * d.gridX), h: Math.round(p.h * d.gridY) };
+    const next = [...rest.map((l) => ({ ...l })), me];
+    makeRoom(next, me, cols);   // overlap is allowed on the canvas, so open space for it here
+    h.commit(next);
     setDragging(null);
   };
 

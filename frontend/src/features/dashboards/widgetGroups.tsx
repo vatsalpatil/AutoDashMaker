@@ -41,5 +41,7 @@ export function useWidgetGroups(widgets: Widget[]) {
       l.i !== s.id && isMate(l.i) ? { ...l, x: Math.max(0, l.x + s.dx), y: Math.max(0, l.y + s.dy) } : l);
   };
 
-  return { selected, select: (ids: string[]) => setSelected(new Set(ids)), clear: () => setSelected(new Set()), toggle, onDragStop, applyGroupMove };
+  const hasMates = (id: string) => (selected.has(id) && selected.size > 1) || (!!groupOf(byId.get(id)) && widgets.filter((w) => groupOf(w) === groupOf(byId.get(id))).length > 1);
+
+  return { hasMates, selected, select: (ids: string[]) => setSelected(new Set(ids)), clear: () => setSelected(new Set()), toggle, onDragStop, applyGroupMove };
 }

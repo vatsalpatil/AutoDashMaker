@@ -6,6 +6,7 @@ import type { Widget } from '@/lib/types';
 import { ContentCard, isContent } from './ContentCards';
 import { WidgetView } from './WidgetView';
 import { useResizePush } from './resizePush';
+import { InsertLine, useDropInsert } from './dropInsert';
 import { groupOf, type WidgetGroups } from './widgetGroups';
 import { BoxFrames, boxesOf, isLocked } from './widgetBoxes';
 
@@ -27,6 +28,7 @@ export function WidgetGrid({ widgets, layout, editing, onLayoutChange, onRemove,
 }) {
   const [ref, { w: width }] = useMeasure();
   const push = useResizePush(12 * gridX);
+  const ins = useDropInsert(12 * gridX);
   const boxes = boxesOf(widgets);
   const byId = new Map(widgets.map((w) => [w.id, w]));
   const gridLayout = editing ? layout.map((l) => (byId.get(l.i) && isLocked(byId.get(l.i)!) ? { ...l, static: true } : l)) : layout;
@@ -41,6 +43,7 @@ export function WidgetGrid({ widgets, layout, editing, onLayoutChange, onRemove,
     // measured with a ResizeObserver: the sidebar opening/closing resizes the container without a window resize
     <div ref={ref} className="min-w-0">
     <div className={`relative ${editing ? 'min-h-[60vh]' : ''}`}>
+    {editing && width > 0 && <InsertLine hint={ins.hint} colW={width / (12 * gridX)} rowH={92 / gridY} />}
     {editing && width > 0 && <BoxFrames boxes={boxes} layout={layout} colW={width / (12 * gridX)} rowH={92 / gridY} />}
     {width > 0 && <Responsive
       width={width}
@@ -54,6 +57,7 @@ export function WidgetGrid({ widgets, layout, editing, onLayoutChange, onRemove,
       resizeHandles={['se', 'e', 's', 'w']}
       compactType={null}            // widgets stay where you put them: nothing jumps up to fill gaps
       preventCollision={false}
+      allowOverlap   // nothing moves while dragging; dropInsert / resizePush open space themselves
       draggableCancel="button, input, textarea, select, a"
       useCSSTransforms
       isDraggable={editing}
@@ -61,10 +65,12 @@ export function WidgetGrid({ widgets, layout, editing, onLayoutChange, onRemove,
       isDroppable={editing && !!onDropWidget}
       droppingItem={{ i: '__drop__', w: dropSize?.w ?? 6 * gridX, h: dropSize?.h ?? 3 * gridY }}
       onDrop={(l: Layout[], item: Layout | undefined) => item && onDropWidget?.(l.filter((x) => x.i !== '__drop__'), item)}
-      onDragStop={g.onDragStop}
+      onDragStart={ins.onDragStart}
+      onDrag={ins.onDrag}
+      onDragStop={(l, o, n) => { g.onDragStop(l, o, n); ins.onDragStop(l, o, n); }}
       onResizeStart={push.onResizeStart}
       onResize={push.onResize}
-      onLayoutChange={(l) => onLayoutChange(g.applyGroupMove(l))}
+      onLayoutChange={(l) => onLayoutChange(g.applyGroupMove(ins.apply(l, g.hasMates)))}
     >
       {widgets.map((w) => (
         <div key={w.id}
