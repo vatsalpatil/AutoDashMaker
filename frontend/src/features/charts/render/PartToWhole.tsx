@@ -94,9 +94,9 @@ export function PartToWhole({ spec, prep, o, height, onPick, result }: Props) {
   );
 }
 
-function TreemapTile(p: { x?: number; y?: number; width?: number; height?: number; name?: string; value?: number; fill?: string; growth?: number | null; o: Opts; showValue: boolean }) {
+function TreemapTile(p: { depth?: number; x?: number; y?: number; width?: number; height?: number; name?: string; value?: number; fill?: string; growth?: number | null; o: Opts; showValue: boolean }) {
   const { x = 0, y = 0, width = 0, height = 0 } = p;
-  if (width < 4 || height < 4) return null;
+  if (width < 4 || height < 4 || p.depth === 0 || !p.name) return null;   // depth 0 = Recharts' invisible root box, not a tile
   return (
     <g>
       <rect x={x} y={y} width={width} height={height} rx={4} fill={p.fill} stroke="var(--card)" strokeWidth={2} />

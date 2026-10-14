@@ -31,7 +31,7 @@ export function TimeBreakdownCore({ spec, result, o }: { spec: ChartSpec; result
   const tb = useMemo(() => buildBreakdown(result.rows, item, date, metric, attrs, split), [result.rows, item, date, metric, attrs.join(), split]);  // eslint-disable-line react-hooks/exhaustive-deps
   const [open, setOpen] = useState<Set<string>>(() => new Set(o.tbOpen === 'month' ? tb.years : []));
   const [hidden, setHidden] = useState<Set<string>>(new Set());   // detail columns the viewer turned off
-  const shownAttrs = attrs.filter((a) => !hidden.has(a));
+  const shownAttrs = attrs.filter((a) => !hidden.has(a) && a !== split);   // the split column is already the column groups
   const toggle = (k: string) => setOpen((s) => { const n = new Set(s); if (n.has(k)) { n.delete(k); for (const m of tb.monthsOf.get(k) ?? []) n.delete(m); } else n.add(k); return n; });
   const cols = timeColumns(tb, open);
   // split: every split value gets its own group of period columns + its own total; else plain periods grouped by year

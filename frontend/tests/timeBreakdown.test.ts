@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { buildBreakdown, cellValue, dateParts, footerValue, splitKey, timeColumns } from '../src/features/charts/timeBreakdown.ts';
+import { SEVERAL, buildBreakdown, cellValue, dateParts, footerValue, splitKey, timeColumns } from '../src/features/charts/timeBreakdown.ts';
 
 const sum = (v: number[]) => v.reduce((a, b) => a + b, 0);
 const rows = [
@@ -48,4 +48,9 @@ test('split by a second column files each value under its group too', () => {
   assert.equal(cellValue(a, splitKey('Amazon', '__total'), sum), 7);
   assert.equal(cellValue(a, splitKey('Myntra', '2025'), sum), null);
   assert.equal(cellValue(a, '__total', sum), 9);
+});
+
+test('a detail column with different values per item shows "several", not the first one', () => {
+  const tb = buildBreakdown([{ b: 'Ferrero', d: '2026-01-01', q: 1, country: 'Germany' }, { b: 'Ferrero', d: '2026-01-02', q: 1, country: 'UK' }], 'b', 'd', 'q', ['country']);
+  assert.equal(tb.rows[0].attrs.country, SEVERAL);
 });

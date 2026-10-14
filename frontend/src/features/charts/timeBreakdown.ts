@@ -11,6 +11,9 @@ export interface TimeBreakdown { rows: TBRow[]; years: string[]; monthsOf: Map<s
 /** Cell key of a period inside one split group (e.g. portal 'Amazon' × '2026'). */
 export const splitKey = (split: string, key: string) => `${split}§${key}`;
 
+/** Shown for a detail column whose value differs between an item's rows (e.g. a brand sold in several countries). */
+export const SEVERAL = 'several';
+
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const num = (v: unknown) => { const n = typeof v === 'number' ? v : Number(v); return Number.isFinite(n) ? n : null; };
 
@@ -38,6 +41,7 @@ export function buildBreakdown(rows: Record<string, unknown>[], item: string, da
     const id = String(r[item] ?? '');
     let row = byId.get(id);
     if (!row) { row = { id, attrs: Object.fromEntries(attrs.map((a) => [a, r[a]])), cells: new Map(), all: [] }; byId.set(id, row); }
+    else for (const a of attrs) if (row.attrs[a] !== SEVERAL && String(row.attrs[a] ?? '') !== String(r[a] ?? '')) row.attrs[a] = SEVERAL;   // never show one value for many
     const v = num(r[measure]);
     const parts = dateParts(r[date]);
     if (v === null || !parts) continue;

@@ -278,3 +278,4 @@ Format: `YYYY-MM-DD · tool · files · what + why`
 - 2026-10-14 · backend/nixpacks.toml (setup = python312 only, pip --prefer-binary, pip cache dir) · drops postgresql_16.dev + gcc from every backend build.
 - 2026-10-15 · NEW frontend/Dockerfile + .dockerignore, backend/Dockerfile + .dockerignore · builds no longer need nixpkgs downloads from GitHub (server could not fetch them).
 - 2026-10-15 · routers/queries.py run+save keeps the original SQL when it has {{placeholders}} (was saving the rendered SQL = parameter frozen), test_shares now saves via /api/queries/run · found while preparing the live test.
+- 2026-10-15 · live test fixes: treemap skipped Recharts' root node (blank '· total' tile), timebreak detail column shows 'several' when an item has different values (was first value), split column hidden from detail columns.
