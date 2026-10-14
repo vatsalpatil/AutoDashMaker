@@ -103,8 +103,9 @@ def _call_anthropic(api_key: str, model: str, messages: list[dict],
         "https://api.anthropic.com/v1/messages",
         headers={"x-api-key": api_key, "anthropic-version": "2023-06-01",
                  "content-type": "application/json"},
-        json={"model": model, "max_tokens": max_tokens, "system": system, "temperature": TEMPERATURE,
-              "messages": user_msgs},
+        # cache the system prompt (instructions + table list): repeated agent steps re-read it at ~10% of the price
+        json={"model": model, "max_tokens": max_tokens, "temperature": TEMPERATURE, "messages": user_msgs,
+              **({"system": [{"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}]} if system else {})},
         timeout=timeout,
     )
     _fail(resp)
