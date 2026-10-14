@@ -57,3 +57,6 @@ DONE: deterministic AI (temp 0), lean agent context + time budget, agent reply p
 Live benchmark (top-3 countries question): 16.2 s / 5 requests → 7.1 s / 2 requests.
 NEXT: move remaining service groups (ai, dashboards, data) per 03-decisions "Target backend layout"; stream final answer tokens; cheap/strong model routing; frontend Dokploy app did NOT auto-deploy (user redeployed by hand) — check its branch/autodeploy.
 USER: default AI model is `openrouter/free` (random model per request = inconsistent style); recommend pinning one model. Rotate the OpenRouter keys + Dashtor/Dokploy password the user pasted in chat.
+
+## 2026-10-15 live test (Docker deploys)
+Both apps now deploy with Dockerfiles (Nixpacks could not fetch nixpkgs from GitHub). Live-tested on dashboard "Pattern Test (Claude)" (id 72a7c183a46f, user's Chocolate Sales data): KPI vs previous, ratio, ranked, quadrant, growth treemap, reconcile, timebreak (expand / split / compare 1-3), period + number params (UI switch -> one batched request; injection refused), Add widget -> new element -> studio preselected, 'Dashboard patterns' gallery. Fixed during the test: saved queries lost {{placeholders}}, treemap root tile, mixed detail values, split column shown twice. Frontend still needs a manual Deploy in Dokploy after each push.
