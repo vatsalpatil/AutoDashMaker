@@ -51,3 +51,9 @@ Built and tested (`tests/test_verify.py`). NOT live-tested with real delivery: n
 
 ## 2026-10-09 storage
 Datasets are Parquet-backed (D24) + hosted per-user quotas (50 MB/file, 250 MB/user, 5M rows, 20 datasets) done in backend. TODO: usage bar in Settings (uses `/api/system` `quota`), per-user daily AI cap, migrate pre-D24 table datasets + derived datasets to Parquet, inactive-account cleanup, load test, then deploy (user must say so).
+
+## 2026-10-14 AI harness + sharing + data protection (live-tested on dashtor.laveyent.com)
+DONE: deterministic AI (temp 0), lean agent context + time budget, agent reply parser for any model format, dotted dataset names resolve in SQL, Anthropic prompt caching; chat copy/edit/regenerate/Esc/↑; dashboard share links (live-tested create → public view → revoke); secrets encrypted at rest; guide sections AI Assistant / Sharing / Your Data & Privacy; services/account + services/qb packages.
+Live benchmark (top-3 countries question): 16.2 s / 5 requests → 7.1 s / 2 requests.
+NEXT: move remaining service groups (ai, dashboards, data) per 03-decisions "Target backend layout"; stream final answer tokens; cheap/strong model routing; frontend Dokploy app did NOT auto-deploy (user redeployed by hand) — check its branch/autodeploy.
+USER: default AI model is `openrouter/free` (random model per request = inconsistent style); recommend pinning one model. Rotate the OpenRouter keys + Dashtor/Dokploy password the user pasted in chat.
