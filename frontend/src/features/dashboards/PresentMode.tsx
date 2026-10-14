@@ -78,7 +78,7 @@ export function PresentMode({
   }, [auto, next]);
 
   const page = pages[Math.min(pageIdx, count - 1)];
-  const pageWidgets = (dashboard.widgets ?? []).filter((w) => (w.page ?? 'main') === page.id);
+  const pageWidgets = (dashboard.widgets ?? []).filter((w) => (w.page ?? 'main') === page.id && !w.settings?.parked);
   // the saved layout, scaled so the whole page fits the screen: every widget sits at its own column and row
   const [gridRef, gridSize] = useMeasure();
   const totalRows = Math.max(1, ...pageWidgets.map((w) => w.position.y + Math.max(w.position.h, 1)));

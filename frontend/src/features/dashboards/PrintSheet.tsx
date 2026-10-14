@@ -38,7 +38,7 @@ export function PrintSheet({ dashboard, pages, options, onDone }: { dashboard: D
     return () => { clearTimeout(timer); window.removeEventListener('afterprint', finish); style.remove(); };
   }, [options, onDone]);
 
-  const widgets = dashboard.widgets ?? [];
+  const widgets = (dashboard.widgets ?? []).filter((w) => !w.settings?.parked);
   return createPortal(
     <div className="print-sheet" style={{ zoom: printZoom(options) }}>
       <div style={{ width: DESIGN_PX }}>

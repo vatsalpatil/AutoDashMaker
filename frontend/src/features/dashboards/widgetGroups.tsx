@@ -7,6 +7,9 @@ export const groupOf = (w?: Widget) => (typeof w?.settings?.group === 'string' ?
 
 export type WidgetGroups = ReturnType<typeof useWidgetGroups>;
 
+/** Parked = taken off the layout (settings.parked): kept on the dashboard, hidden everywhere until dropped back on the canvas. */
+export const isParked = (w: Widget) => !!w.settings?.parked;
+
 export function useWidgetGroups(widgets: Widget[]) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const shift = useRef<{ id: string; dx: number; dy: number } | null>(null);

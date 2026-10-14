@@ -1,6 +1,6 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Check, Plus, Redo2, Undo2 } from 'lucide-react';
+import { Check, EyeOff, Plus, Redo2, Undo2 } from 'lucide-react';
 import { ErrorBanner } from '@/components/common/ErrorBanner';
 import { Loading } from '@/components/common/Loading';
 import { Button } from '@/components/ui/kit';
@@ -41,6 +41,16 @@ export default function DashboardLayoutPage() {
   const nameOf = (w: Widget) => String(w.settings?.title || w.title || chartName.get(w.chart_id) || 'Widget');
   const newBox = () => { joinBox(g.selected, { id: `g${Date.now().toString(36)}`, name: `Box ${boxesOf(d.widgets).length + 1}`, locked: false }, d.updateWidgetSetting); g.clear(); };
 
+  const [dragging, setDragging] = useState<Widget | null>(null);
+  const park = (ids: Iterable<string>, on = true) => { for (const wid of ids) d.updateWidgetSetting(wid, 'parked', on); g.clear(); };
+  const place = (rest: typeof layout, item: { x: number; y: number }) => {
+    if (!dragging) return;
+    const p = dragging.position;
+    d.updateWidgetSetting(dragging.id, 'parked', false);
+    h.commit([...rest, { i: dragging.id, x: Math.min(item.x, cols - Math.round(p.w * d.gridX)), y: item.y, w: Math.round(p.w * d.gridX), h: Math.round(p.h * d.gridY) }]);
+    setDragging(null);
+  };
+
   useEditorKeys({
     nudge: (dx, dy, big) => g.selected.size && h.commit(nudge(layout, g.selected, dx * (big ? d.gridX : 1), dy * (big ? d.gridY : 1), cols)),
     undo: h.undo, redo: h.redo, all: () => g.select(d.widgets.map((w) => w.id)), clear: g.clear,
@@ -69,6 +79,7 @@ export default function DashboardLayoutPage() {
               {(Object.keys(SNAPS) as SnapId[]).map((k) => <option key={k} value={k}>{SNAPS[k].label}</option>)}
             </select>
           </label>
+          <button type="button" className={tool} disabled={!d.widgets.length} onClick={() => park(d.widgets.map((w) => w.id))} title="Move every widget on this page to the Off layout tray"><EyeOff className="size-3.5" />Clear layout</button>
           <button type="button" className={tool} onClick={() => d.setPickerOpen(true)}><Plus className="size-3.5" />Add widget</button>
           <Button variant="primary" icon={<Check className="h-4 w-4" />} label="Done" onClick={done} />
         </div>
@@ -76,7 +87,7 @@ export default function DashboardLayoutPage() {
       <ErrorBanner message={d.error} />
       <div className="flex min-h-0 flex-1">
         <aside className="w-64 shrink-0 overflow-y-auto border-r p-3">
-          <LayoutSidebar widgets={d.widgets} selected={g.selected} nameOf={nameOf} onSetting={d.updateWidgetSetting} onCreateBox={newBox}
+          <LayoutSidebar widgets={d.widgets} parked={d.parked} onDragParked={setDragging} onRestoreAll={() => park(d.parked.map((w) => w.id), false)} selected={g.selected} nameOf={nameOf} onSetting={d.updateWidgetSetting} onCreateBox={newBox}
             onSelect={(wid, add) => (add ? g.toggle(wid) : g.select([wid]))}
             onPreset={(p) => {
               const type = new Map(d.charts.map((c) => [c.id, c.spec?.type as string | undefined]));
@@ -84,14 +95,15 @@ export default function DashboardLayoutPage() {
             }} />
         </aside>
         <main className="min-w-0 flex-1 overflow-auto bg-muted/30 p-4" onClick={(e) => e.target === e.currentTarget && g.clear()}>
-          <WidgetGrid widgets={d.widgets} layout={layout} editing groups={g} plainSelect gridX={d.gridX} gridY={d.gridY}
+          <WidgetGrid widgets={d.widgets} layout={layout} editing groups={g} plainSelect onDropWidget={place}
+            dropSize={dragging && { w: Math.round(dragging.position.w * d.gridX), h: Math.round(dragging.position.h * d.gridY) }} gridX={d.gridX} gridY={d.gridY}
             onLayoutChange={h.commit} onRemove={d.removeWidget} onFullscreen={() => {}} onSettings={d.openSettings} />
           <p className="mt-3 text-center text-[11px] text-muted-foreground">Click to select · Ctrl/Shift+click to add · arrows nudge (Shift = bigger) · Ctrl+Z / Ctrl+Y · Ctrl+A · Esc</p>
         </main>
         <aside className="w-72 shrink-0 overflow-y-auto border-l p-3">
           <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Inspector</h3>
           <LayoutInspector layout={layout} selected={g.selected} widgets={d.widgets} gx={d.gridX} gy={d.gridY} nameOf={nameOf} commit={h.commit}
-            onSetting={d.updateWidgetSetting} onSettings={d.openSettings} onRemove={(wid) => { g.clear(); d.removeWidget(wid); }} onBox={newBox} />
+            onSetting={d.updateWidgetSetting} onSettings={d.openSettings} onRemove={(wid) => { g.clear(); d.removeWidget(wid); }} onBox={newBox} onPark={() => park(g.selected)} />
         </aside>
       </div>
       {d.settingsWidget && (

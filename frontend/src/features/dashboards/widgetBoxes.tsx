@@ -54,37 +54,41 @@ export function BoxFrames({ boxes, layout, colW, rowH }: { boxes: Box[]; layout:
   );
 }
 
-const chip = 'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 hover:border-primary hover:text-primary disabled:opacity-50 disabled:pointer-events-none';
+const chip = 'inline-flex items-center gap-1 rounded-md border px-2 py-1 hover:border-primary hover:text-primary disabled:opacity-40 disabled:pointer-events-none';
+const icon = 'grid size-6 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground';
 
+/** Sidebar list of boxes: rename, lock, delete, remove a member, add the current selection. */
 export function BoxList({ boxes, selected, nameOf, set, onCreate }: {
   boxes: Box[]; selected: Set<string>; nameOf: (w: Widget) => string; set: SetFn; onCreate: () => void;
 }) {
   return (
-    <div className="mb-2 space-y-1.5 rounded-lg border p-2 text-xs">
-      <div className="flex items-center gap-2">
-        <span className="font-medium">Boxes</span>
-        <span className="text-muted-foreground">Ctrl/Shift + click widgets, then create a box or add them to one. Dragging any member moves the box.</span>
-        <button type="button" className={`${chip} ml-auto`} disabled={selected.size === 0} onClick={onCreate}><Plus className="size-3" />New box from selection</button>
-      </div>
+    <div className="space-y-2 text-xs">
+      <button type="button" className={`${chip} w-full justify-center`} disabled={selected.size === 0} onClick={onCreate}>
+        <Plus className="size-3.5" />New box from selection{selected.size ? ` (${selected.size})` : ''}
+      </button>
+      {boxes.length === 0 && <p className="text-muted-foreground">Select widgets, then make a box. Dragging any member moves the whole box.</p>}
       {boxes.map((b) => (
-        <div key={b.id} className="flex flex-wrap items-center gap-1 border-t pt-1.5">
-          <input defaultValue={b.name} aria-label="Box name" className="w-28 rounded border bg-transparent px-1.5 py-0.5"
-            onBlur={(e) => e.target.value.trim() && e.target.value !== b.name && b.members.forEach((w) => set(w.id, 'groupName', e.target.value.trim()))} />
-          <button type="button" className={chip} title={b.locked ? 'Unlock position' : 'Lock position'}
-            onClick={() => b.members.forEach((w) => set(w.id, 'groupLocked', !b.locked))}>
-            {b.locked ? <Lock className="size-3" /> : <LockOpen className="size-3" />}{b.locked ? 'Locked' : 'Lock'}
-          </button>
-          {b.members.map((w) => (
-            <span key={w.id} className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5">
-              <span className="max-w-32 truncate">{nameOf(w)}</span>
-              <button type="button" aria-label="Remove from box" className="hover:text-destructive" onClick={() => set(w.id, 'group', null)}><X className="size-3" /></button>
-            </span>
-          ))}
+        <div key={b.id} className="space-y-1.5 rounded-lg border p-2">
+          <div className="flex items-center gap-1">
+            <input defaultValue={b.name} aria-label="Box name" className="min-w-0 flex-1 rounded border bg-transparent px-1.5 py-0.5 font-medium"
+              onBlur={(e) => e.target.value.trim() && e.target.value !== b.name && b.members.forEach((w) => set(w.id, 'groupName', e.target.value.trim()))} />
+            <button type="button" className={icon} title={b.locked ? 'Unlock position' : 'Lock position'} aria-label={b.locked ? 'Unlock box' : 'Lock box'}
+              onClick={() => b.members.forEach((w) => set(w.id, 'groupLocked', !b.locked))}>
+              {b.locked ? <Lock className="size-3.5 text-primary" /> : <LockOpen className="size-3.5" />}
+            </button>
+            <button type="button" className={`${icon} hover:text-destructive`} title="Delete box (widgets stay)" aria-label="Delete box"
+              onClick={() => b.members.forEach((w) => set(w.id, 'group', null))}><Trash2 className="size-3.5" /></button>
+          </div>
+          <div className="flex flex-wrap gap-1">
+            {b.members.map((w) => (
+              <span key={w.id} className="inline-flex max-w-full items-center gap-1 rounded-full bg-muted px-2 py-0.5">
+                <span className="truncate">{nameOf(w)}</span>
+                <button type="button" aria-label="Remove from box" className="shrink-0 hover:text-destructive" onClick={() => set(w.id, 'group', null)}><X className="size-3" /></button>
+              </span>
+            ))}
+          </div>
           <button type="button" className={chip} disabled={![...selected].some((id) => !b.members.some((w) => w.id === id))}
             onClick={() => joinBox(selected, b, set)}><Plus className="size-3" />Add selected</button>
-          <button type="button" className={`${chip} ml-auto hover:text-destructive`} onClick={() => b.members.forEach((w) => set(w.id, 'group', null))}>
-            <Trash2 className="size-3" />Delete box
-          </button>
         </div>
       ))}
     </div>

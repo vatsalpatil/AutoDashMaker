@@ -43,11 +43,10 @@ export function autoLayout(preset: string, widgets: Widget[], kind: Kind, gx: nu
 
 export function AutoLayoutBar({ onPick }: { onPick: (preset: string) => void }) {
   return (
-    <div className="mb-2 flex flex-wrap items-center gap-1 text-xs">
-      <span className="mr-1 text-muted-foreground">Auto layout</span>
+    <div className="grid grid-cols-2 gap-1 text-xs">
       {Object.entries(PRESETS).map(([k, p]) => (
         <button key={k} type="button" onClick={() => onPick(k)}
-          className="inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 hover:border-primary hover:text-primary">
+          className="inline-flex items-center gap-1.5 rounded-md border px-2 py-1.5 hover:border-primary hover:text-primary">
           {p.icon}{p.label}
         </button>
       ))}

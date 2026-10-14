@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Layout } from 'react-grid-layout';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { api } from '@/lib/api';
+import { isParked } from './widgetGroups';
 import type { BriefResponse, Chart, Dashboard, Widget } from '@/lib/types';
 
 /** Grid snap: stored positions use 12 columns × 92 px rows (80 px + gap); the editor multiplies both by the chosen factors
@@ -66,10 +67,9 @@ export function useDashboardPage(id: string | undefined) {
     if (!pages.some((p) => p.id === activePage)) setActivePage(pages[0].id);
   }, [pages, activePage]);
 
-  const widgets = useMemo(() => {
-    const all = dashboard?.widgets ?? [];
-    return all.filter((w) => (w.page ?? 'main') === activePage);
-  }, [dashboard, activePage]);
+  const pageAll = useMemo(() => (dashboard?.widgets ?? []).filter((w) => (w.page ?? 'main') === activePage), [dashboard, activePage]);
+  const widgets = useMemo(() => pageAll.filter((w) => !isParked(w)), [pageAll]);
+  const parked = useMemo(() => pageAll.filter(isParked), [pageAll]);
 
   // the grid is finer than the stored positions (24 columns, quarter rows) so drag/resize moves in small, smooth steps
   const layout: Layout[] = useMemo(
@@ -258,7 +258,7 @@ export function useDashboardPage(id: string | undefined) {
   }
   return {
     snap, setSnap, gridX: GRID_X, gridY: GRID_Y,
-    dashboard, charts, error, setError, load, pages, widgets, layout, activePage, setActivePage,
+    dashboard, charts, error, setError, load, pages, widgets, parked, layout, activePage, setActivePage,
     editing, setEditing, finishEditing, onLayoutChange,
     pickerOpen, setPickerOpen, fullscreenWidget, setFullscreenWidget,
     settingsWidget, setSettingsWidget, settingsChart, openSettings, updateWidgetSetting,

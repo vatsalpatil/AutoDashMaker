@@ -1,7 +1,7 @@
 import type { Layout } from 'react-grid-layout';
 import {
   AlignCenterHorizontal, AlignCenterVertical, AlignEndHorizontal, AlignEndVertical, AlignHorizontalDistributeCenter,
-  AlignStartHorizontal, AlignStartVertical, AlignVerticalDistributeCenter, Boxes, Columns3, MoveHorizontal, MoveVertical, Settings2, Trash2,
+  AlignStartHorizontal, AlignStartVertical, AlignVerticalDistributeCenter, Boxes, Columns3, EyeOff, MoveHorizontal, MoveVertical, Settings2, Trash2,
 } from 'lucide-react';
 import type { Widget } from '@/lib/types';
 import { align, distribute, matchSize, setBox, toRow, type Align } from './layoutOps';
@@ -17,7 +17,8 @@ const ALIGNS: [Align, React.ReactNode, string][] = [
 ];
 
 /** Right-hand panel: exact position/size for one widget, align / match / distribute for several. Sizes are shown in grid units. */
-export function LayoutInspector({ layout, selected, widgets, gx, gy, nameOf, commit, onSetting, onSettings, onRemove, onBox }: {
+export function LayoutInspector({ layout, selected, widgets, gx, gy, nameOf, commit, onSetting, onSettings, onRemove, onBox, onPark }: {
+  onPark: () => void;
   layout: Layout[]; selected: Set<string>; widgets: Widget[]; gx: number; gy: number;
   nameOf: (w: Widget) => string; commit: (l: Layout[]) => void;
   onSetting: (id: string, key: string, value: unknown) => void; onSettings: (w: Widget) => void; onRemove: (id: string) => void; onBox: () => void;
@@ -50,6 +51,7 @@ export function LayoutInspector({ layout, selected, widgets, gx, gy, nameOf, com
           <button type="button" className={btn} onClick={() => commit(setBox(layout, w.id, { x: cols / 2, w: cols / 2 }, cols))}>Half · right</button>
         </div>
         <div className="flex flex-wrap gap-1 border-t pt-3">
+          <button type="button" className={btn} onClick={onPark} title="Move to the Off layout tray; drag it back later"><EyeOff className="size-3.5" />Take off layout</button>
           <button type="button" className={btn} onClick={() => onSettings(w)}><Settings2 className="size-3.5" />Widget settings</button>
           <button type="button" className={`${btn} hover:text-destructive`} onClick={() => onRemove(w.id)}><Trash2 className="size-3.5" />Remove</button>
         </div>
@@ -72,7 +74,10 @@ export function LayoutInspector({ layout, selected, widgets, gx, gy, nameOf, com
           <button type="button" className={btn} onClick={() => commit(toRow(layout, ids, cols))}><Columns3 className="size-3.5" />One row</button>
         </div>
       </div>
-      <button type="button" className={btn} onClick={onBox}><Boxes className="size-3.5" />Put in a new box</button>
+      <div className="flex flex-wrap gap-1">
+        <button type="button" className={btn} onClick={onBox}><Boxes className="size-3.5" />Put in a new box</button>
+        <button type="button" className={btn} onClick={onPark}><EyeOff className="size-3.5" />Take off layout</button>
+      </div>
     </div>
   );
 }
