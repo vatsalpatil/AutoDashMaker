@@ -103,22 +103,34 @@ class Editor:
         return f'moved "{cur["chart"]["name"]}"'
 
     def op_arrange(self, op: dict, wid: str) -> str:
-        ids = [str(i) for i in op.get("ids", []) if str(i) in self.index] if isinstance(op.get("ids"), list) else []
-        if not ids:   # default: every KPI of the page being viewed
-            ids = [i for i, e in self.index.items() if (e["widget"].get("page") or "main") == self.viewing and e["chart"].get("spec", {}).get("type") == "kpi"]
-        if not ids:
-            raise ValueError("no widgets to arrange")
-        where = self._page_of(ids[0])
+        """Lay widgets out in rows. `rows` = explicit rows of ids (each row splits the 12 columns evenly), else `ids` in rows of
+        `columns`. Heights are kept (a row is as tall as its tallest widget): arranging never shrinks charts."""
+        valid = lambda xs: [str(i) for i in xs if str(i) in self.index] if isinstance(xs, list) else []   # noqa: E731
         pos = lambda i: self.index[i]["widget"].get("position") or {}   # noqa: E731
-        ids.sort(key=lambda i: (pos(i).get("y", 0), pos(i).get("x", 0)))
-        cols = min(max(int(op.get("columns") or 4), 1), 6)
-        base = min(pos(i).get("y", 0) for i in ids)
-        cells = grid_positions(len(ids), cols, base)
-        self._push_down(where, base, max(c["y"] + c["h"] for c in cells) - base, exclude=set(ids))   # anything in the way moves below
-        for i, cell in zip(ids, cells):
+        rows = [r for r in (valid(r) for r in op.get("rows", [])) if r] if isinstance(op.get("rows"), list) else []
+        if not rows:
+            ids = valid(op.get("ids"))
+            if not ids:   # default: every KPI of the page being viewed
+                ids = [i for i, e in self.index.items() if (e["widget"].get("page") or "main") == self.viewing and e["chart"].get("spec", {}).get("type") == "kpi"]
+            ids.sort(key=lambda i: (pos(i).get("y", 0), pos(i).get("x", 0)))
+            cols = min(max(int(op.get("columns") or 4), 1), 6)
+            rows = [ids[k:k + cols] for k in range(0, len(ids), cols)]
+        if not rows:
+            raise ValueError("no widgets to arrange")
+        flat = [i for r in rows for i in r]
+        where = self._page_of(flat[0])
+        y = base = min(pos(i).get("y", 0) for i in flat)
+        cells: list[tuple[str, dict[str, int]]] = []
+        for r in rows:
+            r = r[:6]
+            width, h = 12 // len(r), max(pos(i).get("h", 2) for i in r)
+            cells += [(i, {"x": k * width, "y": y, "w": width, "h": h}) for k, i in enumerate(r)]
+            y += h
+        self._push_down(where, base, y - base, exclude=set(flat))   # anything in the way moves below
+        for i, cell in cells:
             self._set_pos(i, cell)
         self.touched = where
-        return f"arranged {len(ids)} widgets in rows of {cols}"
+        return f"arranged {len(cells)} widgets in {len(rows)} rows ({' / '.join(str(len(r)) for r in rows)} per row)"
 
     def op_resize(self, op: dict, wid: str) -> str:
         cur = self._need(wid)

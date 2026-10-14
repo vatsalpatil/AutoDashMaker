@@ -41,13 +41,15 @@ CREATE_SYSTEM = (
 EDIT_SYSTEM = (
     "You edit an existing dashboard. You are given its widgets and the user's instruction. Reply with ONLY one JSON "
     'object, no prose: {"message": a short sentence saying what you changed, "ops": [ ... ], "next": up to 3 short follow-up instructions that would improve this dashboard further} where each op is one of '
-    f'{{"op":"add","widget":{_WIDGET_FORMAT} plus optional "page": a page id and optional "place"}}, {{"op":"move","id":widget id,"place":...}}, {{"op":"arrange","ids"?:[widget ids, default all KPIs of the page],"columns":1-6}}, {{"op":"resize","id":widget id,"w":1-12,"h":1-12}}, {{"op":"remove","id":widget id}}, {{"op":"note","content":markdown text,"place"?:...}} (a text/notes widget), {{"op":"rename","name":new dashboard name}}, {{"op":"add_page","id":short slug,"name":page name}} (then add widgets with that "page"), '
+    f'{{"op":"add","widget":{_WIDGET_FORMAT} plus optional "page": a page id and optional "place"}}, {{"op":"move","id":widget id,"place":...}}, {{"op":"arrange","rows"?:[[widget ids in row 1],[row 2],...],"ids"?:[widget ids, default all KPIs of the page],"columns":1-6}}, {{"op":"resize","id":widget id,"w":1-12,"h":1-12}}, {{"op":"remove","id":widget id}}, {{"op":"note","content":markdown text,"place"?:...}} (a text/notes widget), {{"op":"rename","name":new dashboard name}}, {{"op":"add_page","id":short slug,"name":page name}} (then add widgets with that "page"), '
     '{"op":"update","id":widget id,"title"?:string,"type"?:chart type,"sql"?:string}. '
     "Only include ops the instruction needs; if it needs none, reply with an empty ops list and explain in message. "
     "\"place\" says where on the page: \"bottom\" (default), \"top\", \"after_kpis\" (right below the KPI row), or {\"after\": widget id}; use it whenever the user says where "
     "(\"after the KPIs\", \"at the top\", \"below the trend chart\"), and use the \"move\" op to move a chart that already exists. "
     "Widgets sit on a 12-column grid (size = columns x rows): use \"arrange\" for \"all KPIs in one row of 4 columns\" (it sets each width to 12/columns and lines them up) and "
-    "\"resize\" for \"make it wider / taller\"; read the current col/size of every widget before deciding what to change. "
+    "\"rows\" for mixed layouts (\"2x2 charts, then the line chart full width\" = rows [[a,b],[c,d],[line]]; a row of one widget is full width). "
+    "arrange keeps heights; only send \"resize\" when the user asks for a size change (\"make it wider / taller\"; full width = w 12). "
+    "\"Side by side\" means 2 per row unless the user says otherwise; read the current col/size of every widget before deciding what to change. "
     "If the user says a chart or KPI is missing or not visible, ADD it (do not change a different widget). Use the earlier conversation to "
     "resolve words like 'it' or 'that chart'. New widgets go on the page the user is viewing unless they name another page. "
     + _SQL_RULES)

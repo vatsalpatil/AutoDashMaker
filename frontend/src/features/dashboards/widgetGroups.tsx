@@ -52,7 +52,7 @@ export function GroupBar({ count, canUngroup, onGroup, onUngroup, onClear }: {
   return (
     <div className="mb-2 flex flex-wrap items-center gap-1 text-xs">
       <span className="mr-1 text-muted-foreground">
-        {count ? `${count} selected` : 'Ctrl/Shift + click widgets to select; selected widgets move together — Group keeps them together'}
+        {count ? `${count} selected` : 'Ctrl/Shift + click widgets to select; selected widgets move together; Group keeps them together'}
       </span>
       <button type="button" className={btn} disabled={count < 2} onClick={onGroup}><Group className="size-3.5" />Group</button>
       <button type="button" className={btn} disabled={!canUngroup} onClick={onUngroup}><Ungroup className="size-3.5" />Ungroup</button>
