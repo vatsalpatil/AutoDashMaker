@@ -31,5 +31,11 @@ export function fitLayout(layout: Cell[], wanted: Map<string, number>): Cell[] |
   return changed ? layout.map((c) => placed.get(c.i)!) : null;
 }
 
+/**
+ * Should a widget of `current` rows change to `needed` rows? Grow whenever content would be cut off; shrink only when it
+ * saves at least `minShrink` rows. Without this a height right on a row boundary flips back and forth between visits.
+ */
+export const shouldResize = (current: number, needed: number, minShrink = 2) => needed > current || current - needed >= minShrink;
+
 /** Grid rows a widget needs for `px` of content (rounded up to whole rows, at least 2, at most `max`). */
 export const rowsFor = (px: number, rowPx: number, max = 48) => Math.min(max, Math.max(2, Math.ceil(px / rowPx)));

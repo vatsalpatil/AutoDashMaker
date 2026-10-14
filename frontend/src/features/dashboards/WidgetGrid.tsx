@@ -10,7 +10,7 @@ import { useResizePush } from './resizePush';
 import { InsertLine, useDropInsert } from './dropInsert';
 import { groupOf, type WidgetGroups } from './widgetGroups';
 import { BoxFrames, boxesOf, isLocked } from './widgetBoxes';
-import { fitLayout, rowsFor } from './autoFit';
+import { fitLayout, rowsFor, shouldResize } from './autoFit';
 import { AutoHeightContext } from './autoHeightContext';
 
 /** The draggable / resizable 12-column grid of widgets for one dashboard page. */
@@ -47,7 +47,7 @@ export function WidgetGrid({ widgets, layout, editing, onLayoutChange, onAutoFit
     const rowPx = 92 / gridY;
     const cur = latest.current.find((l) => l.i === id);
     const rows = rowsFor(px, rowPx, 13 * gridY);   // at most 13 stored rows; longer content scrolls inside
-    if (!cur || Math.abs(rows - cur.h) < 1) { wanted.current.delete(id); return; }
+    if (!cur || !shouldResize(cur.h, rows)) { wanted.current.delete(id); return; }   // hysteresis: no ping-pong on a row boundary
     wanted.current.set(id, rows);
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(() => {

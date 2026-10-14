@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { fitLayout, rowsFor } from '../src/features/dashboards/autoFit.ts';
+import { fitLayout, rowsFor, shouldResize } from '../src/features/dashboards/autoFit.ts';
 
 const L = (i: string, x: number, y: number, w: number, h: number) => ({ i, x, y, w, h });
 
@@ -30,4 +30,10 @@ test('rowsFor rounds up and clamps', () => {
   assert.equal(rowsFor(100, 23), 5);
   assert.equal(rowsFor(10, 23), 2);
   assert.equal(rowsFor(99999, 23, 48), 48);
+});
+
+test('resize rule: grow to avoid clipping, shrink only for a real saving (stops 5.5 <-> 5.75 flapping)', () => {
+  assert.equal(shouldResize(22, 23), true);    // content would be cut: grow
+  assert.equal(shouldResize(23, 22), false);   // 1 quarter-row smaller: keep
+  assert.equal(shouldResize(23, 21), true);    // half a row or more: shrink
 });
