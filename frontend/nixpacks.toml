@@ -6,6 +6,10 @@
 # Caddy phase, which pulls a second, separate nixpkgs archive from GitHub (that download is what used to hang deploys).
 [variables]
 NIXPACKS_NODE_VERSION = "22"
+# The Node provider also adds its own "caddy" phase for single-page apps (separate nixpkgs download + /assets/Caddyfile).
+# We serve with our own caddy.conf, so turn that automatic phase off.
+NIXPACKS_SPA_CADDY = "false"
+NIXPACKS_NO_SPA = "true"
 
 [phases.setup]
 nixPkgs = ["...", "caddy"]          # "..." keeps the Node provider's packages (nodejs_22, npm)

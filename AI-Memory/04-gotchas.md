@@ -102,7 +102,7 @@ Never add `caddy` to `nixPkgs` when the app has a Caddyfile: Nixpacks adds it it
 
 ## Frontend Nixpacks build (2026-10-14)
 A file named `Caddyfile` makes Nixpacks add its own Caddy phase with a SECOND nixpkgs archive download from GitHub; that download hung deploys.
-Now: config is `frontend/caddy.conf`, Caddy is installed in `[phases.setup] nixPkgs = ["...", "caddy"]` (one archive), npm + vite caches kept.
+The Node provider ALSO adds a caddy phase for SPAs even without a Caddyfile: disabled with NIXPACKS_SPA_CADDY=false + NIXPACKS_NO_SPA=true (check the plan table has no 'caddy' row). Now: config is `frontend/caddy.conf`, Caddy is installed in `[phases.setup] nixPkgs = ["...", "caddy"]` (one archive), npm + vite caches kept.
 If a deploy fails with "caddy: command not found", the "..." merge did not apply: set nixPkgs = ["nodejs_22", "caddy"] explicitly.
 Backend: nixpacks.toml pins setup to python312 only (Nixpacks would add postgresql_16.dev + gcc for "psycopg2" even though psycopg2-binary needs neither). If a deploy fails building a wheel from source, add "gcc" back to nixPkgs.
 Slow deploys can also be the server's network: compare the git-clone speed in the log (65 KiB/s vs normal ~6 MiB/s).
