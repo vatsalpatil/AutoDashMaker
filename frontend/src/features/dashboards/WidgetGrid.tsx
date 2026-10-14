@@ -5,6 +5,7 @@ import { useMeasure } from '@/hooks/useMeasure';
 import type { Widget } from '@/lib/types';
 import { ContentCard, isContent } from './ContentCards';
 import { WidgetView } from './WidgetView';
+import { useResizePush } from './resizePush';
 import { groupOf, type WidgetGroups } from './widgetGroups';
 import { BoxFrames, boxesOf, isLocked } from './widgetBoxes';
 
@@ -25,6 +26,7 @@ export function WidgetGrid({ widgets, layout, editing, onLayoutChange, onRemove,
   onSettings: (w: Widget) => void;
 }) {
   const [ref, { w: width }] = useMeasure();
+  const push = useResizePush(12 * gridX);
   const boxes = boxesOf(widgets);
   const byId = new Map(widgets.map((w) => [w.id, w]));
   const gridLayout = editing ? layout.map((l) => (byId.get(l.i) && isLocked(byId.get(l.i)!) ? { ...l, static: true } : l)) : layout;
@@ -60,6 +62,8 @@ export function WidgetGrid({ widgets, layout, editing, onLayoutChange, onRemove,
       droppingItem={{ i: '__drop__', w: dropSize?.w ?? 6 * gridX, h: dropSize?.h ?? 3 * gridY }}
       onDrop={(l: Layout[], item: Layout | undefined) => item && onDropWidget?.(l.filter((x) => x.i !== '__drop__'), item)}
       onDragStop={g.onDragStop}
+      onResizeStart={push.onResizeStart}
+      onResize={push.onResize}
       onLayoutChange={(l) => onLayoutChange(g.applyGroupMove(l))}
     >
       {widgets.map((w) => (

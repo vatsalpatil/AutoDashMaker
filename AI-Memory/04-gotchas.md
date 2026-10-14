@@ -92,3 +92,5 @@ Never add `caddy` to `nixPkgs` when the app has a Caddyfile: Nixpacks adds it it
 - Long single model calls (minutes) over SSE get cut by the network/proxy (ERR_HTTP2_PROTOCOL_ERROR). Split work into parallel per-page calls instead.
 - The site is behind Cloudflare: any non-streaming request silent for ~100 s fails with HTTP 524. Long AI work must use an SSE endpoint (pings every 8 s).
 - Dashboard grid: stored positions stay in 12 cols × 92 px rows (may be fractional); the editor scales by the user snap (SNAPS in useDashboardPage, localStorage dashboard.snap). RGL margin is 0, gaps come from p-1.5 on each cell, rowHeight = 92 / gridY.
+
+- react-grid-layout with compactType=null: on resize, compact() resolves overlaps top-down, so the RESIZED widget gets pushed below its neighbours. Fix = mutate the layout in `onResize` (it runs before compaction) to move neighbours first — see `features/dashboards/resizePush.ts`.
