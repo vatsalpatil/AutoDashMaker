@@ -4,6 +4,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '
 import { SelectField } from '@/components/common/SelectField';
 import { OptionsPanel } from '@/features/charts/panels/OptionsPanel';
 import { kindOf } from '@/features/charts/chartKinds';
+import { peek } from '@/lib/dataCache';
 import type { Chart, Widget } from '@/lib/types';
 
 interface Props {
@@ -40,7 +41,7 @@ export function WidgetSettingsPanel({ widget, chart, onChange, onClose }: Props)
           </SelectField>
         </div>
         <div className="min-h-0 flex-1 overflow-hidden">
-          <OptionsPanel type={type} options={{ ...chart?.spec.options, ...settings }} onChange={onChange} onReset={resetAll} />
+          <OptionsPanel type={type} columns={(widget.chart_id ? peek(widget.chart_id)?.data.columns : undefined) ?? []} options={{ ...chart?.spec.options, ...settings }} onChange={onChange} onReset={resetAll} />
         </div>
       </SheetContent>
     </Sheet>

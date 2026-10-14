@@ -11,8 +11,9 @@ import { FieldControl } from './FieldControl';
  * Schema-driven editor for a chart's (or dashboard widget's) options. Only the options that apply to
  * `type` are shown, grouped into Style / Axes / Labels / Data tabs. `options` holds just the user's overrides.
  */
-export function OptionsPanel({ type, options, onChange, onReset }: {
+export function OptionsPanel({ type, options, onChange, onReset, columns = [] }: {
   type: ChartType;
+  columns?: string[];
   options: Opts;
   onChange: (key: string, value: unknown) => void;
   onReset?: () => void;
@@ -35,7 +36,7 @@ export function OptionsPanel({ type, options, onChange, onReset }: {
           <section key={section.id} className="flex flex-col gap-3">
             <h4 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/80">{section.label}</h4>
             {section.fields.filter((f) => !f.when || f.when(o)).map((f) => (
-              <FieldControl key={f.key} field={f} value={options[f.key]} fallback={o[f.key]} onChange={(v) => onChange(f.key, v)} />
+              <FieldControl key={f.key} field={f} value={options[f.key]} fallback={o[f.key]} onChange={(v) => onChange(f.key, v)} columns={columns} />
             ))}
           </section>
         ))}

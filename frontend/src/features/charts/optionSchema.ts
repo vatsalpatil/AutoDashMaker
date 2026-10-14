@@ -9,7 +9,7 @@ import { FILL_STYLES } from './render/fills';
  * Every chart option, declared once. The options panel renders whatever applies to the chosen chart type,
  * so adding an option is one line here plus one read in the renderer.
  */
-export type FieldKind = 'switch' | 'select' | 'number' | 'slider' | 'color' | 'text';
+export type FieldKind = 'switch' | 'select' | 'number' | 'slider' | 'color' | 'text' | 'column';
 type Scope = ChartType | Family;
 
 export interface Field {
@@ -38,6 +38,8 @@ const sld = (key: string, label: string, min: number, max: number, step = 1, f: 
 const txt = (key: string, label: string, f: Partial<Field> = {}): Field => ({ key, label, kind: 'text', ...f });
 const numf = (key: string, label: string, f: Partial<Field> = {}): Field => ({ key, label, kind: 'number', ...f });
 const col = (key: string, label: string, f: Partial<Field> = {}): Field => ({ key, label, kind: 'color', ...f });
+/** A column of the chart's query result (dropdown). */
+const colf = (key: string, label: string, f: Partial<Field> = {}): Field => ({ key, label, kind: 'column', ...f });
 
 const NUMBER_FORMATS: [string, string][] = [['auto', 'Auto'], ['compact', 'Compact (1.2K)'], ['decimal', 'Decimal (1,234.5)'], ['currency', 'Currency'], ['indian', 'Indian (₹ L / Cr)'], ['ratio', 'Ratio (3.2 : 1)'], ['percent', 'Percent']];
 
@@ -138,7 +140,7 @@ export const TABS: Tab[] = [
         sel('kpiAlign', 'Alignment', [['left', 'Left'], ['center', 'Centre'], ['right', 'Right']], { for: ['kpi'] }),
         sw('showDelta', 'Change vs previous row', { for: ['kpi'] }),
         sw('showPrevious', 'Show previous value', { for: ['kpi'] }),
-        txt('previousColumn', 'Previous value column (same row)', { for: ['kpi'], placeholder: 'else the row before' }),
+        colf('previousColumn', 'Previous value column (same row)', { for: ['kpi'] }),
         txt('previousLabel', 'Previous period name', { for: ['kpi'], placeholder: 'previous (e.g. day before)' }),
         sel('deltaGood', 'Increase is…', [['up', 'Good'], ['down', 'Bad']], { for: ['kpi'], when: (o) => o.showDelta === true }),
         sw('showSparkline', 'Sparkline', { for: ['kpi'] }),
@@ -158,6 +160,7 @@ export const TABS: Tab[] = [
         sw('pivotColTotals', 'Column totals', { for: ['pivot'] }),
         sw('pivotHeatmap', 'Heatmap shading', { for: ['pivot', 'timebreak'] }),
         numf('tolerance', 'Count as a match within ±', { for: ['reconcile'], placeholder: '0' }),
+        colf('growthColumn', 'Colour by growth vs column', { for: ['treemap'] }),
         sel('tbOpen', 'Start with', [['year', 'Years'], ['month', 'Months of every year']], { for: ['timebreak'] }),
         sel('tbPageSize', 'Rows per page', [['20', '20'], ['50', '50'], ['100', '100'], ['200', '200']], { for: ['timebreak'] }),
       ] },

@@ -1,16 +1,21 @@
 import { Cell, Funnel, FunnelChart, LabelList, Pie, PieChart, Treemap } from 'recharts';
 import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip } from '@/components/ui/chart';
-import type { ChartSpec } from '@/lib/types';
+import type { ChartSpec, QueryResult } from '@/lib/types';
+import { compareRows } from '../comparison';
 import type { Prepared } from '../chartData';
 import { formatValue, opt, toNumber, type Opts } from '../format';
 import { paletteColors } from '../palettes';
 import { chartConfig, legendAt, valueTooltip } from './chartTheme';
 import { FillDefs, fillRef, useUid, type FillStyle } from './fills';
 
-interface Props { spec: ChartSpec; prep: Prepared; o: Opts; height: number; onPick?: (value: string) => void }
+interface Props { spec: ChartSpec; prep: Prepared; o: Opts; height: number; onPick?: (value: string) => void; result?: QueryResult }
+
+/** Diverging fill for a growth ratio: red for falls, green for rises, stronger with size (±100% = full); blue when there is no comparison. */
+export const growthFill = (g: number | null | undefined) => (g == null ? 'var(--primary)'
+  : `color-mix(in oklab, var(--${g < 0 ? 'destructive' : 'success'}) ${Math.round(35 + Math.min(Math.abs(g), 1) * 65)}%, var(--muted))`);
 
 /** Pie / donut, funnel and treemap: one measure split over categories. */
-export function PartToWhole({ spec, prep, o, height, onPick }: Props) {
+export function PartToWhole({ spec, prep, o, height, onPick, result }: Props) {
   const uid = useUid();
   const base = paletteColors(o.palette);
   const total = prep.rows.reduce((a, r) => a + toNumber(r.s0), 0) || 1;
@@ -18,7 +23,10 @@ export function PartToWhole({ spec, prep, o, height, onPick }: Props) {
   const slices = prep.rows.map((r) => ({ name: String(r.x), value: toNumber(r.s0) }));
   const small = slices.filter((s) => (s.value / total) * 100 < minPct);
   const kept = minPct > 0 && small.length > 1 ? [...slices.filter((s) => !small.includes(s)), { name: 'Other', value: small.reduce((a, s) => a + s.value, 0) }] : slices;   // tiny slices fold into "Other"
-  const data = kept.map((r, i) => ({ ...r, fill: base[i % base.length], key: `c${i}` }));
+  // treemap "colour by growth": the previous value of each tile comes from the chosen column of the query result
+  const prevCol = spec.type === 'treemap' ? opt.str(o.growthColumn, '') : '';
+  const growth = new Map(prevCol && result ? compareRows(result.rows, spec.encoding.x, spec.encoding.y, prevCol).map((c) => [c.name, c.growth] as const) : []);
+  const data = kept.map((r, i) => ({ ...r, fill: prevCol ? growthFill(growth.get(r.name)) : base[i % base.length], key: `c${i}`, growth: growth.get(r.name) ?? null }));
   const config = chartConfig(data.map((d) => ({ key: d.name, label: d.name })), data.map((d) => d.fill));
   const animate = o.animate !== false && data.length <= 60;
   const fillStyle = opt.str(o.fillStyle, 'solid') as FillStyle;
@@ -86,7 +94,7 @@ export function PartToWhole({ spec, prep, o, height, onPick }: Props) {
   );
 }
 
-function TreemapTile(p: { x?: number; y?: number; width?: number; height?: number; name?: string; value?: number; fill?: string; o: Opts; showValue: boolean }) {
+function TreemapTile(p: { x?: number; y?: number; width?: number; height?: number; name?: string; value?: number; fill?: string; growth?: number | null; o: Opts; showValue: boolean }) {
   const { x = 0, y = 0, width = 0, height = 0 } = p;
   if (width < 4 || height < 4) return null;
   return (
@@ -96,6 +104,9 @@ function TreemapTile(p: { x?: number; y?: number; width?: number; height?: numbe
         <text x={x + 8} y={y + 18} fontSize={12} fontWeight={600} fill="white">
           {String(p.name ?? '')}{p.showValue ? ` · ${formatValue(p.value, p.o)}` : ''}
         </text>
+      )}
+      {p.growth != null && width > 50 && height > 40 && (
+        <text x={x + 8} y={y + 34} fontSize={11} fill="white" opacity={0.9}>{p.growth >= 0 ? '+' : ''}{Math.round(p.growth * 100)}%</text>
       )}
     </g>
   );

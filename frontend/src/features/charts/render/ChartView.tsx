@@ -97,7 +97,7 @@ function ChartViewBase({ spec, result, height = 320, options, onPick, plain = fa
   else if (spec.type === 'quadrant') body = <PerformanceGroups spec={spec} result={result} o={o} />;
   else if (spec.type === 'scatter') body = <ScatterView spec={spec} result={result} o={o} height={h} />;
   else if (!prep || prep.rows.length === 0) body = <p className="p-6 text-center text-sm text-muted-foreground">No data to plot.</p>;
-  else if (family === 'part') body = <PartToWhole spec={spec} prep={prep} o={o} height={h} onPick={pick} />;
+  else if (family === 'part') body = <PartToWhole spec={spec} prep={prep} o={o} height={h} onPick={pick} result={result} />;
   else if (family === 'radar') body = <RadarView prep={prep} o={o} height={h} />;
   else body = <CartesianChart spec={spec} prep={prep} o={o} height={h} compact={compact} onPick={pick} />;
 

@@ -80,7 +80,7 @@ export function ChartStudio({ id, startType, target }: { id?: string; startType?
         </main>
 
         <aside className={`${col('style')} min-h-0 flex-col overflow-hidden border-l bg-card`}>
-          <OptionsPanel type={d.spec.type} options={d.spec.options ?? {}} onChange={d.setOption} onReset={d.resetOptions} />
+          <OptionsPanel type={d.spec.type} columns={d.result?.columns ?? []} options={d.spec.options ?? {}} onChange={d.setOption} onReset={d.resetOptions} />
         </aside>
       </div>
 

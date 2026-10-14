@@ -11,8 +11,10 @@ import type { Field } from '../optionSchema';
 const SWATCHES = ['#6366f1', '#0ea5e9', '#14b8a6', '#22c55e', '#eab308', '#f97316', '#ef4444', '#ec4899', '#a855f7', '#64748b'];
 
 /** One option rendered with the right control for its kind. `value` is the raw (possibly unset) option. */
-export function FieldControl({ field, value, fallback, onChange }: {
+export function FieldControl({ field, value, fallback, onChange, columns = [] }: {
   field: Field;
+  /** The query's columns, for `column` fields. */
+  columns?: string[];
   value: unknown;
   /** Default shown when the option is unset. */
   fallback: unknown;
@@ -26,6 +28,15 @@ export function FieldControl({ field, value, fallback, onChange }: {
         <Label className="font-normal text-muted-foreground">{field.label}</Label>
         <Switch checked={opt.bool(shown, false)} onCheckedChange={(c) => onChange(c)} aria-label={field.label} />
       </div>
+    );
+  }
+
+  if (field.kind === 'column') {
+    return (
+      <SelectField label={field.label} value={String(shown ?? '')} onChange={(e) => onChange(e.target.value)}>
+        <option value="">None</option>
+        {columns.map((c) => <option key={c} value={c}>{c}</option>)}
+      </SelectField>
     );
   }
 
