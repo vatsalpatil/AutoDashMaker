@@ -29,7 +29,7 @@ export default function DashboardLayoutPage() {
   const { id } = useParams();
   const nav = useNavigate();
   const d = useDashboardPage(id);
-  const df = useDashboardFilterState();
+  const df = useDashboardFilterState(d.activePage);
   const g = useWidgetGroups(d.widgets);
   const { setEditing } = d;
   useEffect(() => setEditing(true), [setEditing]);

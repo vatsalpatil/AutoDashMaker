@@ -28,7 +28,7 @@ import { DashboardFilterProvider, useDashboardFilterState } from '@/features/das
 export default function DashboardDetailPage() {
   const { id } = useParams();
   const d = useDashboardPage(id);
-  const df = useDashboardFilterState();
+  const df = useDashboardFilterState(d.activePage, d.pages.find((p) => p.id === d.activePage)?.name);
   const refresh = useDashboardRefresh();
   const params = useDashboardParamState(id ?? '');
   const groups = useWidgetGroups(d.widgets);
@@ -70,7 +70,7 @@ export default function DashboardDetailPage() {
       <ErrorBanner message={d.error} />
       {df.bar && <div className="flex flex-wrap items-center gap-2">{df.bar}</div>}
       <DashboardParamsBar state={params} />
-      <FilterViews dashboardId={d.dashboard.id} query={df.query} active={df.active} onApply={df.setQuery} />
+      <FilterViews dashboardId={d.dashboard.id} state={df.state} active={df.active} onApply={df.setState} />
 
       <PageTabs
         pages={d.pages}

@@ -20,10 +20,10 @@ try:
     store.update("ai_providers", p["id"], {"api_key": "sk-new"})
     assert store.get("ai_providers", p["id"])["api_key"] == "sk-new"
 
-    ds = store.insert("datasources", {"name": "pg", "type": "postgres", "config": {"host": "h", "password": "pw"}})
+    ds = store.insert("datasources", {"name": "pg", "type": "postgres", "config": {"host": "h", "password": "Sup3r-Secret-Passw0rd!"}})
     with store._lock, store._conn() as con:  # noqa: SLF001
-        assert "pw" not in con.execute("SELECT config FROM datasources WHERE id = ?", [ds["id"]]).fetchone()[0]
-    assert store.get("datasources", ds["id"])["config"] == {"host": "h", "password": "pw"}
+        assert "Sup3r-Secret" not in con.execute("SELECT config FROM datasources WHERE id = ?", [ds["id"]]).fetchone()[0]
+    assert store.get("datasources", ds["id"])["config"] == {"host": "h", "password": "Sup3r-Secret-Passw0rd!"}
 
     with store._lock, store._conn() as con:  # noqa: SLF001  (a legacy plain row gets encrypted on startup)
         con.execute("UPDATE ai_providers SET api_key = 'plain-old' WHERE id = ?", [p["id"]])
