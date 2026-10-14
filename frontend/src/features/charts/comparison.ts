@@ -36,6 +36,6 @@ export function groupRows(rows: Compared[]): { overall: number | null; avgShare:
 export function indian(n: number, decimals?: number): string {
   const a = Math.abs(n);
   const d = decimals ?? 2;
-  const body = a >= 1e7 ? `${(a / 1e7).toFixed(d)} Cr` : a >= 1e5 ? `${(a / 1e5).toFixed(d)} L` : new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(a);
+  const body = a >= 1e7 ? `${(a / 1e7).toFixed(d)} Cr` : a >= 1e5 ? `${(a / 1e5).toFixed(d)} L` : new Intl.NumberFormat('en-IN', { maximumFractionDigits: a < 1000 ? (decimals ?? 2) : 0 }).format(a);
   return `${n < 0 ? '-' : ''}₹${body}`;
 }

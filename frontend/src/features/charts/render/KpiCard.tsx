@@ -44,10 +44,11 @@ export function KpiCard({ spec, result, o, height }: { spec: ChartSpec; result: 
   const shown = o.percentMain === true && pct !== null ? pctText : formatValue(value, o);
   // shrink the number to fit its card (about 0.6em per character), never above the chosen size
   const wanted = opt.num(o.valueFontSize, 48);
-  const fontSize = box.w > 0 ? Math.max(14, Math.min(wanted, (box.w - 48) / Math.max(shown.length * 0.62, 1))) : wanted;
+  // fit the card both ways: ~0.6em per character across, and at most ~a third of the card's height (short cards keep room for the lines below)
+  const fontSize = box.w > 0 ? Math.max(14, Math.min(wanted, (box.w - 48) / Math.max(shown.length * 0.62, 1), box.h > 0 ? box.h * 0.32 : wanted)) : wanted;
 
   return (
-    <div ref={boxRef} className={`relative flex h-full flex-col justify-center gap-1 overflow-hidden p-6 ${align}`} style={{ minHeight: height }}>
+    <div ref={boxRef} className={`relative flex h-full flex-col justify-center gap-1 overflow-hidden ${height < 150 ? 'px-4 py-2' : 'p-6'} ${align}`} style={{ minHeight: height }}>
       {o.showLabel !== false && <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{String(o.chartTitle || y || x).replace(/_/g, ' ')}</div>}
       <Tooltip>
         <TooltipTrigger render={<div className={`cursor-default font-semibold tabular-nums leading-tight ${color ? '' : 'text-foreground'}`} style={{ fontSize, color }} />}>
@@ -64,6 +65,7 @@ export function KpiCard({ spec, result, o, height }: { spec: ChartSpec; result: 
           {o.percentMain === true ? `${formatValue(value, o)} ${pctLabel.replace(/^of /, 'of ')}` : `${pctText} ${pctLabel}`}
         </span>
       )}
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
       {o.showDelta === true && delta !== null && (
         <span className={`inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-xs font-medium ${good ? 'bg-success/15 text-success' : 'bg-destructive/15 text-destructive'}`}>
           {delta >= 0 ? <ArrowUpRight className="size-3.5" /> : <ArrowDownRight className="size-3.5" />}
@@ -73,6 +75,7 @@ export function KpiCard({ spec, result, o, height }: { spec: ChartSpec; result: 
       {o.showPrevious === true && prev !== null && (
         <span className="text-xs text-muted-foreground">{formatValue(prev, o)} in {opt.str(o.previousLabel, 'previous')}</span>
       )}
+      </div>
       {spark && (
         <ChartContainer config={{ v: { color: color ?? 'var(--primary)' } }} className="pointer-events-none absolute inset-x-0 bottom-0 aspect-auto h-1/3 opacity-60">
           <AreaChart data={rows.map((r) => ({ v: toNumber(r[y]) }))} margin={{ top: 4, bottom: 0, left: 0, right: 0 }}>

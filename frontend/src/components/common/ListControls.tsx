@@ -60,14 +60,14 @@ export function UnderlineTabs<Id extends string>({ tabs, value, onChange }: {
   onChange: (id: Id) => void;
 }) {
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex min-w-0 items-center gap-2 overflow-x-auto">
       {tabs.map((t) => (
         <button
           key={t.id}
           onClick={() => onChange(t.id)}
           aria-pressed={value === t.id}
           className={cn(
-            'flex items-center gap-2 border-b-2 px-4 py-2 text-sm font-semibold transition-all',
+            'flex shrink-0 items-center gap-2 whitespace-nowrap border-b-2 px-4 py-2 text-sm font-semibold transition-all',
             value === t.id ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground',
           )}
         >

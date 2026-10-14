@@ -7,6 +7,7 @@ test('indian units: crore, lakh, Indian grouping, negatives', () => {
   assert.equal(indian(2577843), '₹25.78 L');
   assert.equal(indian(46624), '₹46,624');
   assert.equal(indian(-561012), '-₹5.61 L');
+  assert.equal(indian(8.4721), '₹8.47');   // small amounts keep their paise
 });
 
 test('compare rows: growth vs previous, share, biggest first', () => {

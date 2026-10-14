@@ -14,7 +14,7 @@ export function PageTabs({ pages, active, onSelect, adding, onAddingChange, name
   onAdd: () => void;
 }) {
   return (
-    <div className="flex items-center gap-1 border-b">
+    <div className="flex min-w-0 items-center gap-1 border-b">
       <UnderlineTabs value={active} onChange={onSelect} tabs={pages.map((p) => ({ id: p.id, label: p.name }))} />
       {adding ? (
         <span className="flex items-center gap-1 px-2 py-1">
