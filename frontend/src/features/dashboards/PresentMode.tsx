@@ -82,7 +82,7 @@ export function PresentMode({
   // the saved layout, scaled so the whole page fits the screen: every widget sits at its own column and row
   const [gridRef, gridSize] = useMeasure();
   const totalRows = Math.max(1, ...pageWidgets.map((w) => w.position.y + Math.max(w.position.h, 1)));
-  const rowUnit = gridSize.h > 0 ? Math.min(150, Math.max(64, (gridSize.h - 12 * (totalRows - 1)) / totalRows)) : 80;
+  const rowUnit = gridSize.h > 0 ? Math.min(150, Math.max(64, gridSize.h / totalRows)) : 92;
 
   return (
     <div ref={overlayRef} className="fixed inset-0 z-[100] flex flex-col bg-slate-950 p-6">
@@ -114,21 +114,24 @@ export function PresentMode({
         </div>
       </div>
       <div ref={gridRef} className="min-h-0 flex-1 overflow-auto">
-      <div className="grid grid-cols-12 gap-3" style={{ gridTemplateRows: `repeat(${totalRows}, ${rowUnit}px)` }}>
+      {/* exact saved positions (they can be fractional with fine snapping), widths as % of the screen, rows scaled to fit */}
+      <div className="relative" style={{ height: totalRows * rowUnit }}>
         {pageWidgets.map((w) => (
           <div
             key={w.id}
-            className="min-h-0 min-w-0"
+            className="absolute min-h-0 min-w-0 p-1.5"
             style={{
-              gridColumn: `${Math.min(w.position.x, 11) + 1} / span ${Math.min(Math.max(w.position.w, 1), 12 - Math.min(w.position.x, 11))}`,
-              gridRow: `${w.position.y + 1} / span ${Math.max(w.position.h, 1)}`,
+              left: `${(Math.max(w.position.x, 0) / 12) * 100}%`,
+              width: `${(Math.min(Math.max(w.position.w, 0.5), 12 - Math.max(w.position.x, 0)) / 12) * 100}%`,
+              top: w.position.y * rowUnit,
+              height: Math.max(w.position.h, 0.5) * rowUnit,
             }}
           >
             <PresentSlide widget={w} />
           </div>
         ))}
         {pageWidgets.length === 0 && (
-          <div className="col-span-12 flex items-center justify-center text-sm text-muted-foreground/70">No widgets on this page.</div>
+          <div className="flex h-full items-center justify-center text-sm text-muted-foreground/70">No widgets on this page.</div>
         )}
       </div>
       </div>

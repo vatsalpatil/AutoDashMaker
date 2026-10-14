@@ -94,3 +94,5 @@ Never add `caddy` to `nixPkgs` when the app has a Caddyfile: Nixpacks adds it it
 - Dashboard grid: stored positions stay in 12 cols × 92 px rows (may be fractional); the editor scales by the user snap (SNAPS in useDashboardPage, localStorage dashboard.snap). RGL margin is 0, gaps come from p-1.5 on each cell, rowHeight = 92 / gridY.
 
 - react-grid-layout with compactType=null: on resize, compact() resolves overlaps top-down, so the RESIZED widget gets pushed below its neighbours. Fix = mutate the layout in `onResize` (it runs before compaction) to move neighbours first — see `features/dashboards/resizePush.ts`.
+
+- Widget positions are fractional (fine snap stores x/y/w/h in 12-col units with decimals). Any renderer outside react-grid-layout (Present, Print) must not use an integer 12-col CSS grid — use % / px or a finer grid.

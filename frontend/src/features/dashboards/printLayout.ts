@@ -28,10 +28,13 @@ export const pageRule = ({ paper, landscape }: PrintOptions): string =>
   `@page { size: ${paper === 'letter' ? 'letter' : paper.toUpperCase()} ${landscape ? 'landscape' : 'portrait'}; margin: ${MARGIN_MM}mm; }`;
 
 /** Grid placement of a widget from its saved position, clamped to the 12 columns. */
+/** Saved positions can be fractional (fine snapping), so print lays out on a grid SUB times finer than the 12 columns / rows. */
+export const SUB = 8;
 export function gridPlacement(w: Widget): { gridColumn: string; gridRow: string } {
-  const x = Math.min(Math.max(w.position.x, 0), 11);
-  const span = Math.min(Math.max(w.position.w, 1), 12 - x);
-  return { gridColumn: `${x + 1} / span ${span}`, gridRow: `${Math.max(w.position.y, 0) + 1} / span ${Math.max(w.position.h, 1)}` };
+  const q = (n: number) => Math.round(n * SUB);
+  const x = Math.min(Math.max(q(w.position.x), 0), 12 * SUB - 1);
+  const span = Math.min(Math.max(q(w.position.w), 1), 12 * SUB - x);
+  return { gridColumn: `${x + 1} / span ${span}`, gridRow: `${Math.max(q(w.position.y), 0) + 1} / span ${Math.max(q(w.position.h), 1)}` };
 }
 
 export const rowCount = (widgets: Widget[]): number => Math.max(1, ...widgets.map((w) => Math.max(w.position.y, 0) + Math.max(w.position.h, 1)));

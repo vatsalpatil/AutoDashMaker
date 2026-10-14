@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useMeasure } from '@/hooks/useMeasure';
 import type { Dashboard, Widget } from '@/lib/types';
 import { ContentCard, isContent } from './ContentCards';
-import { DESIGN_PX, GAP_PX, ROW_PX, gridPlacement, pageRule, printZoom, rowCount, type PrintOptions } from './printLayout';
+import { DESIGN_PX, GAP_PX, ROW_PX, gridPlacement, SUB, pageRule, printZoom, rowCount, type PrintOptions } from './printLayout';
 import { useWidgetData } from './useWidgetData';
 import { WidgetBody } from './WidgetBody';
 
@@ -52,8 +52,8 @@ export function PrintSheet({ dashboard, pages, options, onDone }: { dashboard: D
           return (
             <section key={p.id} className="print-page">
               {pages.length > 1 && <h2 className="mb-2 text-lg font-semibold">{p.name}</h2>}
-              <div className="grid grid-cols-12" style={{ gap: GAP_PX, gridTemplateRows: `repeat(${rowCount(items)}, ${ROW_PX}px)` }}>
-                {items.map((w) => <div key={w.id} className="print-widget min-h-0 min-w-0" style={gridPlacement(w)}><PrintWidget widget={w} /></div>)}
+              <div className="grid" style={{ gridTemplateColumns: `repeat(${12 * SUB}, minmax(0, 1fr))`, gridTemplateRows: `repeat(${Math.ceil(rowCount(items) * SUB)}, ${(ROW_PX + GAP_PX) / SUB}px)` }}>
+                {items.map((w) => <div key={w.id} className="print-widget min-h-0 min-w-0" style={{ ...gridPlacement(w), padding: GAP_PX / 2 }}><PrintWidget widget={w} /></div>)}
               </div>
             </section>
           );
