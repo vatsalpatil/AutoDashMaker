@@ -15,7 +15,7 @@ from typing import Any, Iterator
 from ..core.security import UnsafeQueryError
 from ..core.store import store
 from . import ai as ai_svc
-from .dash_ai import json_objects
+from .agent_parse import parse_move
 from . import names
 from .engine import engine
 
@@ -155,13 +155,8 @@ def _tool(tool: str, args: dict[str, Any], mode: str) -> tuple[bool, str, dict[s
 
 
 def _decide(messages: list[dict], provider_id: str | None) -> dict[str, Any] | None:
-    """The model's next move: the last JSON object that names a tool; None if it answered in prose."""
-    raw = ai_svc.chat(messages, provider_id=provider_id, max_tokens=STEP_TOKENS)
-    for obj in reversed(json_objects(raw)):
-        if isinstance(obj.get("tool"), str):
-            return obj
-    prose = ai_svc._THINK.sub("", ai_svc._ANSI.sub("", raw)).strip()
-    return {"tool": "final", "args": {"answer": prose}, "thought": ""} if prose and "{" not in prose[:2] else None
+    """The model's next move (see agent_parse); None if the reply held no usable step."""
+    return parse_move(ai_svc.chat(messages, provider_id=provider_id, max_tokens=STEP_TOKENS))
 
 
 def run(task: str, history: list[dict], mode: str, ctx: str, provider_id: str | None = None) -> Iterator[dict[str, Any]]:
