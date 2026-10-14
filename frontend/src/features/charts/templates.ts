@@ -16,6 +16,17 @@ const t = (group: string, id: string, name: string, type: ChartType, description
   ({ group, id, name, type, description, options });
 
 export const TEMPLATES: ChartTemplate[] = [
+  // patterns learned from production sales dashboards (AI-Memory/07-dashboard-patterns.md); query shapes in each description
+  t('Dashboard patterns', 'p-kpi-prev', 'KPI vs previous', 'kpi', 'Value with "₹31 L in day before" and growth. Query: value, previous_value.', { numberFormat: 'indian', showDelta: true, showPrevious: true, previousLabel: 'previous period', kpiAlign: 'left' }),
+  t('Dashboard patterns', 'p-ratio', 'Ratio KPI', 'kpi', 'Shows 3.2 : 1 (e.g. sold per returned). Query: one ratio value.', { numberFormat: 'ratio', kpiAlign: 'left' }),
+  t('Dashboard patterns', 'p-ranked', 'Top N vs previous', 'ranked', 'Rank, bar, previous marker, growth %. Query: item, current, previous.', { numberFormat: 'indian', limit: 10 }),
+  t('Dashboard patterns', 'p-groups', 'Stars / Rising / Watch / Laggards', 'quadrant', 'Push, scale, fix or cut. Query: item, current, previous.', { numberFormat: 'indian' }),
+  t('Dashboard patterns', 'p-drivers', 'What drove the change', 'waterfall', 'Per-item change between two periods. Query: item, current - previous.', { showTotal: true, showDataLabels: true, numberFormat: 'indian' }),
+  t('Dashboard patterns', 'p-growthmap', 'Growth treemap', 'treemap', 'Tile size = value, colour = growth. Query: item, current, previous; set "Colour by growth vs column".', { showDataLabels: true, numberFormat: 'indian' }),
+  t('Dashboard patterns', 'p-trend2', 'Sales amount + quantity', 'composed', 'Two measures on two axes over time. Query: date, amount, qty.', { numberFormat: 'indian' }),
+  t('Dashboard patterns', 'p-timebreak', 'Time breakdown (months open)', 'timebreak', 'Items × years → months → days with totals. Query: item, date, measure, details.', { tbOpen: 'month', tableDensity: 'compact' }),
+  t('Dashboard patterns', 'p-matrix', 'Item × channel matrix', 'pivot', 'Rows × columns with totals. Query: item, channel, value.', { pivotAgg: 'sum', pivotRowTotals: true, pivotColTotals: true, numberFormat: 'indian' }),
+  t('Dashboard patterns', 'p-reconcile', 'Reconcile 2-3 sources', 'reconcile', 'Match rate and differences per key. Query: key, source_a, source_b[, source_c].', {}),
   t('Compare', 'ranked-bars', 'Ranked bars', 'bar', 'Top 10 categories, biggest first, with value labels.', { horizontal: true, sortBy: 'value', sortDir: 'desc', limit: 10, showDataLabels: true, showLegend: false, grid: 'none', barRadius: 6 }),
   t('Compare', 'columns', 'Columns', 'bar', 'Classic vertical columns for a few categories.', { barRadius: 6, showLegend: false }),
   t('Compare', 'grouped', 'Grouped columns', 'bar', 'Compare series side by side (set “Split into series by”).', { barRadius: 4 }),
