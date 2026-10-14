@@ -103,28 +103,21 @@ export function useDashboardPage(id: string | undefined) {
       .catch((e) => setError(e.message));
   }, [id]);
 
-  const onLayoutChange = useCallback(
-    (newLayout: Layout[]) => {
-      if (!editing) return;
-      // optimistic: apply new positions to local dashboard state so the grid
-      // never snaps back to stale data
-      setDashboard((prev) => {
-        if (!prev) return prev;
-        const byId = new Map(newLayout.map((l) => [l.i, l]));
-        return {
-          ...prev,
-          widgets: (prev.widgets ?? []).map((w) => {
-            const l = byId.get(w.id);
-            return l ? { ...w, position: fromGrid(l, grid.current.x, grid.current.y) } : w;
-          }),
-        };
-      });
-      pendingLayout.current = newLayout;
-      if (saveTimer.current) clearTimeout(saveTimer.current);
-      saveTimer.current = setTimeout(flushLayoutSave, 800);
-    },
-    [editing, flushLayoutSave],
-  );
+  /** Apply grid positions locally right away (the grid never snaps back) and save them after a short pause. */
+  const savePositions = useCallback((newLayout: Layout[]) => {
+    setDashboard((prev) => {
+      if (!prev) return prev;
+      const byId = new Map(newLayout.map((l) => [l.i, l]));
+      return { ...prev, widgets: (prev.widgets ?? []).map((w) => { const l = byId.get(w.id); return l ? { ...w, position: fromGrid(l, grid.current.x, grid.current.y) } : w; }) };
+    });
+    pendingLayout.current = newLayout;
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(flushLayoutSave, 800);
+  }, [flushLayoutSave]);
+  /** Drag / resize in the editor. */
+  const onLayoutChange = useCallback((newLayout: Layout[]) => { if (editing) savePositions(newLayout); }, [editing, savePositions]);
+  /** Auto height of content-sized widgets while viewing; never while editing (it would fight the user's own resizing). */
+  const applyAutoFit = useCallback((newLayout: Layout[]) => { if (!editing) savePositions(newLayout); }, [editing, savePositions]);
 
   // leaving the page (e.g. browser back from the layout editor) still saves the pending layout
   const flushRef = useRef(flushLayoutSave);
@@ -261,7 +254,7 @@ export function useDashboardPage(id: string | undefined) {
   }
   return {
     snap, setSnap, gridX: GRID_X, gridY: GRID_Y,
-    dashboard, charts, error, setError, load, pages, widgets, parked, layout, activePage, setActivePage,
+    dashboard, charts, error, setError, load, pages, widgets, parked, layout, activePage, setActivePage, applyAutoFit,
     editing, setEditing, finishEditing, onLayoutChange,
     pickerOpen, setPickerOpen, fullscreenWidget, setFullscreenWidget,
     settingsWidget, setSettingsWidget, settingsChart, openSettings, updateWidgetSetting,

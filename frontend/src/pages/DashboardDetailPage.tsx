@@ -93,6 +93,7 @@ export default function DashboardDetailPage() {
         layout={d.layout}
         editing={d.editing}
         onLayoutChange={d.onLayoutChange}
+        onAutoFit={d.applyAutoFit}
         onRemove={d.removeWidget}
         onFullscreen={d.setFullscreenWidget}
         onSettings={d.openSettings}

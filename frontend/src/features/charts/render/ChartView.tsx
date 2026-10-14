@@ -43,10 +43,12 @@ interface Props {
   onPick?: (field: string, value: string) => void;
   /** Static output (print): tables render as a plain table instead of the interactive grid. */
   plain?: boolean;
+  /** Lists / tables take the height of their content (auto-height dashboard widgets) instead of a fixed box. */
+  natural?: boolean;
 }
 
 /** Renders any chart type from its spec + query result. The single entry point for charts, widgets and the studio. */
-function ChartViewBase({ spec, result, height = 320, options, onPick, plain = false }: Props) {
+function ChartViewBase({ spec, result, height = 320, options, onPick, plain = false, natural = false }: Props) {
   const [box, width] = useContainerWidth<HTMLDivElement>();
   const compact = width > 0 && width < 420;                 // narrow cards (phones, small dashboard tiles): lighter axes, no data labels
   const [range, setRange] = useState(0);                    // 0 = all points; the interactive range selector
@@ -82,7 +84,7 @@ function ChartViewBase({ spec, result, height = 320, options, onPick, plain = fa
     ) : (
       <div style={{ height: Math.max(h, 160) }}><DataGrid columns={result.columns} rows={result.rows as Record<string, unknown>[]} bare expandable fill totals /></div>
     );
-  } else if (spec.type === 'timebreak') body = <div style={{ height: Math.max(h, 220) }}><TimeBreakdownTable spec={spec} result={result} o={o} /></div>;
+  } else if (spec.type === 'timebreak') body = <div style={natural ? { maxHeight: 900 } : { height: Math.max(h, 220) }}><TimeBreakdownTable spec={spec} result={result} o={o} /></div>;
   else if (spec.type === 'pivot') body = <PivotTable spec={spec} result={result} o={o} />;
   else if (spec.type === 'kpi') body = <KpiCard spec={spec} result={result} o={o} height={h} />;
   else if (spec.type === 'waterfall') body = <Waterfall spec={spec} result={result} o={o} height={h} />;
@@ -92,7 +94,7 @@ function ChartViewBase({ spec, result, height = 320, options, onPick, plain = fa
   else if (spec.type === 'progress') body = <ProgressBar spec={spec} result={result} o={o} />;
   else if (spec.type === 'sankey') body = <SankeyView spec={spec} result={result} o={o} height={h} />;
   else if (spec.type === 'sunburst') body = <Sunburst spec={spec} result={result} o={o} height={h} />;
-  else if (spec.type === 'reconcile') body = <div style={{ height: Math.max(h, 260) }}><ReconcileView spec={spec} result={result} o={o} /></div>;
+  else if (spec.type === 'reconcile') body = <div style={natural ? { maxHeight: 900 } : { height: Math.max(h, 260) }}><ReconcileView spec={spec} result={result} o={o} /></div>;
   else if (spec.type === 'ranked') body = <RankedBars spec={spec} result={result} o={o} />;
   else if (spec.type === 'quadrant') body = <PerformanceGroups spec={spec} result={result} o={o} />;
   else if (spec.type === 'scatter') body = <ScatterView spec={spec} result={result} o={o} height={h} />;

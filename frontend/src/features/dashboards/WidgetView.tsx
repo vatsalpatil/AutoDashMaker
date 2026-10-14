@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useContext, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { BarChart3, ExternalLink, GripVertical, Maximize2, Settings2, Table2, X } from 'lucide-react';
 import { useMeasure } from '@/hooks/useMeasure';
 import type { Widget } from '@/lib/types';
 import { useWidgetData } from './useWidgetData';
 import { WidgetBody } from './WidgetBody';
+import { AUTO_HEIGHT_TYPES } from './autoFit';
+import { AutoHeightContext } from './autoHeightContext';
 
 const TITLE_SIZE_CLS: Record<string, string> = { sm: 'text-xs', md: 'text-sm', lg: 'text-base', xl: 'text-lg' };
 
@@ -56,6 +58,14 @@ export function WidgetView({
   const [view, setView] = useState<'chart' | 'table'>('chart');
   const [fit, setFit] = useState(true); // fit = auto-resize to widget; scroll = natural size + scroll
   const [bodyRef, bodySize] = useMeasure();
+  // auto height: lists / tables report the height their content needs; the grid resizes the widget to it
+  const reportHeight = useContext(AutoHeightContext);
+  const auto = !!reportHeight && view === 'chart' && fit && AUTO_HEIGHT_TYPES.has(chart?.spec.type ?? '');
+  const [contentRef, content] = useMeasure();
+  const headRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (auto && content.h > 0) reportHeight!(widget.id, content.h + (headRef.current?.offsetHeight ?? 28) + 4 + 24 + 12);   // + header gap, card + cell padding
+  }, [auto, content.h, widget.id, reportHeight]);
 
   const bodyOverflow = view === 'table' ? 'overflow-auto' : fit ? 'overflow-hidden' : 'overflow-auto';
   const s = widget.settings ?? {};
@@ -64,7 +74,7 @@ export function WidgetView({
 
   return (
     <div className="group flex h-full flex-col overflow-hidden rounded-lg border border-border bg-card p-3 ">
-      <div className="mb-1 flex items-center justify-between gap-1">
+      <div ref={headRef} className="mb-1 flex items-center justify-between gap-1">
         <div className="flex min-w-0 items-center gap-1">
           {editing && (
             <span className="widget-drag-handle cursor-grab text-muted-foreground/70 hover:text-muted-foreground" aria-label="Drag widget">
@@ -108,7 +118,9 @@ export function WidgetView({
         </div>
       </div>
       <div ref={bodyRef} className={`min-h-0 flex-1 ${bodyOverflow}`}>
-        <WidgetBody widget={widget} height={bodySize.h} view={view} fit={fit} />
+        {auto
+          ? <div ref={contentRef}><WidgetBody widget={widget} view={view} fit={fit} naturalHeight /></div>
+          : <WidgetBody widget={widget} height={bodySize.h} view={view} fit={fit} />}
       </div>
     </div>
   );

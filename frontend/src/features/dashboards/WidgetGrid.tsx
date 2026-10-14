@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { Responsive, type Layout } from 'react-grid-layout';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
@@ -10,9 +10,13 @@ import { useResizePush } from './resizePush';
 import { InsertLine, useDropInsert } from './dropInsert';
 import { groupOf, type WidgetGroups } from './widgetGroups';
 import { BoxFrames, boxesOf, isLocked } from './widgetBoxes';
+import { fitLayout, rowsFor } from './autoFit';
+import { AutoHeightContext } from './autoHeightContext';
 
 /** The draggable / resizable 12-column grid of widgets for one dashboard page. */
-export function WidgetGrid({ widgets, layout, editing, onLayoutChange, onRemove, onFullscreen, onSettings, groups: g, plainSelect = false, dropSize, onDropWidget, gridX = 2, gridY = 4 }: {
+export function WidgetGrid({ widgets, layout, editing, onLayoutChange, onAutoFit, onRemove, onFullscreen, onSettings, groups: g, plainSelect = false, dropSize, onDropWidget, gridX = 2, gridY = 4 }: {
+  /** Save auto-fitted heights while viewing (omit to turn auto height off). */
+  onAutoFit?: (layout: Layout[]) => void;
   groups: WidgetGroups;
   dropSize?: { w: number; h: number } | null;   // set while a parked widget is dragged from the editor's tray
   onDropWidget?: (layout: Layout[], item: Layout) => void;
@@ -34,6 +38,25 @@ export function WidgetGrid({ widgets, layout, editing, onLayoutChange, onRemove,
     const r = canvas.current?.getBoundingClientRect();
     return r && e ? { x: (e.clientX - r.left) / (r.width / (12 * gridX)), y: (e.clientY - r.top) / (92 / gridY) } : null;
   });
+  // auto height: gather the widgets' reports, then fit them all at once (one save, no flicker)
+  const wanted = useRef(new Map<string, number>());
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const latest = useRef(layout);
+  latest.current = layout;
+  const report = useCallback((id: string, px: number) => {
+    const rowPx = 92 / gridY;
+    const cur = latest.current.find((l) => l.i === id);
+    const rows = rowsFor(px, rowPx, 13 * gridY);   // at most 13 stored rows; longer content scrolls inside
+    if (!cur || Math.abs(rows - cur.h) < 1) { wanted.current.delete(id); return; }
+    wanted.current.set(id, rows);
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => {
+      const next = fitLayout(latest.current, wanted.current);
+      wanted.current = new Map();
+      if (next) onAutoFit?.(next.map((c) => ({ ...latest.current.find((l) => l.i === c.i)!, y: c.y, h: c.h })));
+    }, 500);
+  }, [gridY, onAutoFit]);
+  useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
   const boxes = boxesOf(widgets);
   const byId = new Map(widgets.map((w) => [w.id, w]));
   const gridLayout = editing ? layout.map((l) => (byId.get(l.i) && isLocked(byId.get(l.i)!) ? { ...l, static: true } : l)) : layout;
@@ -46,6 +69,7 @@ export function WidgetGrid({ widgets, layout, editing, onLayoutChange, onRemove,
   }
   return (
     // measured with a ResizeObserver: the sidebar opening/closing resizes the container without a window resize
+    <AutoHeightContext.Provider value={!editing && onAutoFit ? report : null}>
     <div ref={ref} className="min-w-0">
     <div ref={canvas} className={`relative ${editing ? 'min-h-[60vh]' : ''}`}>
     {editing && width > 0 && <InsertLine hint={ins.hint} colW={width / (12 * gridX)} rowH={92 / gridY} />}
@@ -95,5 +119,6 @@ export function WidgetGrid({ widgets, layout, editing, onLayoutChange, onRemove,
     </Responsive>}
     </div>
     </div>
+    </AutoHeightContext.Provider>
   );
 }
