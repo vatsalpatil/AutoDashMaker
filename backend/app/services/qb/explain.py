@@ -1,7 +1,7 @@
 """Plain-English description of a query-builder spec (deterministic, no model): what the AI built, or what a hand-built query does."""
 from __future__ import annotations
 
-from .qb_ops import AGGS
+from .ops import AGGS
 
 _OP = {"=": "is", "ieq": "is", "!=": "is not", ">": "is greater than", ">=": "is at least", "<": "is less than", "<=": "is at most", "between": "is between",
        "in": "is one of", "not_in": "is none of", "contains": "contains", "not_contains": "does not contain", "starts_with": "starts with",

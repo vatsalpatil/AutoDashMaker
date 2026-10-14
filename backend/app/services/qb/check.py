@@ -3,14 +3,14 @@ from __future__ import annotations
 
 from collections import Counter
 
-from .qb import compile_spec
+from .compiler import compile_spec
 
 CHECK_ROWS = 2000
 
 
 def same_result(sql: str, spec: dict) -> str | None:
     """None when the spec reproduces the query (same columns and rows), otherwise why not."""
-    from .engine import engine
+    from ..engine import engine
     try:
         a = engine.execute(sql, CHECK_ROWS)
         b = engine.execute(compile_spec(spec), CHECK_ROWS)

@@ -22,10 +22,10 @@ from __future__ import annotations
 import sqlglot
 from sqlglot import expressions as exp
 
-from ..core.security import quote_ident as q
-from ..core.store import store
+from ...core.security import quote_ident as q
+from ...core.store import store
 
-from .qb_ops import AGGS, BUCKETS, CMP, JOINS, UNARY, WINDOWS
+from .ops import AGGS, BUCKETS, CMP, JOINS, UNARY, WINDOWS
 
 
 

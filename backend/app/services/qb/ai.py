@@ -10,13 +10,13 @@ import json
 import re
 from typing import Any
 
-from ..core.store import store
-from . import ai as ai_svc
-from .dash_ai import json_objects
-from .engine import engine
-from .qb import compile_spec
-from .qb_explain import describe_spec
-from .qb_rules import hints, quick_spec, refine_spec
+from ...core.store import store
+from .. import ai as ai_svc
+from ..dash_ai import json_objects
+from ..engine import engine
+from .compiler import compile_spec
+from .explain import describe_spec
+from .rules import hints, quick_spec, refine_spec
 
 MAX_REPAIRS = 2
 STAGE_KEYS = {"table", "joins", "custom", "filters", "filter_mode", "aggregations", "breakouts", "having", "windows", "columns", "distinct", "sort", "limit"}
@@ -51,7 +51,7 @@ FORMULA_SYSTEM = (
 
 def schema_text(current: dict | None, prompt: str) -> str:
     """Compact table list for the prompt: the tables in play plus the best keyword matches, with join hints."""
-    from .ai_context import relevance
+    from ..ai_context import relevance
     datasets = [d for d in store.list("datasets", order=None) if d.get("physical_name")]
     cols: dict[str, list[dict]] = {}
     for c in store.list("columns_meta", order=None):

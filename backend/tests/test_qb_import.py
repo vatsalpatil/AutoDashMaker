@@ -10,7 +10,7 @@ os.environ.update(METADATA_DB=tmp + "/m.duckdb", ANALYTICS_DB=tmp + "/a.duckdb",
 from app.core.store import store
 from app.services.engine import engine
 from app.services.qb import compile_spec
-from app.services.qb_import import sql_to_spec
+from app.services.qb.sql_import import sql_to_spec
 
 with engine.writer() as con:
     con.execute("CREATE TABLE ds_sales AS SELECT * FROM (VALUES (1,'N',10.0,DATE '2024-01-05'),(2,'N',20.0,DATE '2024-02-05'),(3,'S',5.0,DATE '2024-02-09'),(1,'S',7.0,DATE '2024-03-01')) t(cid,region,amount,d)")

@@ -93,8 +93,8 @@ def values(body: ValuesIn):
 
 # ----------------------------------------------------------------------------------------------- AI + explanation
 from ..services import ai as ai_svc  # noqa: E402
-from ..services.qb_ai import build_spec, formula as ai_formula  # noqa: E402
-from ..services.qb_explain import describe_spec  # noqa: E402
+from ..services.qb.ai import build_spec, formula as ai_formula  # noqa: E402
+from ..services.qb.explain import describe_spec  # noqa: E402
 
 
 class ExplainIn(BaseModel):
@@ -171,7 +171,7 @@ class FromSqlIn(BaseModel):
 @router.post("/from-sql")
 def from_sql(body: FromSqlIn):
     """Workbench -> builder: SQL as builder steps (exact when a round-trip check passes, else wrapped as a raw-SQL first stage)."""
-    from ..services.qb_import import sql_to_spec
+    from ..services.qb.sql_import import sql_to_spec
     try:
         return sql_to_spec(body.sql)
     except ValueError as e:

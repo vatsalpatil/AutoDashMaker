@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import re
 
-from ..core.store import store
+from ...core.store import store
 
 _COMPLEX = re.compile(r"\b(where|only|excluding|except|without|between|greater|less|more than|fewer|over|under|above|below|compare|versus|vs|ratio|percent|%|growth|"
                       r"change|running|cumulative|rank|previous|last \d+|since|before|after|join|each other|correlat|trend line|forecast|which|who|why|not)\b")
@@ -164,8 +164,8 @@ def _actual_value(table: str, column: str, typed: str) -> str | None:
     """The column's real spelling of a typed value ("dark" -> "Dark"), so the filter can be a plain `=` (fast, pushed down to remote
     databases) instead of a LOWER() comparison. Distinct values are looked up once and cached for 10 minutes."""
     import time
-    from .engine import engine
-    from .qb import compile_spec
+    from ..engine import engine
+    from .compiler import compile_spec
     key = (table, column)
     hit = _VALUES.get(key)
     if not hit or time.time() - hit[0] > 600:

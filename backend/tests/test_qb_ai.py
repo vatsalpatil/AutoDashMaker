@@ -9,9 +9,10 @@ tmp = tempfile.mkdtemp()  # temp stores BEFORE any `app` import
 os.environ.update(METADATA_DB=tmp + "/m.duckdb", ANALYTICS_DB=tmp + "/a.duckdb", DUCKDB_TEMP_DIR=tmp + "/s")
 
 from app.core.store import store
-from app.services import ai as ai_svc, qb_ai
+from app.services import ai as ai_svc
+from app.services.qb import ai as qb_ai
 from app.services.engine import engine
-from app.services.qb_explain import describe_spec
+from app.services.qb.explain import describe_spec
 
 with engine.writer() as con:
     con.execute("CREATE TABLE ds_sales AS SELECT * FROM (VALUES (1,'N',10.0,DATE '2024-01-05'),(2,'N',20.0,DATE '2024-02-05'),(3,'S',5.0,DATE '2024-02-09')) t(cid,region,amount,d)")
@@ -85,7 +86,7 @@ assert steps[0].startswith("Start from") and any("amount is greater than 5" in s
 print("qb ai ok")
 
 # ---- rules fast path (no model): must be right when it answers, and decline when unsure
-from app.services import qb_rules
+from app.services.qb import rules as qb_rules
 from app.services.qb import compile_spec as _compile
 assert qb_rules.quick_spec("total amount by region")["stages"][0]["aggregations"][0]["fn"] == "sum"
 s = qb_rules.quick_spec("average amount per region")["stages"][0]

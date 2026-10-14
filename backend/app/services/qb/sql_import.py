@@ -10,8 +10,8 @@ from __future__ import annotations
 import sqlglot
 from sqlglot import expressions as exp
 
-from ..core.store import store
-from .qb_check import same_result
+from ...core.store import store
+from .check import same_result
 
 CMP = {exp.EQ: "=", exp.NEQ: "!=", exp.GT: ">", exp.GTE: ">=", exp.LT: "<", exp.LTE: "<="}
 SIMPLE_AGG = {exp.Sum: "sum", exp.Avg: "avg", exp.Min: "min", exp.Max: "max"}
