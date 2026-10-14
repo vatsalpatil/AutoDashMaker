@@ -82,7 +82,8 @@ export function PresentMode({
   // the saved layout, scaled so the whole page fits the screen: every widget sits at its own column and row
   const [gridRef, gridSize] = useMeasure();
   const totalRows = Math.max(1, ...pageWidgets.map((w) => w.position.y + Math.max(w.position.h, 1)));
-  const rowUnit = gridSize.h > 0 ? Math.min(150, Math.max(64, gridSize.h / totalRows)) : 92;
+  // same proportions as the dashboard (92 px rows at ~1500 px wide), scaled to the screen width; long pages scroll
+  const rowUnit = gridSize.w > 0 ? Math.min(140, Math.max(80, 92 * (gridSize.w / 1500))) : 92;
 
   return (
     <div ref={overlayRef} className="fixed inset-0 z-[100] flex flex-col bg-slate-950 p-6">
