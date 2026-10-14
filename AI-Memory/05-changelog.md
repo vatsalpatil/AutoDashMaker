@@ -242,3 +242,4 @@ Format: `YYYY-MM-DD · tool · files · what + why`
 - 2026-10-13 · useDashboardPage (SNAPS coarse/normal/fine/free, snap in localStorage), WidgetGrid (gridX/gridY props, margin 0 + cell padding), DashboardDetailPage (Grid snap picker while editing) · user-selectable grid smoothness
 - 2026-10-14 · frontend/src/features/dashboards/WidgetView.tsx · widget toolbar hidden (not just transparent) until hover so titles use full width
 - 2026-10-14 · dashboards/widgetGroups.tsx (new), WidgetGrid.tsx, DashboardDetailPage.tsx · widget grouping: Ctrl/Shift+click select, Group/Ungroup (settings.group), dragging one moves the whole group
+- 2026-10-14 · dashboards/widgetGroups.tsx · dragging a selected widget now moves the whole selection (not only saved groups)

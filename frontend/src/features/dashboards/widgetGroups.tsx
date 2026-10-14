@@ -34,10 +34,12 @@ export function useWidgetGroups(widgets: Widget[], onSetting: (id: string, key: 
   const applyGroupMove = (layout: Layout[]): Layout[] => {
     const s = shift.current;
     shift.current = null;
-    const g = s && groupOf(byId.get(s.id));
-    if (!s || !g || (s.dx === 0 && s.dy === 0)) return layout;
+    if (!s || (s.dx === 0 && s.dy === 0)) return layout;
+    // mates = the current selection (if the dragged widget is in it) plus the dragged widget's saved group
+    const g = groupOf(byId.get(s.id));
+    const isMate = (i: string) => (selected.has(s.id) && selected.has(i)) || (!!g && groupOf(byId.get(i)) === g);
     return layout.map((l) =>
-      l.i !== s.id && groupOf(byId.get(l.i)) === g ? { ...l, x: Math.max(0, l.x + s.dx), y: Math.max(0, l.y + s.dy) } : l);
+      l.i !== s.id && isMate(l.i) ? { ...l, x: Math.max(0, l.x + s.dx), y: Math.max(0, l.y + s.dy) } : l);
   };
 
   return { selected, clear: () => setSelected(new Set()), toggle, setGroup, onDragStop, applyGroupMove };
@@ -50,7 +52,7 @@ export function GroupBar({ count, canUngroup, onGroup, onUngroup, onClear }: {
   return (
     <div className="mb-2 flex flex-wrap items-center gap-1 text-xs">
       <span className="mr-1 text-muted-foreground">
-        {count ? `${count} selected` : 'Ctrl/Shift + click widgets to select, then group them to move together'}
+        {count ? `${count} selected` : 'Ctrl/Shift + click widgets to select; selected widgets move together — Group keeps them together'}
       </span>
       <button type="button" className={btn} disabled={count < 2} onClick={onGroup}><Group className="size-3.5" />Group</button>
       <button type="button" className={btn} disabled={!canUngroup} onClick={onUngroup}><Ungroup className="size-3.5" />Ungroup</button>
