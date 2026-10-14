@@ -12,8 +12,8 @@ from typing import Any
 
 from fastapi import HTTPException
 
-from ..core.config import settings
-from ..core.store import store
+from ...core.config import settings
+from ...core.store import store
 from . import delivery, email_templates, gotrue, verification as v
 
 EMAIL = re.compile(r"^[^@\s]{1,64}@[^@\s]{1,255}\.[^@\s]{2,}$")

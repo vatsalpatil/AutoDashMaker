@@ -22,7 +22,8 @@ from fastapi.testclient import TestClient  # noqa: E402
 import Main as main  # noqa: E402
 from app.core.config import settings  # noqa: E402
 from app.core.store import store  # noqa: E402
-from app.services import gotrue, throttle  # noqa: E402
+from app.services import throttle  # noqa: E402
+from app.services.account import gotrue  # noqa: E402
 
 settings.supabase_service_key = ""  # a developer's real backend/.env must not leak into the test
 now = [1000.0]
@@ -236,7 +237,7 @@ for _ in range(25):  # an unconfirmed email is not a wrong password: it must nev
 
 # --- 10. forgot password: branded code email -> code + new password; never reveals who has an account
 import re  # noqa: E402
-from app.services import delivery  # noqa: E402
+from app.services.account import delivery  # noqa: E402
 
 mails, passwords = [], []
 delivery.send_email = lambda to, subject, body, html=None: (mails.append((to, subject, body, html)), "smtp")[1]
@@ -296,7 +297,7 @@ assert why("nobody@x.com") == "Wrong email or password."
 settings.supabase_service_key = "service-key"
 
 # --- 12. our own sign-up: unconfirmed account + branded link email (no code), link -> confirmed -> login page
-from app.services import signup  # noqa: E402
+from app.services.account import signup  # noqa: E402
 
 accounts12, confirmed_ids = {}, []
 

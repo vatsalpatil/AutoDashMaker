@@ -18,7 +18,7 @@ from fastapi.testclient import TestClient  # noqa: E402
 
 import Main as main  # noqa: E402
 from app.core.config import settings  # noqa: E402
-from app.services import verification  # noqa: E402
+from app.services.account import verification  # noqa: E402
 
 
 def token(uid: str, google: bool = False) -> dict:

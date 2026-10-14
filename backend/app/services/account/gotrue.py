@@ -7,7 +7,7 @@ import time
 import httpx
 from fastapi import HTTPException
 
-from ..core.config import settings
+from ...core.config import settings
 
 log = logging.getLogger("dashtor.gotrue")
 

@@ -16,9 +16,10 @@ from typing import Any
 
 from fastapi import HTTPException
 
-from ..core.config import settings
-from ..core.store import store
-from . import delivery, email_templates, throttle
+from ...core.config import settings
+from ...core.store import store
+from . import delivery, email_templates
+from .. import throttle
 
 CODE_TTL_S = 600
 RESEND_COOLDOWN_S = 60

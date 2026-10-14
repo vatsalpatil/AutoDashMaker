@@ -9,7 +9,7 @@ from email.message import EmailMessage
 
 import httpx
 
-from ..core.config import settings
+from ...core.config import settings
 
 log = logging.getLogger("dashtor.delivery")
 

@@ -28,7 +28,7 @@ def _link_confirmed(meta: dict) -> bool:
 
     Only believable while Supabase really requires the link (autoconfirm off). With autoconfirm on, Supabase marks every
     new account as confirmed, even the `email_verified` claim inside the token, so nothing it says can be trusted then."""
-    from app.services import gotrue  # lazy: keeps local mode import-light
+    from app.services.account import gotrue  # lazy: keeps local mode import-light
     return not gotrue.autoconfirm_on() and (settings.auth_confirms_email or bool(meta.get("email_verified")))
 
 
@@ -77,7 +77,7 @@ async def require_verified(user: dict = Depends(require_user)) -> dict:
     """require_user, plus: once VERIFICATION_REQUIRED is on and the grace period is over, unverified users get 403
     {code: verification_required} everywhere except /api/verify and /api/auth (so they can still verify)."""
     if settings.auth_enabled and settings.verification_required:
-        from app.services import verification  # lazy: keeps local mode import-light
+        from app.services.account import verification  # lazy: keeps local mode import-light
         if await run_in_threadpool(verification.is_blocked, user):
             raise HTTPException(403, {"code": "verification_required", "message": "Verify your email and mobile number to continue."})
     return user

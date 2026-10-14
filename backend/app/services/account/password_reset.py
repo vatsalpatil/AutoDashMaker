@@ -9,8 +9,10 @@ import re
 
 from fastapi import HTTPException
 
-from . import gotrue, throttle, verification as v
-from ..core.config import settings
+from . import gotrue, verification as v
+
+from .. import throttle
+from ...core.config import settings
 
 CHANNEL = "email_reset"
 GENERIC = {"sent": True}

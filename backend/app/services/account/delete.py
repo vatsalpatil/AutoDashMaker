@@ -12,9 +12,9 @@ from typing import Any
 
 from fastapi import HTTPException
 
-from ..core import tenant
-from ..core.config import settings
-from ..core.store import store
+from ...core import tenant
+from ...core.config import settings
+from ...core.store import store
 from . import gotrue, verification as v
 
 log = logging.getLogger("dashtor.account")
@@ -58,7 +58,7 @@ def _purge(user_id: str, ws: str) -> None:
         store.execute(f"DELETE FROM {t} WHERE workspace_id = ?", [ws])
     for t in ("user_contacts", "verification_codes"):
         store.execute(f"DELETE FROM {t} WHERE user_id = ?", [user_id])
-    from .engine import engine  # lazy: the engine imports a lot
+    from ..engine import engine  # lazy: the engine imports a lot
     engine.close_workspace(ws)   # release the DuckDB file before its folder is removed
     for d in (Path(tenant.analytics_path(ws)).parent, tenant.upload_dir(ws)):
         if d.name == ws:  # only ever the workspace's own folder

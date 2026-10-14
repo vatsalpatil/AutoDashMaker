@@ -4,7 +4,7 @@ from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
 
 from ..core.auth import require_user
-from ..services import account_delete
+from ..services.account import delete as account_delete
 
 router = APIRouter(prefix="/api/account", tags=["account"])
 

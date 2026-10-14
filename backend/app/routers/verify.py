@@ -4,7 +4,7 @@ from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
 
 from ..core.auth import require_user
-from ..services import contact_change, verification
+from ..services.account import contact_change, verification
 
 router = APIRouter(prefix="/api/verify", tags=["verify"])
 

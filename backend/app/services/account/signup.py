@@ -15,8 +15,9 @@ import time
 
 from fastapi import HTTPException
 
-from ..core.config import settings
-from . import delivery, email_templates, gotrue, throttle
+from ...core.config import settings
+from . import delivery, email_templates, gotrue
+from .. import throttle
 
 VALID_HOURS = 24
 RESEND_COOLDOWN_S = 60

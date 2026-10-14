@@ -6,7 +6,8 @@ from pydantic import BaseModel
 
 from app.core.auth import require_user
 from app.core.config import settings
-from app.services import gotrue, password_reset, signup, throttle
+from app.services import throttle
+from app.services.account import gotrue, password_reset, signup
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
