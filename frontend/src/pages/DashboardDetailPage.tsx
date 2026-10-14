@@ -19,7 +19,7 @@ import { PageTabs } from '@/features/dashboards/PageTabs';
 import { PresentMode } from '@/features/dashboards/PresentMode';
 import { useDashboardPage } from '@/features/dashboards/useDashboardPage';
 import { WidgetGrid } from '@/features/dashboards/WidgetGrid';
-import { SNAPS, type SnapId } from '@/features/dashboards/useDashboardPage';
+import { useWidgetGroups } from '@/features/dashboards/widgetGroups';
 import { DashboardFilterProvider, useDashboardFilterState } from '@/features/dashboards/dashboardFilters';
 
 /** One dashboard: pages, an editable widget grid, brief/lineage panels, present mode. Logic is in useDashboardPage. */
@@ -28,6 +28,7 @@ export default function DashboardDetailPage() {
   const d = useDashboardPage(id);
   const df = useDashboardFilterState();
   const refresh = useDashboardRefresh();
+  const groups = useWidgetGroups(d.widgets);
   const nav = useNavigate();
   const [aiOpen, setAiOpen] = useState(false);
   const [printOpen, setPrintOpen] = useState(false);
@@ -45,7 +46,7 @@ export default function DashboardDetailPage() {
         actions={
           <DashboardToolbar
             editing={d.editing}
-            onToggleEdit={() => (d.editing ? d.finishEditing() : d.setEditing(true))}
+            onToggleEdit={() => nav(`/dashboards/${d.dashboard!.id}/layout`)}
             showBrief={d.showBrief}
             briefBusy={d.briefBusy}
             onBrief={d.toggleBrief}
@@ -78,18 +79,6 @@ export default function DashboardDetailPage() {
       {d.showBrief && <BriefCard brief={d.brief} />}
       {d.showLineage && <LineageCard lineage={d.lineage} />}
 
-      {d.editing && (
-        <div className="flex flex-wrap items-center gap-1 text-xs" role="radiogroup" aria-label="Grid snap">
-          <span className="mr-1 text-muted-foreground">Grid snap</span>
-          {(Object.keys(SNAPS) as SnapId[]).map((k) => (
-            <button key={k} type="button" role="radio" aria-checked={d.snap === k} onClick={() => d.setSnap(k)}
-              className={d.snap === k ? 'rounded-full bg-primary px-2.5 py-0.5 text-primary-foreground' : 'rounded-full border px-2.5 py-0.5 hover:border-primary hover:text-primary'}>
-              {SNAPS[k].label}
-            </button>
-          ))}
-          <span className="ml-2 text-muted-foreground">finer = smaller, smoother steps when moving and resizing</span>
-        </div>
-      )}
       <WidgetGrid
         gridX={d.gridX}
         gridY={d.gridY}
@@ -100,8 +89,7 @@ export default function DashboardDetailPage() {
         onRemove={d.removeWidget}
         onFullscreen={d.setFullscreenWidget}
         onSettings={d.openSettings}
-        onSetting={d.updateWidgetSetting}
-        charts={d.charts}
+        groups={groups}
       />
 
       {d.fullscreenWidget && <FullscreenModal widget={d.fullscreenWidget} onClose={() => d.setFullscreenWidget(null)} />}

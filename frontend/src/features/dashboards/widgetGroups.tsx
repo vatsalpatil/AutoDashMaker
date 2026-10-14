@@ -5,6 +5,8 @@ import type { Widget } from '@/lib/types';
 /** A widget's group id lives in widget.settings.group; grouped widgets move together when one is dragged. */
 export const groupOf = (w?: Widget) => (typeof w?.settings?.group === 'string' ? (w.settings.group as string) : null);
 
+export type WidgetGroups = ReturnType<typeof useWidgetGroups>;
+
 export function useWidgetGroups(widgets: Widget[]) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const shift = useRef<{ id: string; dx: number; dy: number } | null>(null);
@@ -36,5 +38,5 @@ export function useWidgetGroups(widgets: Widget[]) {
       l.i !== s.id && isMate(l.i) ? { ...l, x: Math.max(0, l.x + s.dx), y: Math.max(0, l.y + s.dy) } : l);
   };
 
-  return { selected, clear: () => setSelected(new Set()), toggle, onDragStop, applyGroupMove };
+  return { selected, select: (ids: string[]) => setSelected(new Set(ids)), clear: () => setSelected(new Set()), toggle, onDragStop, applyGroupMove };
 }
