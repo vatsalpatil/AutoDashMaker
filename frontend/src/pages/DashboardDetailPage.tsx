@@ -100,6 +100,7 @@ export default function DashboardDetailPage() {
         onRemove={d.removeWidget}
         onFullscreen={d.setFullscreenWidget}
         onSettings={d.openSettings}
+        onSetting={d.updateWidgetSetting}
       />
 
       {d.fullscreenWidget && <FullscreenModal widget={d.fullscreenWidget} onClose={() => d.setFullscreenWidget(null)} />}

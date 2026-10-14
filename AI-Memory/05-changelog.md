@@ -241,3 +241,4 @@ Format: `YYYY-MM-DD · tool · files · what + why`
 - 2026-10-13 · useDashboardPage (GRID_X=2/GRID_Y=4 fine grid, fromGrid), WidgetGrid (24 cols, ~11px rows, compactType null, more handles), WidgetBody/ChartView (tables fill the widget), PivotTable (Metric + Calculation dropdowns), chartData.aggregate (+median, stdev, variance, range) · smoother free-placement dashboard editing; pivot statistics
 - 2026-10-13 · useDashboardPage (SNAPS coarse/normal/fine/free, snap in localStorage), WidgetGrid (gridX/gridY props, margin 0 + cell padding), DashboardDetailPage (Grid snap picker while editing) · user-selectable grid smoothness
 - 2026-10-14 · frontend/src/features/dashboards/WidgetView.tsx · widget toolbar hidden (not just transparent) until hover so titles use full width
+- 2026-10-14 · dashboards/widgetGroups.tsx (new), WidgetGrid.tsx, DashboardDetailPage.tsx · widget grouping: Ctrl/Shift+click select, Group/Ungroup (settings.group), dragging one moves the whole group
