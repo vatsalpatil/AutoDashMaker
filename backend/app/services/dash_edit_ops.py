@@ -108,13 +108,14 @@ class Editor:
         valid = lambda xs: [str(i) for i in xs if str(i) in self.index] if isinstance(xs, list) else []   # noqa: E731
         pos = lambda i: self.index[i]["widget"].get("position") or {}   # noqa: E731
         rows = [r for r in (valid(r) for r in op.get("rows", [])) if r] if isinstance(op.get("rows"), list) else []
+        per = 0   # "N per row": a short last row keeps the 1/N width instead of stretching
         if not rows:
             ids = valid(op.get("ids"))
             if not ids:   # default: every KPI of the page being viewed
                 ids = [i for i, e in self.index.items() if (e["widget"].get("page") or "main") == self.viewing and e["chart"].get("spec", {}).get("type") == "kpi"]
             ids.sort(key=lambda i: (pos(i).get("y", 0), pos(i).get("x", 0)))
             cols = min(max(int(op.get("columns") or 4), 1), 6)
-            rows = [ids[k:k + cols] for k in range(0, len(ids), cols)]
+            rows, per = [ids[k:k + cols] for k in range(0, len(ids), cols)], cols
         if not rows:
             raise ValueError("no widgets to arrange")
         flat = [i for r in rows for i in r]
@@ -123,7 +124,7 @@ class Editor:
         cells: list[tuple[str, dict[str, int]]] = []
         for r in rows:
             r = r[:6]
-            width, h = 12 // len(r), max(pos(i).get("h", 2) for i in r)
+            width, h = 12 // (per or len(r)), max(pos(i).get("h", 2) for i in r)
             cells += [(i, {"x": k * width, "y": y, "w": width, "h": h}) for k, i in enumerate(r)]
             y += h
         self._push_down(where, base, y - base, exclude=set(flat))   # anything in the way moves below

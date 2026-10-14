@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Check, ChevronDown, ChevronRight, Copy, Loader2, Plus, Replace, RotateCw, Sparkles, Timer, TriangleAlert } from 'lucide-react';
+import { Check, ChevronDown, ChevronRight, Copy, Loader2, Pencil, Plus, Replace, RotateCw, Sparkles, Timer, TriangleAlert } from 'lucide-react';
 import { Markdown } from '@/components/common/Markdown';
 import { cn } from '@/lib/utils';
 import { StepCard } from './StepCard';
@@ -9,30 +9,45 @@ const Chip = ({ onClick, children }: { onClick: () => void; children: React.Reac
   <button type="button" onClick={onClick} className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground hover:bg-accent hover:text-foreground">{children}</button>
 );
 
+/** Copy-to-clipboard chip with a short "copied" tick. */
+function CopyChip({ text, label = 'Copy' }: { text: string; label?: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <Chip onClick={() => { navigator.clipboard?.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 1200); }}>
+      {copied ? <Check className="size-3" /> : <Copy className="size-3" />} {label}
+    </Chip>
+  );
+}
+
 /** A SQL block from an answer, with copy / add-as-cell / replace-active-cell actions. */
 function SqlBlock({ code, actions }: { code: string; actions: NotebookActions }) {
-  const [copied, setCopied] = useState(false);
   return (
     <div className="overflow-hidden rounded-md border bg-muted/50">
       <pre className="mono max-h-56 overflow-auto whitespace-pre-wrap p-2 text-xs">{code}</pre>
       <div className="flex flex-wrap items-center gap-0.5 border-t bg-card px-1 py-0.5">
         <Chip onClick={() => actions.add(code, true)}><Plus className="size-3" /> Add as cell & run</Chip>
         <Chip onClick={() => actions.edit(code, false)}><Replace className="size-3" /> Replace active cell</Chip>
-        <Chip onClick={() => { navigator.clipboard?.writeText(code); setCopied(true); setTimeout(() => setCopied(false), 1200); }}>
-          {copied ? <Check className="size-3" /> : <Copy className="size-3" />} Copy
-        </Chip>
+        <CopyChip text={code} />
       </div>
     </div>
   );
 }
 
-export function AgentMessage({ m, actions, elapsed, onApprove, onUndo, onRetry }: {
-  m: ChatMessage; actions: NotebookActions; elapsed: number; onApprove: (n: number) => void; onUndo: (n: number) => void; onRetry?: () => void;
+export function AgentMessage({ m, actions, elapsed, onApprove, onUndo, onRetry, onEdit }: {
+  m: ChatMessage; actions: NotebookActions; elapsed: number; onApprove: (n: number) => void; onUndo: (n: number) => void; onRetry?: () => void; onEdit?: () => void;
 }) {
   const running = m.status === 'running';
   const [showSteps, setShowSteps] = useState(true);
   if (m.role === 'user') {
-    return <div className="ml-6 self-end whitespace-pre-wrap rounded-lg rounded-br-sm bg-primary px-3 py-2 text-sm text-primary-foreground">{m.imageCount ? <span className="mb-1 block text-[11px] opacity-80">{m.imageCount} image{m.imageCount > 1 ? 's' : ''} attached</span> : null}{m.text}</div>;
+    return (
+      <div className="group ml-6 flex flex-col items-end gap-0.5 self-end">
+        <div className="whitespace-pre-wrap rounded-lg rounded-br-sm bg-primary px-3 py-2 text-sm text-primary-foreground">{m.imageCount ? <span className="mb-1 block text-[11px] opacity-80">{m.imageCount} image{m.imageCount > 1 ? 's' : ''} attached</span> : null}{m.text}</div>
+        <div className="flex opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+          <CopyChip text={m.text} />
+          {onEdit && <Chip onClick={onEdit}><Pencil className="size-3" /> Edit</Chip>}
+        </div>
+      </div>
+    );
   }
   const hasSqlInText = /```/.test(m.text);
   const steps = m.steps.filter((s) => s.tool !== 'final');   // the final step is the answer below, not a card
@@ -59,7 +74,12 @@ export function AgentMessage({ m, actions, elapsed, onApprove, onUndo, onRetry }
       )}
       {!running && m.seconds != null && (
         <p className="flex items-center gap-1 text-[10px] text-muted-foreground"><Sparkles className="size-3" /> {m.status === 'stopped' ? 'stopped after' : 'took'} {m.seconds.toFixed(1)} s
-          {onRetry && <button type="button" onClick={onRetry} className="ml-2 flex items-center gap-0.5 rounded px-1 font-medium hover:bg-accent hover:text-foreground"><RotateCw className="size-3" /> Retry</button>}</p>
+          {m.text && m.status === 'done' && <span className="ml-2"><CopyChip text={m.sql && !hasSqlInText ? `${m.text}
+
+\`\`\`sql
+${m.sql}
+\`\`\`` : m.text} /></span>}
+          {onRetry && <button type="button" onClick={onRetry} className="ml-1 flex items-center gap-0.5 rounded px-1 font-medium hover:bg-accent hover:text-foreground"><RotateCw className="size-3" /> Regenerate</button>}</p>
       )}
     </div>
   );

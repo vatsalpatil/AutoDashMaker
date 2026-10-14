@@ -282,7 +282,7 @@ def pos2(title):
 holder["ops"] = [{"op": "arrange", "columns": 4}]                                       # no ids: every KPI of the page being viewed
 out = _da.edit_dashboard(kp["id"], "i want all the kpis in single row 4 column view", None, None, "overview")
 assert "size=12x2" in holder["prompt"] and "col=0" in holder["prompt"], holder["prompt"][-900:]   # the model can SEE the widths now
-assert out["applied"] == ["arranged 4 widgets in rows of 4"], out
+assert out["applied"] == ["arranged 4 widgets in 1 rows (4 per row)"], out
 assert [pos2(f"KPI {i}") for i in range(4)] == [{"x": 3 * i, "y": 0, "w": 3, "h": 2} for i in range(4)], [pos2(f"KPI {i}") for i in range(4)]
 assert pos2("Detail Table")["y"] >= 2                                                    # nothing overlaps the new row
 

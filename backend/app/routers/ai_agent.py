@@ -27,7 +27,7 @@ def run_agent(body: AgentIn):
     if not body.task.strip():
         raise HTTPException(400, "tell the agent what to do")
     mode = "agent" if body.mode == "agent" else "ask"
-    ctx = agent.context(body.active_sql, body.error, body.cells, mode)
+    ctx = agent.context(body.active_sql, body.error, body.cells, mode, body.task)
 
     def stream():
         steps = 0

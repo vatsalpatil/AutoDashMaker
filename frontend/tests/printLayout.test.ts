@@ -22,8 +22,8 @@ test('@page rule names the paper and orientation', () => {
 });
 
 test('grid placement uses the saved column and row and never overflows the 12 columns', () => {
-  assert.deepEqual(gridPlacement(w(0, 0, 4, 2)), { gridColumn: '1 / span 4', gridRow: '1 / span 2' });
-  assert.deepEqual(gridPlacement(w(8, 3, 6, 4)), { gridColumn: '9 / span 4', gridRow: '4 / span 4' });   // clamped to the right edge
+  assert.deepEqual(gridPlacement(w(0, 0, 4, 2)), { gridColumn: '1 / span 32', gridRow: '1 / span 16' });   // 8 sub-cells per grid unit (fractional positions)
+  assert.deepEqual(gridPlacement(w(8, 3, 6, 4)), { gridColumn: '65 / span 32', gridRow: '25 / span 32' });   // clamped to the right edge
   assert.equal(rowCount([w(0, 0, 4, 2), w(0, 2, 12, 4)]), 6);
   assert.equal(rowCount([]), 1);
 });

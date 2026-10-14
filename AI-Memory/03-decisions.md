@@ -36,3 +36,6 @@ Format: `D<n> · date · decision — why (rejected alternatives)`. Dates for D1
 - D30 · 2026-10-11 · Local must behave exactly like the server, and the user starts it by hand (`python Main.py`, `npm run dev`), so there are NO start/launcher bat files. `backend/.env` = the server's settings (+ APP_URL localhost, DISK 95). Test scripts (`test_*`) skip `.env` entirely (`config._env_file`) so they never hit real Supabase/Brevo. When a server setting changes, mirror it in `.env`.
 
 - 2026-10-13 · AI dashboard self-review is deterministic (dash_critic) except one model rewrite for empty/blank results: chart-type fixes and the score must be auditable and free. Edit undo = one JSON snapshot on the dashboard row (last AI edit only), not a version history.
+
+## AI determinism + token budget (2026-10-14)
+All provider calls use `TEMPERATURE = 0` (services/ai.py): analytics answers must be repeatable. Agent tunables live at the top of services/agent.py (STEP_TOKENS, TIME_BUDGET, FULL_TABLES, KEEP_OBS); relevance ranking is word-overlap, deterministic, so the prompt is stable across runs.

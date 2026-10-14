@@ -89,6 +89,7 @@ export function AgentPanel({ datasets, getContext, actions, activeName, hasSql, 
         {a.messages.map((m, i) => (
           <div key={m.id} className="flex flex-col">
             <AgentMessage m={m} actions={actions} elapsed={a.elapsed} onApprove={(n) => a.approve(m.id, n)} onUndo={(n) => a.undo(m.id, n)}
+              onEdit={m.role === 'user' && !a.busy ? () => { setInput(m.text); box.current?.focus(); } : undefined}
               onRetry={m.role === 'assistant' && m.status !== 'running' && !a.busy && a.messages[i - 1]?.role === 'user' ? () => a.send(a.messages[i - 1].text) : undefined} />
           </div>
         ))}
@@ -108,8 +109,11 @@ export function AgentPanel({ datasets, getContext, actions, activeName, hasSql, 
         <div onDrop={att.dropProps.onDrop} onDragOver={att.dropProps.onDragOver} className="rounded-lg border bg-background focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/40">
           <AttachmentTray att={att} className="px-3 pt-2" />
           <textarea ref={box} value={input} rows={2} onChange={(e) => setInput(e.target.value)} aria-label="Message the assistant" onPaste={att.dropProps.onPaste}
-            onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && !mentions.length) { e.preventDefault(); submit(); } if (e.key === 'Tab' && mentions.length) { e.preventDefault(); pick(mentions[0].name); } }}
-            placeholder={a.prefs.mode === 'agent' ? 'What should I build or find out?  (@ for tables, Shift+Enter for a new line)' : 'Ask about your data…'}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape' && a.busy) { e.preventDefault(); a.stop(); return; }
+              if (e.key === 'ArrowUp' && !input) { const last = [...a.messages].reverse().find((x) => x.role === 'user'); if (last) { e.preventDefault(); setInput(last.text); } return; }
+              if (e.key === 'Enter' && !e.shiftKey && !mentions.length) { e.preventDefault(); submit(); } if (e.key === 'Tab' && mentions.length) { e.preventDefault(); pick(mentions[0].name); } }}
+            placeholder={a.prefs.mode === 'agent' ? 'What should I build or find out?  (@ tables · ↑ last message · Esc stops)' : 'Ask about your data…'}
             className="block max-h-40 w-full resize-none bg-transparent px-3 pt-2 text-sm outline-none" />
           <div className="flex items-center gap-2 px-2 pb-1.5 text-[11px] text-muted-foreground">
             <ModelPicker disabled={a.busy} />

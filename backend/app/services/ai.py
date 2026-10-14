@@ -27,6 +27,10 @@ OPENAI_COMPATIBLE_DEFAULTS = {
 }
 
 
+# Greedy decoding: the same question over the same data gets the same SQL / answer (analytics needs repeatability).
+TEMPERATURE = 0
+
+
 class AIError(Exception):
     """A provider call failed; `status` and `headers` come from the HTTP reply when there was one."""
 
@@ -62,7 +66,7 @@ NOT_A_QUERY_RULE = (
 
 def _call_openai_compatible(base_url: str, api_key: str, model: str,
                             messages: list[dict], max_tokens: int = 2048, timeout: float = 60, meta: dict | None = None) -> str:
-    payload: dict[str, Any] = {"model": model, "messages": messages, "max_tokens": max_tokens}
+    payload: dict[str, Any] = {"model": model, "messages": messages, "max_tokens": max_tokens, "temperature": TEMPERATURE}
     if "openrouter.ai" in base_url:
         # Reasoning models otherwise spend most of the time (and tokens) "thinking"; SQL needs little of it.
         payload["reasoning"] = {"effort": "low"}
@@ -99,7 +103,7 @@ def _call_anthropic(api_key: str, model: str, messages: list[dict],
         "https://api.anthropic.com/v1/messages",
         headers={"x-api-key": api_key, "anthropic-version": "2023-06-01",
                  "content-type": "application/json"},
-        json={"model": model, "max_tokens": max_tokens, "system": system,
+        json={"model": model, "max_tokens": max_tokens, "system": system, "temperature": TEMPERATURE,
               "messages": user_msgs},
         timeout=timeout,
     )
@@ -121,7 +125,7 @@ def _call_gemini(api_key: str, model: str, messages: list[dict],
     ]
     system = "\n".join(m["content"] for m in messages if m["role"] == "system")
     body: dict[str, Any] = {"contents": contents,
-                            "generationConfig": {"maxOutputTokens": max_tokens}}
+                            "generationConfig": {"maxOutputTokens": max_tokens, "temperature": TEMPERATURE}}
     if system:
         body["systemInstruction"] = {"parts": [{"text": system}]}
     resp = httpx.post(

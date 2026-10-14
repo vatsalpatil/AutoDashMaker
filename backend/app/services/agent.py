@@ -21,6 +21,10 @@ from .engine import engine
 MAX_STEPS = 8
 OBS_CHARS = 2400          # how much of a tool result the model sees
 PREVIEW_ROWS = 10         # rows shown to the user per observation
+STEP_TOKENS = 1200        # one step is a short JSON object; a small cap keeps replies fast and cheap
+TIME_BUDGET = 150         # seconds; past this the agent wraps up with what it has (target: answers in 1-3 minutes)
+FULL_TABLES = 8           # tables sent with their columns; the rest go by name only (describe_table on demand)
+KEEP_OBS = 3              # older observations are shortened in the prompt to save tokens
 
 SYSTEM = """You are a data analyst agent inside a SQL notebook (DuckDB dialect). Work step by step with tools, like a careful engineer.
 Reply on EVERY turn with exactly ONE JSON object and nothing else:
@@ -47,17 +51,35 @@ def _label(d: dict) -> str:
     return d["name"]
 
 
-def context(active_sql: str, error: str | None, cells: list[dict], mode: str) -> str:
+_WORD = re.compile(r"[a-z0-9]+")
+
+
+def _relevance(task: str, d: dict, cols: list[str]) -> int:
+    """How strongly a table matches the task's words (table name counts most). Deterministic, so the prompt is stable."""
+    words = {w for w in _WORD.findall(task.lower()) if len(w) > 2}
+    name = set(_WORD.findall(d["name"].lower()))
+    colw = {w for c in cols for w in _WORD.findall(c.split(" ")[0].lower())}
+    return 3 * len(words & name) + len(words & colw) + (5 if d["name"].lower() in task.lower() else 0)
+
+
+def context(active_sql: str, error: str | None, cells: list[dict], mode: str, task: str = "") -> str:
     cols: dict[str, list[str]] = {}
     for c in store.list("columns_meta", order=None):
         cols.setdefault(c["dataset_id"], []).append(f"{c['name']} {c['dtype']}")
-    lines = []
-    for d in store.list("datasets", order=None):
-        if not d.get("physical_name"):
-            continue
+    ds = sorted((d for d in store.list("datasets", order=None) if d.get("physical_name")), key=lambda d: d["name"].lower())
+    hay = task + " " + active_sql
+    ranked = sorted(ds, key=lambda d: -_relevance(hay, d, cols.get(d["id"], [])))  # stable: ties keep name order
+    full = {d["id"] for d in ranked[:FULL_TABLES]}
+    lines, rest = [], []
+    for d in ds:
         c = cols.get(d["id"], [])
-        lines.append(f"- {_label(d)} [{d.get('row_count', '?')} rows]: {', '.join(c[:30])}{' …' if len(c) > 30 else ''}")
+        if d["id"] in full:
+            lines.append(f"- {_label(d)} [{d.get('row_count', '?')} rows]: {', '.join(c[:30])}{' …' if len(c) > 30 else ''}")
+        else:
+            rest.append(_label(d))
     text = "Tables:\n" + "\n".join(lines)[:6000]
+    if rest:
+        text += "\nOther tables (use describe_table first): " + ", ".join(rest)[:1500]
     steps = [f"- {c.get('name')}: {str(c.get('sql', '')).strip()[:300]}" for c in cells[:12] if c.get("name") and str(c.get("sql", "")).strip()]
     if steps:
         text += "\n\nEarlier notebook steps (query them by name like tables):\n" + "\n".join(steps)
@@ -127,7 +149,7 @@ def _tool(tool: str, args: dict[str, Any], mode: str) -> tuple[bool, str, dict[s
 
 def _decide(messages: list[dict], provider_id: str | None) -> dict[str, Any] | None:
     """The model's next move: the last JSON object that names a tool; None if it answered in prose."""
-    raw = ai_svc.chat(messages, provider_id=provider_id, max_tokens=3000)
+    raw = ai_svc.chat(messages, provider_id=provider_id, max_tokens=STEP_TOKENS)
     for obj in reversed(json_objects(raw)):
         if isinstance(obj.get("tool"), str):
             return obj
@@ -145,8 +167,12 @@ def run(task: str, history: list[dict], mode: str, ctx: str, provider_id: str | 
     messages.append({"role": "user", "content": task})
     nudged = False
     last_sql: str | None = None
+    seen: dict[str, str] = {}      # tool call -> observation: a repeated call is answered from memory, not re-run
+    obs_at: list[int] = []         # message indexes of observations, to shorten the old ones
 
     for n in range(1, MAX_STEPS + 1):
+        if time.time() - t0 > TIME_BUDGET:
+            messages.append({"role": "user", "content": "Time is up. Call final now with what you have found."})
         try:
             move = _decide(messages, provider_id)
         except ai_svc.AIError as e:
@@ -182,10 +208,20 @@ def run(task: str, history: list[dict], mode: str, ctx: str, provider_id: str | 
         else:
             if tool == "run_sql":
                 last_sql = str(args.get("sql", "")).strip() or last_sql
-            ok, obs, extra = _tool(tool, args, mode)
-            yield {"type": "observation", "n": n, "ok": ok, "text": obs[:900], **extra}
+            key = tool + json.dumps(args, sort_keys=True, default=str)
+            if key in seen:
+                obs = "You already ran exactly this; the result was:\n" + seen[key] + "\nDo something different or call final."
+                yield {"type": "observation", "n": n, "ok": True, "text": "Same call as before; reused its result."}
+            else:
+                ok, obs, extra = _tool(tool, args, mode)
+                seen[key] = obs
+                yield {"type": "observation", "n": n, "ok": ok, "text": obs[:900], **extra}
         messages.append({"role": "assistant", "content": json.dumps({"thought": thought, "tool": tool, "args": args})[:2000]})
         messages.append({"role": "user", "content": "Observation: " + obs})
+        obs_at.append(len(messages) - 1)
+        for i in obs_at[:-KEEP_OBS]:   # the model rarely needs old rows again; keep their gist only
+            if len(messages[i]["content"]) > 400:
+                messages[i]["content"] = messages[i]["content"][:400] + " …(shortened)"
 
     yield {"type": "final", "text": "I ran out of steps before finishing. Here is where I got to; ask me to continue if you want more.", "sql": last_sql,
            "seconds": round(time.time() - t0, 1)}
