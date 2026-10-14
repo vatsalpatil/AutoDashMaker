@@ -11,7 +11,7 @@ import { DashboardAiPanel } from '@/features/dashboards/DashboardAiPanel';
 import { DashboardToolbar } from '@/features/dashboards/DashboardToolbar';
 import { FilterViews } from '@/features/dashboards/FilterViews';
 import { DashboardFilterArea } from '@/features/dashboards/filters/DashboardFilterArea';
-import { DashboardParamsBar, DashboardParamsContext, useDashboardParamState } from '@/features/dashboards/params/DashboardParams';
+import { DashboardParamsContext, useDashboardParamState } from '@/features/dashboards/params/DashboardParams';
 import { FullscreenModal } from '@/features/dashboards/FullscreenModal';
 import { BriefCard, LineageCard } from '@/features/dashboards/InsightPanels';
 import { PrintDialog } from '@/features/dashboards/PrintDialog';
@@ -69,8 +69,7 @@ export default function DashboardDetailPage() {
         }
       />
       <ErrorBanner message={d.error} />
-      <DashboardFilterArea df={df} dashboard={d.dashboard} pages={d.pages} activePage={d.activePage} onSaved={d.load} />
-      <DashboardParamsBar state={params} />
+      <DashboardFilterArea df={df} params={params} dashboard={d.dashboard} pages={d.pages} activePage={d.activePage} onSaved={d.load} />
       <FilterViews dashboardId={d.dashboard.id} state={df.state} active={df.active} onApply={df.setState} />
 
       <PageTabs
