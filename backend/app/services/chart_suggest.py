@@ -78,6 +78,8 @@ def encode(chart_type: str, columns: list[str], rows: list[dict]) -> dict[str, A
     enc: dict[str, Any] = {"x": x, "y": y}
     if chart_type in ("line", "area", "bar", "composed", "radar") and len(ys) > 1:
         enc["ys"] = ys[:4]
+    if chart_type in ("ranked", "quadrant") and len(ys) > 1:
+        enc["color"] = ys[1]   # the second number is the previous period
     if chart_type == "pivot":
         enc["color"] = dims[1] if len(dims) > 1 else None
         if enc["color"] is None:

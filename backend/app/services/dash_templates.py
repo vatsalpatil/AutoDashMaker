@@ -41,6 +41,33 @@ TEMPLATES: dict[str, dict] = {
             "concentration: share of total per dimension value, how much the top 10 values contribute (one KPI %), "
             "cumulative share (Pareto) as a composed chart."),
     },
+    "sales_compare": {
+        "name": "Daily sales comparison",
+        "description": "Latest day vs the day before: KPIs with previous values, top items with growth, what drove the change, groups to push or fix.",
+        "pages": [("today", "Latest Day"), ("trend", "Trend"), ("details", "Details")],
+        "blueprint": (
+            "Use the LATEST date in the data as 'current' and the date before it as 'previous' (MAX(date) and MAX(date) - INTERVAL 1 DAY); "
+            "never today's clock date.\n"
+            "today: KPIs total sales and total units of the latest day, average selling price (sales / units), and the year-to-date total; "
+            "a ranked widget of the main dimension (category, current-day value, previous-day value, LIMIT 10); a waterfall of the change per "
+            "dimension value (top 6 changes + 'Others'); a pie share of the latest day by that dimension (max 7 slices); a quadrant widget "
+            "(same three columns as the ranked one).\n"
+            "trend: a composed chart of daily sales and units over the last 30 days; a bar of the main dimension over the month.\n"
+            "details: a growth table (dimension, current, previous, change, growth %) and a pivot of dimension by a second dimension."),
+    },
+    "report_center": {
+        "name": "Report center",
+        "description": "One page per key dimension with the same KPI strip, time breakdown, top 10, rate and detail table.",
+        "pages": [("overview", "Overview"), ("dim1", "Breakdown 1"), ("dim2", "Breakdown 2"), ("details", "Details")],
+        "blueprint": (
+            "Pick the 2 most useful dimensions; name pages dim1 and dim2 after them (e.g. Portal, Category).\n"
+            "overview: KPIs for gross total, units, average selling price (total / units), a rate (e.g. returns / sold when such columns "
+            "exist, else share of the top item) and a ratio KPI; a monthly trend of the main measure; a pie share of the first dimension.\n"
+            "each breakdown page: KPIs (active count of that dimension, top item by value, units, average value per unit); a pivot of the "
+            "dimension by YEAR (row field, year as column field, main measure); a top-10 bar of the dimension; a bar of a rate or average per "
+            "dimension value; a detail table per dimension value with every useful total.\n"
+            "details: the 50 most informative rows."),
+    },
     "explorer": {
         "name": "Data explorer",
         "description": "Distributions, relationships, outliers and category mixes for getting to know a dataset.",

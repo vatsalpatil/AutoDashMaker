@@ -19,7 +19,7 @@ from .chart_suggest import encode, suggest_chart
 from .dash_place import anchor_y, grid_positions, make_room
 from .engine import engine
 
-CHART_TYPES = ["kpi", "bar", "line", "area", "pie", "scatter", "table", "pivot", "funnel", "treemap", "radar", "composed"]
+CHART_TYPES = ["kpi", "bar", "line", "area", "pie", "scatter", "table", "pivot", "funnel", "treemap", "radar", "composed", "waterfall", "ranked", "quadrant"]
 WIDE = {"line", "area", "table", "pivot", "composed"}
 MAX_WIDGETS = 10
 
@@ -28,7 +28,7 @@ _WIDGET_FORMAT = ('{"title": string, "type": one of ' + "|".join(CHART_TYPES) + 
 _SQL_RULES = (
     "Use ONLY the listed tables and columns. kpi = exactly one row with one numeric column. line/area = first column the "
     "time (or ordered category), then the measures. bar/pie/funnel/treemap = a category column then one measure; pivot = row field, column field, then EVERY measure the user asked for as separate columns (viewers switch between them) "
-    "(ORDER BY the measure DESC LIMIT 15). Give every column a short alias. Never write anything but SELECT.")
+    "(ORDER BY the measure DESC LIMIT 15). ranked/quadrant = a category, the CURRENT period value, then the PREVIOUS period value (ranked = top N vs previous with growth %; quadrant = Stars/Rising/Watch/Laggards groups). waterfall = a step label then a signed change. Give every column a short alias. Never write anything but SELECT.")
 
 CREATE_SYSTEM = (
     "You are a BI designer inside a DuckDB analytics app. Design a dashboard of 4 to 8 widgets that answers the user's "
