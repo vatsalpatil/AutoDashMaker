@@ -80,6 +80,8 @@ def encode(chart_type: str, columns: list[str], rows: list[dict]) -> dict[str, A
         enc["ys"] = ys[:4]
     if chart_type in ("ranked", "quadrant") and len(ys) > 1:
         enc["color"] = ys[1]   # the second number is the previous period
+    if chart_type == "reconcile":
+        enc["ys"] = ys[:3]
     if chart_type == "timebreak":
         enc["color"] = r["time"][0] if r["time"] else None
         enc["x"] = r["category"][0] if r["category"] else x

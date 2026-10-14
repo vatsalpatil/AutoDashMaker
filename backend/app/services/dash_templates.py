@@ -68,6 +68,20 @@ TEMPLATES: dict[str, dict] = {
             "dimension value; a detail table per dimension value with every useful total.\n"
             "details: the 50 most informative rows."),
     },
+    "operations": {
+        "name": "Operations & data checks",
+        "description": "Pareto items, restock candidates, slow movers, duplicate / suspicious records and geography.",
+        "pages": [("executive", "Executive"), ("operations", "Operations"), ("checks", "Data Checks"), ("geography", "Geography")],
+        "blueprint": (
+            "executive: KPIs for gross total, net total (after returns/refunds when such columns exist), refund or return rate, the number of "
+            "Pareto items (items making 80% of the total), and text KPIs for the top item and the top region/channel (one row, one text column).\n"
+            "operations: a table of restock candidates (high units over the last 30 days of the data, low return rate, LIMIT 20); a table of slow "
+            "movers / stockout signals (items with 1-2 units in the last 30 days); a ranked widget of items this month vs last month.\n"
+            "checks: tables of possible data problems found by rules: duplicate ids/invoice numbers (COUNT > 1), entities with several refunds, "
+            "same-day refunds, NULL or empty key fields; a KPI per check with its count.\n"
+            "geography (only when a place column exists): top 10 places by value (bar), a sankey of from -> to routes when both exist, and a "
+            "table per place with value, count and rate."),
+    },
     "explorer": {
         "name": "Data explorer",
         "description": "Distributions, relationships, outliers and category mixes for getting to know a dataset.",
@@ -113,7 +127,10 @@ FORMULAS = """Formulas you may use (DuckDB):
 - average per entity: SUM(m) / NULLIF(COUNT(DISTINCT entity), 0); margin %: 100.0 * SUM(profit) / NULLIF(SUM(revenue), 0)
 - median and percentiles: QUANTILE_CONT(m, 0.5), QUANTILE_CONT(m, 0.9); spread: STDDEV_SAMP(m)
 - outliers: m > AVG(m) OVER () + 3 * STDDEV_SAMP(m) OVER ()
-- conditional totals: SUM(m) FILTER (WHERE cond); time buckets: DATE_TRUNC('month', d)"""
+- conditional totals: SUM(m) FILTER (WHERE cond); time buckets: DATE_TRUNC('month', d)
+- Pareto count (items making 80% of the total): WITH t AS (SELECT item, SUM(m) v FROM x GROUP BY 1), c AS (SELECT v, SUM(v) OVER (ORDER BY v DESC) / SUM(v) OVER () cum FROM t) SELECT COUNT(*) FILTER (WHERE cum - v / (SELECT SUM(v) FROM t) < 0.8) FROM c
+- ratio KPI (e.g. sold per returned): ROUND(SUM(a) / NULLIF(SUM(b), 0), 1) with the chart option numberFormat 'ratio' (shows 3.2 : 1)
+- current vs previous per item: SUM(m) FILTER (WHERE d = (SELECT MAX(d) FROM x)) AS cur, SUM(m) FILTER (WHERE d = (SELECT MAX(d) FROM x) - INTERVAL 1 DAY) AS prev"""
 
 SQL_RULES = """Query rules (queries are checked and run; slow or invalid ones are dropped):
 - Aggregate inside SQL and return few rows: KPI = exactly 1 row; trend <= 400 rows; rankings LIMIT 10-15; tables LIMIT 50.

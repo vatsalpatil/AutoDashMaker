@@ -39,7 +39,7 @@ const txt = (key: string, label: string, f: Partial<Field> = {}): Field => ({ ke
 const numf = (key: string, label: string, f: Partial<Field> = {}): Field => ({ key, label, kind: 'number', ...f });
 const col = (key: string, label: string, f: Partial<Field> = {}): Field => ({ key, label, kind: 'color', ...f });
 
-const NUMBER_FORMATS: [string, string][] = [['auto', 'Auto'], ['compact', 'Compact (1.2K)'], ['decimal', 'Decimal (1,234.5)'], ['currency', 'Currency'], ['indian', 'Indian (₹ L / Cr)'], ['percent', 'Percent']];
+const NUMBER_FORMATS: [string, string][] = [['auto', 'Auto'], ['compact', 'Compact (1.2K)'], ['decimal', 'Decimal (1,234.5)'], ['currency', 'Currency'], ['indian', 'Indian (₹ L / Cr)'], ['ratio', 'Ratio (3.2 : 1)'], ['percent', 'Percent']];
 
 export const TABS: Tab[] = [
   {
@@ -157,6 +157,7 @@ export const TABS: Tab[] = [
         sw('pivotRowTotals', 'Row totals', { for: ['pivot'] }),
         sw('pivotColTotals', 'Column totals', { for: ['pivot'] }),
         sw('pivotHeatmap', 'Heatmap shading', { for: ['pivot', 'timebreak'] }),
+        numf('tolerance', 'Count as a match within ±', { for: ['reconcile'], placeholder: '0' }),
         sel('tbOpen', 'Start with', [['year', 'Years'], ['month', 'Months of every year']], { for: ['timebreak'] }),
         sel('tbPageSize', 'Rows per page', [['20', '20'], ['50', '50'], ['100', '100'], ['200', '200']], { for: ['timebreak'] }),
       ] },

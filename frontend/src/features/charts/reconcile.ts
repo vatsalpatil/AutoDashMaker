@@ -1,0 +1,41 @@
+/**
+ * Reconciliation (pure, no imports): the same key measured by 2-3 sources (e.g. orders per SKU in three systems).
+ * A key matches when every source agrees within `tolerance`; diff = max - min across the sources.
+ */
+
+export interface ReconRow { key: string; values: (number | null)[]; diff: number; missing: boolean[] }
+export interface ReconSummary {
+  rows: ReconRow[];                 // biggest difference first
+  totals: number[];                 // per source
+  matched: number; mismatched: number; matchRate: number;
+  totalDiff: number; avgDiff: number;
+  largest: ReconRow | null;
+  missing: number[];                // keys absent (null / 0) per source
+}
+
+const num = (v: unknown): number | null => {
+  if (v === null || v === undefined || v === '') return null;
+  const n = typeof v === 'number' ? v : Number(v);
+  return Number.isFinite(n) ? n : null;
+};
+
+export function reconcile(rows: Record<string, unknown>[], key: string, sources: string[], tolerance = 0): ReconSummary {
+  const out: ReconRow[] = rows.map((r) => {
+    const values = sources.map((s) => num(r[s]));
+    const present = values.map((v) => v ?? 0);
+    return { key: String(r[key] ?? ''), values, diff: Math.max(...present) - Math.min(...present), missing: values.map((v) => v === null || v === 0) };
+  }).sort((a, b) => b.diff - a.diff);
+  const mismatchedRows = out.filter((r) => r.diff > tolerance);
+  const totalDiff = mismatchedRows.reduce((s, r) => s + r.diff, 0);
+  return {
+    rows: out,
+    totals: sources.map((_, i) => out.reduce((s, r) => s + (r.values[i] ?? 0), 0)),
+    matched: out.length - mismatchedRows.length,
+    mismatched: mismatchedRows.length,
+    matchRate: out.length ? (out.length - mismatchedRows.length) / out.length : 1,
+    totalDiff,
+    avgDiff: mismatchedRows.length ? totalDiff / mismatchedRows.length : 0,
+    largest: mismatchedRows[0] ?? null,
+    missing: sources.map((_, i) => out.filter((r) => r.missing[i]).length),
+  };
+}

@@ -47,6 +47,7 @@ export const TEMPLATES: ChartTemplate[] = [
   t('KPI', 'kpi-trend', 'KPI + change', 'kpi', 'Headline with change vs previous row and a sparkline.', { numberFormat: 'compact', showDelta: true, showSparkline: true, kpiAlign: 'left' }),
   t('Tables', 'table', 'Data table', 'table', 'Every column of the query.', { tableDensity: 'compact' }),
   t('Tables', 'table-striped', 'Striped table', 'table', 'Zebra rows, comfortable spacing.', { tableStriped: true, tableDensity: 'comfortable' }),
+  t('Compare', 'reconcile', 'Reconcile sources', 'reconcile', 'Same key in 2-3 sources: match rate, mismatches, biggest differences.', {}),
   t('Tables', 'timebreak', 'Time breakdown', 'timebreak', 'Items by year; click a year for months, a month for days. Totals, search, pages.', { tableDensity: 'compact' }),
   t('Tables', 'pivot', 'Pivot table', 'pivot', 'Rows × columns cross-tab with totals.', { pivotAgg: 'sum', pivotRowTotals: true, pivotColTotals: true }),
   t('Tables', 'pivot-heat', 'Pivot heatmap', 'pivot', 'Cross-tab shaded by value.', { pivotHeatmap: true, pivotRowTotals: false, pivotColTotals: false }),
@@ -70,6 +71,7 @@ export function autoEncode(type: ChartType, result: QueryResult | null, current?
   if (type === 'histogram' || type === 'boxplot') { enc.y = numeric[0] ?? enc.y; if (type === 'histogram') enc.x = ''; }
   if (type === 'gauge' || type === 'progress') { enc.y = numeric[0] ?? enc.y; enc.x = ''; }
   if (type === 'sankey' || type === 'sunburst') enc.color = other[1] ?? all.find((c) => c !== x && c !== y);
+  if (type === 'reconcile') enc.ys = ys.slice(0, 3);
   if (type === 'timebreak') enc.color = all.find((c) => /date|day|time|month|period/i.test(c)) ?? other[1];
   if (type === 'ranked' || type === 'quadrant') enc.color = ys[1];   // second number = the previous period
   if (type === 'pivot') enc.color = other[1] ?? all.find((c) => c !== x && c !== y);

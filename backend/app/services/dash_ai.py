@@ -19,7 +19,7 @@ from .chart_suggest import encode, suggest_chart
 from .dash_place import anchor_y, grid_positions, make_room
 from .engine import engine
 
-CHART_TYPES = ["kpi", "bar", "line", "area", "pie", "scatter", "table", "pivot", "funnel", "treemap", "radar", "composed", "waterfall", "ranked", "quadrant", "timebreak"]
+CHART_TYPES = ["kpi", "bar", "line", "area", "pie", "scatter", "table", "pivot", "funnel", "treemap", "radar", "composed", "waterfall", "ranked", "quadrant", "timebreak", "reconcile"]
 WIDE = {"line", "area", "table", "pivot", "composed", "timebreak"}
 MAX_WIDGETS = 10
 
@@ -28,7 +28,7 @@ _WIDGET_FORMAT = ('{"title": string, "type": one of ' + "|".join(CHART_TYPES) + 
 _SQL_RULES = (
     "Use ONLY the listed tables and columns. kpi = exactly one row with one numeric column. line/area = first column the "
     "time (or ordered category), then the measures. bar/pie/funnel/treemap = a category column then one measure; pivot = row field, column field, then EVERY measure the user asked for as separate columns (viewers switch between them) "
-    "(ORDER BY the measure DESC LIMIT 15). ranked/quadrant = a category, the CURRENT period value, then the PREVIOUS period value (ranked = top N vs previous with growth %; quadrant = Stars/Rising/Watch/Laggards groups). waterfall = a step label then a signed change. timebreak = item, a DATE column (day or month grain, not truncated to year), the measure, then optional text detail columns (category, tier); it shows years that open into months and days. Give every column a short alias. Never write anything but SELECT.")
+    "(ORDER BY the measure DESC LIMIT 15). ranked/quadrant = a category, the CURRENT period value, then the PREVIOUS period value (ranked = top N vs previous with growth %; quadrant = Stars/Rising/Watch/Laggards groups). waterfall = a step label then a signed change. timebreak = item, a DATE column (day or month grain, not truncated to year), the measure, then optional text detail columns (category, tier); it shows years that open into months and days. reconcile = a key then 2-3 numeric columns of the SAME quantity from different sources (one row per key, FULL OUTER JOIN / UNION + GROUP BY) to show match rate and differences. Give every column a short alias. Never write anything but SELECT.")
 
 CREATE_SYSTEM = (
     "You are a BI designer inside a DuckDB analytics app. Design a dashboard of 4 to 8 widgets that answers the user's "
