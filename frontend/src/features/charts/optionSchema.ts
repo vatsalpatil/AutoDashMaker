@@ -161,6 +161,7 @@ export const TABS: Tab[] = [
         sw('pivotHeatmap', 'Heatmap shading', { for: ['pivot', 'timebreak'] }),
         numf('tolerance', 'Count as a match within ±', { for: ['reconcile'], placeholder: '0' }),
         colf('growthColumn', 'Colour by growth vs column', { for: ['treemap'] }),
+        colf('tbSplit', 'Split columns by', { for: ['timebreak'] }),
         sel('tbOpen', 'Start with', [['year', 'Years'], ['month', 'Months of every year']], { for: ['timebreak'] }),
         sel('tbPageSize', 'Rows per page', [['20', '20'], ['50', '50'], ['100', '100'], ['200', '200']], { for: ['timebreak'] }),
       ] },

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { buildBreakdown, cellValue, dateParts, footerValue, timeColumns } from '../src/features/charts/timeBreakdown.ts';
+import { buildBreakdown, cellValue, dateParts, footerValue, splitKey, timeColumns } from '../src/features/charts/timeBreakdown.ts';
 
 const sum = (v: number[]) => v.reduce((a, b) => a + b, 0);
 const rows = [
@@ -34,4 +34,18 @@ test('cells, totals and the footer', () => {
   assert.equal(cellValue(a, '2026-02', sum), null);       // no sales that month: a dash, not 0
   assert.equal(footerValue(tb.rows, '2026', sum), 12);
   assert.equal(footerValue(tb.rows, '__total', sum), 17);
+});
+
+test('split by a second column files each value under its group too', () => {
+  const tb = buildBreakdown([
+    { sku: 'A', d: '2026-01-05', qty: 3, portal: 'Amazon' },
+    { sku: 'A', d: '2026-01-06', qty: 2, portal: 'Myntra' },
+    { sku: 'A', d: '2025-03-01', qty: 4, portal: 'Amazon' },
+  ], 'sku', 'd', 'qty', [], 'portal');
+  const a = tb.rows[0];
+  assert.deepEqual(tb.splits, ['Amazon', 'Myntra']);
+  assert.equal(cellValue(a, splitKey('Amazon', '2026'), sum), 3);
+  assert.equal(cellValue(a, splitKey('Amazon', '__total'), sum), 7);
+  assert.equal(cellValue(a, splitKey('Myntra', '2025'), sum), null);
+  assert.equal(cellValue(a, '__total', sum), 9);
 });

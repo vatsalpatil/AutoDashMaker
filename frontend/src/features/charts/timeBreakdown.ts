@@ -6,7 +6,10 @@
 export type Level = 'year' | 'month' | 'day';
 export interface TimeCol { key: string; label: string; level: Level; year: string; month?: string; expandable: boolean; expanded?: boolean }
 export interface TBRow { id: string; attrs: Record<string, unknown>; cells: Map<string, number[]>; all: number[] }
-export interface TimeBreakdown { rows: TBRow[]; years: string[]; monthsOf: Map<string, string[]>; daysOf: Map<string, string[]> }
+export interface TimeBreakdown { rows: TBRow[]; years: string[]; monthsOf: Map<string, string[]>; daysOf: Map<string, string[]>; splits: string[] }
+
+/** Cell key of a period inside one split group (e.g. portal 'Amazon' × '2026'). */
+export const splitKey = (split: string, key: string) => `${split}§${key}`;
 
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const num = (v: unknown) => { const n = typeof v === 'number' ? v : Number(v); return Number.isFinite(n) ? n : null; };
@@ -25,11 +28,12 @@ const push = (map: Map<string, number[]>, k: string, v: number) => { const a = m
 const addSorted = (m: Map<string, string[]>, k: string, v: string) => { const a = m.get(k) ?? []; if (!a.includes(v)) { a.push(v); a.sort(); } m.set(k, a); };
 
 /** Group query rows by item; every value is filed under its year, month and day bucket. Attribute columns keep the first value. */
-export function buildBreakdown(rows: Record<string, unknown>[], item: string, date: string, measure: string, attrs: string[]): TimeBreakdown {
+export function buildBreakdown(rows: Record<string, unknown>[], item: string, date: string, measure: string, attrs: string[], split = ''): TimeBreakdown {
   const byId = new Map<string, TBRow>();
   const years: string[] = [];
   const monthsOf = new Map<string, string[]>();
   const daysOf = new Map<string, string[]>();
+  const splits: string[] = [];
   for (const r of rows) {
     const id = String(r[item] ?? '');
     let row = byId.get(id);
@@ -40,11 +44,17 @@ export function buildBreakdown(rows: Record<string, unknown>[], item: string, da
     const [y, m, d] = parts;
     push(row.cells, y, v); push(row.cells, m, v); push(row.cells, d, v);
     row.all.push(v);
+    if (split) {   // the same value also filed under its split group
+      const sv = String(r[split] ?? '(blank)');
+      if (!splits.includes(sv)) splits.push(sv);
+      for (const k of [y, m, d, '__total']) push(row.cells, splitKey(sv, k), v);
+    }
     if (!years.includes(y)) years.push(y);
     addSorted(monthsOf, y, m); addSorted(daysOf, m, d);
   }
   years.sort();
-  return { rows: [...byId.values()], years, monthsOf, daysOf };
+  splits.sort();
+  return { rows: [...byId.values()], years, monthsOf, daysOf, splits };
 }
 
 /** The visible period columns for the current expansion state (a set of expanded year / month keys). */
@@ -65,7 +75,7 @@ export function timeColumns(tb: TimeBreakdown, open: Set<string>): TimeCol[] {
 
 /** One cell: the item's values in that period, aggregated; null = no data (shown as a dash). */
 export const cellValue = (row: TBRow, key: string, agg: (v: number[]) => number): number | null => {
-  const vals = key === '__total' ? row.all : row.cells.get(key);
+  const vals = key === '__total' ? row.all : row.cells.get(key);   // split totals live in cells as `split§__total`
   return vals && vals.length ? agg(vals) : null;
 };
 
