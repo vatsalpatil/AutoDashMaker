@@ -46,12 +46,24 @@ def create_dashboard(body: DashboardIn):
     return store.insert("dashboards", body.model_dump())
 
 
+class DataIn(BaseModel):
+    params: dict[str, Any] = {}     # values for {{name|default}} placeholders in the widgets' SQL
+
+
+@router.get("/{dashboard_id}/params")
+def dashboard_params(dashboard_id: str):
+    """Controls to show above the dashboard (period switch, thresholds...), from the placeholders its queries use."""
+    if not store.get("dashboards", dashboard_id):
+        raise HTTPException(404, "dashboard not found")
+    return dash_data.param_controls(dashboard_id)
+
+
 @router.post("/{dashboard_id}/data")
-def dashboard_data(dashboard_id: str, fresh: bool = False):
+def dashboard_data(dashboard_id: str, fresh: bool = False, body: DataIn | None = None):
     """Every chart widget's chart (spec) and data in ONE request (see services/dash_data.bundle)."""
     if not store.get("dashboards", dashboard_id):
         raise HTTPException(404, "dashboard not found")
-    return dash_data.bundle(dashboard_id, fresh)
+    return dash_data.bundle(dashboard_id, fresh, (body.params if body else None))
 
 
 @router.get("/{dashboard_id}")

@@ -60,6 +60,17 @@ try:
     with tenant.use("ws_alice"):
         store.update("dashboard_shares", s2["id"], {"expires_at": "2000-01-01 00:00:00"})
     assert c.get(f"/api/public/shares/{s2['token']}").status_code == 404
+    # dashboard parameters: a threshold placeholder becomes a number control and filters every widget's data
+    with tenant.use("ws_alice"):
+        q2 = store.insert("queries", {"name": "q2", "sql": "SELECT region, SUM(qty) AS qty FROM sales WHERE qty >= {{min_qty|0}} GROUP BY 1"})
+    ch2 = c.post("/api/charts", headers=A, json={"name": "Qty2", "query_id": q2["id"], "spec": {"type": "bar"}}).json()
+    c.post(f"/api/dashboards/{d['id']}/widgets", headers=A, json={"chart_id": ch2["id"]})
+    ctl = c.get(f"/api/dashboards/{d['id']}/params", headers=A).json()
+    assert ctl == [{"name": "min_qty", "default": "0", "kind": "number", "label": "Min qty"}], ctl
+    rows = lambda body: c.post(f"/api/dashboards/{d['id']}/data", headers=A, json=body).json()[ch2["id"]]["data"]["rows"]  # noqa: E731
+    assert len(rows({})) == 2 and [r["region"] for r in rows({"params": {"min_qty": 4}})] == ["South"]
+    bad = c.post(f"/api/dashboards/{d['id']}/data", headers=A, json={"params": {"min_qty": "0; DROP TABLE x"}}).json()[ch2["id"]]
+    assert "error" in bad and "unsafe" in bad["error"], bad
     print("PASS test_shares")
 finally:
     shutil.rmtree(TMP, ignore_errors=True)

@@ -158,11 +158,12 @@ class QueryEngine:
                 self._cache_rows -= dropped["row_count"]
 
     # -- execution --------------------------------------------------------
-    def execute(self, sql: str, row_limit: int | None = None, fresh: bool = False) -> dict[str, Any]:
-        """`fresh=True` skips the result cache (the user pressed Refresh); the new result still refreshes the cache."""
+    def execute(self, sql: str, row_limit: int | None = None, fresh: bool = False, params: dict[str, Any] | None = None) -> dict[str, Any]:
+        """`fresh=True` skips the result cache (the user pressed Refresh); the new result still refreshes the cache.
+        `params` fill `{{name|default}}` placeholders (services/sql_params) before validation."""
         limit = row_limit or settings.default_row_limit
-        from . import names
-        safe_sql = validate_readonly(names.resolve(sql), limit)
+        from . import names, sql_params
+        safe_sql = validate_readonly(names.resolve(sql_params.render(sql, params)), limit)
         cached = None if fresh else self._cache_get(safe_sql)
         if cached is not None:
             return {**cached, "cached": True, "duration_ms": 0.0}

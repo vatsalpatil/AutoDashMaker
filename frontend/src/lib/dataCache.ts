@@ -41,11 +41,12 @@ export function loadChart(chartId: string, fresh = false): Promise<Entry> {
 }
 
 /** Every chart of a dashboard in one request. `key` makes a repeated call (every widget asks) share the first one. */
-export function ensureBundle(dashboardId: string, key: string, fresh = false): Promise<void> {
+export function ensureBundle(dashboardId: string, key: string, fresh = false, params: Record<string, string> = {}, suffix = ''): Promise<void> {
   let p = bundles.get(key);
   if (!p) {
-    p = api.post<Bundle>(`/dashboards/${dashboardId}/data${fresh ? '?fresh=true' : ''}`)
-      .then((b) => { for (const [id, r] of Object.entries(b)) if (r.chart && r.data) put(id, r.chart, r.data); })
+    // `suffix` keeps results for non-default parameter values apart from the defaults (chart id + suffix)
+    p = api.post<Bundle>(`/dashboards/${dashboardId}/data${fresh ? '?fresh=true' : ''}`, { params })
+      .then((b) => { for (const [id, r] of Object.entries(b)) if (r.chart && r.data) put(id + suffix, r.chart, r.data); })
       .catch(() => { /* each widget falls back to its own request */ })
       .finally(() => { setTimeout(() => bundles.delete(key), 5000); });   // remembered briefly so late widgets still share it
     bundles.set(key, p);

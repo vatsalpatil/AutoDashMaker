@@ -6,6 +6,7 @@ from pydantic import BaseModel
 
 from ..core.config import settings
 from ..core.security import UnsafeQueryError, validate_readonly
+from ..services import sql_params
 from ..core.store import store
 from ..services import audit
 from ..services.compose import compose_cell_sql, compose_sql, format_sql
@@ -39,7 +40,9 @@ def update_query(query_id: str, body: QueryPatch):
         patch["name"] = body.name.strip() or q["name"]
     if body.sql is not None:
         try:
-            validate_readonly(body.sql, settings.default_row_limit)
+            validate_readonly(sql_params.render(body.sql), settings.default_row_limit)   # placeholders checked with their defaults
+        except sql_params.ParamError as e:
+            raise HTTPException(400, str(e))
         except UnsafeQueryError as e:
             audit.record("query.update", entity_type="query", entity_id=query_id, detail=body.sql, status="blocked")
             raise HTTPException(400, f"unsafe query: {e}")

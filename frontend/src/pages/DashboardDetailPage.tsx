@@ -10,6 +10,7 @@ import { DashboardIdContext, RefreshContext, useDashboardRefresh } from '@/featu
 import { DashboardAiPanel } from '@/features/dashboards/DashboardAiPanel';
 import { DashboardToolbar } from '@/features/dashboards/DashboardToolbar';
 import { FilterViews } from '@/features/dashboards/FilterViews';
+import { DashboardParamsBar, DashboardParamsContext, useDashboardParamState } from '@/features/dashboards/params/DashboardParams';
 import { FullscreenModal } from '@/features/dashboards/FullscreenModal';
 import { BriefCard, LineageCard } from '@/features/dashboards/InsightPanels';
 import { PrintDialog } from '@/features/dashboards/PrintDialog';
@@ -29,6 +30,7 @@ export default function DashboardDetailPage() {
   const d = useDashboardPage(id);
   const df = useDashboardFilterState();
   const refresh = useDashboardRefresh();
+  const params = useDashboardParamState(id ?? '');
   const groups = useWidgetGroups(d.widgets);
   const nav = useNavigate();
   const [aiOpen, setAiOpen] = useState(false);
@@ -40,6 +42,7 @@ export default function DashboardDetailPage() {
 
   return (
     <DashboardIdContext.Provider value={d.dashboard.id}>
+    <DashboardParamsContext.Provider value={params.ctx}>
     <RefreshContext.Provider value={refresh.tick}>
     <DashboardFilterProvider api={df.api}>
     <div className="flex flex-col gap-4">
@@ -66,6 +69,7 @@ export default function DashboardDetailPage() {
       />
       <ErrorBanner message={d.error} />
       {df.bar && <div className="flex flex-wrap items-center gap-2">{df.bar}</div>}
+      <DashboardParamsBar state={params} />
       <FilterViews dashboardId={d.dashboard.id} query={df.query} active={df.active} onApply={df.setQuery} />
 
       <PageTabs
@@ -117,6 +121,7 @@ export default function DashboardDetailPage() {
     </div>
     </DashboardFilterProvider>
     </RefreshContext.Provider>
+    </DashboardParamsContext.Provider>
     </DashboardIdContext.Provider>
   );
 }

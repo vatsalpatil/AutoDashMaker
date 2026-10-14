@@ -9,7 +9,7 @@ Status: ✅ built · 🔶 partly · ⬜ not yet. Keep this file current when a p
 | Subject tabs | One page per subject (Overview, Sales, Products, Geography, Shipping, Warehouse, Tax, Data Quality, Operations, Executive, Raw data) | ✅ dashboard pages |
 | Dimension tabs with one shared layout | Same KPI strip + time breakdown + top 10 + rate chart + detail table for Portal / Company / Brand / Category / SKU / Account | ✅ template `report_center` |
 | Global filter bar | Date from/to, many dimension selects, Apply + Reset, shown above every tab | 🔶 dashboard filters exist; no Apply/Reset batch or date-range preset |
-| Period switch | Day / Week / Month changes every widget's "current vs previous" | ⬜ |
+| Period switch | Day / Week / Month changes every widget's "current vs previous" | ✅ SQL params: `DATE_TRUNC('{{period|month}}', d)` → switch above the dashboard |
 | Data-source switch | Same page over source A or B (e.g. two sales feeds) | ⬜ (dashboard-level dataset swap) |
 | "As of" line | Shows the data's latest date + source | ⬜ (freshness exists per dataset) |
 
@@ -36,12 +36,14 @@ Status: ✅ built · 🔶 partly · ⬜ not yet. Keep this file current when a p
 | Operations lists (restock candidates, stockout signals) | rule queries | ✅ AI template `operations` |
 | Geography (top states/cities/postcodes, routes from→to, high-refund routes) | place, value / from, to, value | ✅ bar, sankey |
 | Forecast table (avg weekly last 12 weeks × horizon 30/60/90, confidence) | group, week, qty | 🔶 forecast.ts on charts; ⬜ grouped forecast table |
-| Threshold lists ("return rate ≥ X%, min sold ≥ N") | item, rate, sold | ⬜ viewer-editable parameters |
+| Threshold lists ("return rate ≥ X%, min sold ≥ N") | item, rate, sold | ✅ SQL params: `WHERE rate >= {{min_rate|30}}` → number box |
 
 ## Table features seen everywhere
 Aggregate footer picker (Σ μ median min max range count σ) ✅ · CSV export ✅ · rows-per-page ✅ · per-column filter ✅ (DataGrid) ·
 show/hide columns ✅ · sort ✅ · compare 2-3 tables side by side ⬜ · split columns by a 2nd dimension ⬜ (timebreak) · fullscreen ✅ widget.
 
 ## Build order (value ÷ effort)
-DONE 1-3 (reconcile, ratio+pareto, operations template). NEXT: 4. dashboard period switch (Day/Week/Month) ·
-5. treemap growth colouring · 6. threshold parameters · 7. timebreak split-by + side-by-side compare.
+DONE 1-4, 6 (reconcile, ratio+pareto, operations template, SQL parameters = period switch + thresholds). NEXT: 5. treemap growth colouring · 7. timebreak split-by + side-by-side compare.
+
+## SQL parameters (how they work)
+`{{name|default}}` in any saved SQL (services/sql_params.py): rendered inside engine.execute before validate_readonly; values must be a number or a plain word/date (no quotes/;/comments). Dashboards: GET /dashboards/{id}/params builds controls (period/grain names or day..year defaults -> switch; numeric default -> number box; else text). POST /dashboards/{id}/data {params}. Frontend: features/dashboards/params/DashboardParams.tsx; non-default values cache under chartId|key. Charts/notebook/studio run with defaults. TODO: AI generator does not write placeholders yet (dash_* code paths call validate_readonly on raw SQL: render first before enabling); public share page uses defaults.
