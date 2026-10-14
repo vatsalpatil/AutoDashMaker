@@ -22,6 +22,7 @@ import { SankeyView } from './SankeyView';
 import { ScatterView } from './ScatterView';
 import { Sunburst } from './Sunburst';
 import { Waterfall } from './Waterfall';
+import { PerformanceGroups, RankedBars } from './Comparison';
 
 const BACKGROUND: Record<string, string> = {
   none: '',
@@ -88,6 +89,8 @@ function ChartViewBase({ spec, result, height = 320, options, onPick, plain = fa
   else if (spec.type === 'progress') body = <ProgressBar spec={spec} result={result} o={o} />;
   else if (spec.type === 'sankey') body = <SankeyView spec={spec} result={result} o={o} height={h} />;
   else if (spec.type === 'sunburst') body = <Sunburst spec={spec} result={result} o={o} height={h} />;
+  else if (spec.type === 'ranked') body = <RankedBars spec={spec} result={result} o={o} />;
+  else if (spec.type === 'quadrant') body = <PerformanceGroups spec={spec} result={result} o={o} />;
   else if (spec.type === 'scatter') body = <ScatterView spec={spec} result={result} o={o} height={h} />;
   else if (!prep || prep.rows.length === 0) body = <p className="p-6 text-center text-sm text-muted-foreground">No data to plot.</p>;
   else if (family === 'part') body = <PartToWhole spec={spec} prep={prep} o={o} height={h} onPick={pick} />;

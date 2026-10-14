@@ -26,7 +26,9 @@ export function KpiCard({ spec, result, o, height }: { spec: ChartSpec; result: 
   const rows = result.rows;
   const last = rows[rows.length - 1];
   const value = last ? (last[y] ?? last[x]) : null;
-  const prev = rows.length > 1 ? toNumber(rows[rows.length - 2][y]) : null;
+  // previous value: a column of the same row (e.g. day_before) when chosen, else the row before
+  const prevCol = opt.str(o.previousColumn, '');
+  const prev = prevCol && last && last[prevCol] != null ? toNumber(last[prevCol]) : rows.length > 1 ? toNumber(rows[rows.length - 2][y]) : null;
   const delta = prev !== null && prev !== 0 ? (toNumber(value) - prev) / Math.abs(prev) : null;
   const good = delta === null ? true : (delta >= 0) === (opt.str(o.deltaGood, 'up') === 'up');
   const align = ALIGN[opt.str(o.kpiAlign, 'center') as keyof typeof ALIGN] ?? ALIGN.center;
@@ -65,8 +67,11 @@ export function KpiCard({ spec, result, o, height }: { spec: ChartSpec; result: 
       {o.showDelta === true && delta !== null && (
         <span className={`inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-xs font-medium ${good ? 'bg-success/15 text-success' : 'bg-destructive/15 text-destructive'}`}>
           {delta >= 0 ? <ArrowUpRight className="size-3.5" /> : <ArrowDownRight className="size-3.5" />}
-          {Math.abs(delta * 100).toFixed(1)}% vs previous
+          {Math.abs(delta * 100).toFixed(1)}% vs {opt.str(o.previousLabel, 'previous')}
         </span>
+      )}
+      {o.showPrevious === true && prev !== null && (
+        <span className="text-xs text-muted-foreground">{formatValue(prev, o)} in {opt.str(o.previousLabel, 'previous')}</span>
       )}
       {spark && (
         <ChartContainer config={{ v: { color: color ?? 'var(--primary)' } }} className="pointer-events-none absolute inset-x-0 bottom-0 aspect-auto h-1/3 opacity-60">

@@ -1,4 +1,5 @@
 import { fmt } from '@/lib/utils';
+import { indian } from './comparison';
 
 export type Opts = Record<string, unknown>;
 
@@ -23,6 +24,7 @@ export function formatValue(value: unknown, o: Opts = {}): string {
     case 'compact': out = new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: decimals ?? 1 }).format(n); break;
     case 'percent': out = new Intl.NumberFormat('en-US', { style: 'percent', maximumFractionDigits: decimals ?? 1, ...frac }).format(n); break;
     case 'currency': out = new Intl.NumberFormat('en-US', { style: 'currency', currency: str(o.currency, 'USD'), maximumFractionDigits: decimals ?? 0, ...frac }).format(n); break;
+    case 'indian': out = indian(n, decimals); break;
     case 'decimal': out = new Intl.NumberFormat('en-US', { ...frac }).format(n); break;
     default: out = decimals === undefined ? fmt(value) : new Intl.NumberFormat('en-US', frac).format(n);
   }

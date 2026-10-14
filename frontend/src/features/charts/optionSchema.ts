@@ -39,7 +39,7 @@ const txt = (key: string, label: string, f: Partial<Field> = {}): Field => ({ ke
 const numf = (key: string, label: string, f: Partial<Field> = {}): Field => ({ key, label, kind: 'number', ...f });
 const col = (key: string, label: string, f: Partial<Field> = {}): Field => ({ key, label, kind: 'color', ...f });
 
-const NUMBER_FORMATS: [string, string][] = [['auto', 'Auto'], ['compact', 'Compact (1.2K)'], ['decimal', 'Decimal (1,234.5)'], ['currency', 'Currency'], ['percent', 'Percent']];
+const NUMBER_FORMATS: [string, string][] = [['auto', 'Auto'], ['compact', 'Compact (1.2K)'], ['decimal', 'Decimal (1,234.5)'], ['currency', 'Currency'], ['indian', 'Indian (₹ L / Cr)'], ['percent', 'Percent']];
 
 export const TABS: Tab[] = [
   {
@@ -137,6 +137,9 @@ export const TABS: Tab[] = [
         txt('valueRules', 'Colour rules: <50:#dc2626; >=50:#16a34a', { for: ['kpi'], placeholder: '<50:#dc2626; >=80:#16a34a' }),
         sel('kpiAlign', 'Alignment', [['left', 'Left'], ['center', 'Centre'], ['right', 'Right']], { for: ['kpi'] }),
         sw('showDelta', 'Change vs previous row', { for: ['kpi'] }),
+        sw('showPrevious', 'Show previous value', { for: ['kpi'] }),
+        txt('previousColumn', 'Previous value column (same row)', { for: ['kpi'], placeholder: 'else the row before' }),
+        txt('previousLabel', 'Previous period name', { for: ['kpi'], placeholder: 'previous (e.g. day before)' }),
         sel('deltaGood', 'Increase is…', [['up', 'Good'], ['down', 'Bad']], { for: ['kpi'], when: (o) => o.showDelta === true }),
         sw('showSparkline', 'Sparkline', { for: ['kpi'] }),
         sel('percentOf', 'Show a percentage', [['none', 'No'], ['column', 'Of another column in the result'], ['fixed', 'Of a fixed target']], { for: ['kpi'] }),

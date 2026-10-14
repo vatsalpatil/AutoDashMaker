@@ -36,6 +36,8 @@ export const TEMPLATES: ChartTemplate[] = [
   t('Relate', 'radar', 'Radar', 'radar', 'Profile of several measures across categories.', { fillOpacity: 0.25, dots: true }),
   t('Distribution', 'histogram', 'Histogram', 'histogram', 'How often values fall in each bucket.', { barRadius: 2 }),
   t('Distribution', 'boxplot', 'Box plot', 'boxplot', 'Median, quartiles, outliers per group.', { whisker: 'iqr', boxPoints: 'outliers', showMean: true }),
+  t('Compare', 'ranked', 'Top N vs previous', 'ranked', 'Ranked bars with a marker at the previous period and growth %.', { numberFormat: 'indian' }),
+  t('Compare', 'quadrant', 'Performance groups', 'quadrant', 'Stars / Rising / Watch / Laggards from share and growth.', { numberFormat: 'indian' }),
   t('Flow', 'waterfall', 'Waterfall', 'waterfall', 'Running total moved up and down by each step.', { showTotal: true, showDataLabels: true }),
   t('Flow', 'sankey', 'Sankey', 'sankey', 'Flow from a source to a target (needs source, target and count).', { edgeColor: 'source' }),
   t('Share', 'sunburst', 'Sunburst', 'sunburst', 'Two rings: a category and its sub-categories.', { pieLabels: 'name' }),
@@ -67,6 +69,7 @@ export function autoEncode(type: ChartType, result: QueryResult | null, current?
   if (type === 'histogram' || type === 'boxplot') { enc.y = numeric[0] ?? enc.y; if (type === 'histogram') enc.x = ''; }
   if (type === 'gauge' || type === 'progress') { enc.y = numeric[0] ?? enc.y; enc.x = ''; }
   if (type === 'sankey' || type === 'sunburst') enc.color = other[1] ?? all.find((c) => c !== x && c !== y);
+  if (type === 'ranked' || type === 'quadrant') enc.color = ys[1];   // second number = the previous period
   if (type === 'pivot') enc.color = other[1] ?? all.find((c) => c !== x && c !== y);
   return enc;
 }
