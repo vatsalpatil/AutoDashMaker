@@ -54,8 +54,10 @@ def resolve(sql: str) -> str:
         ctes = {c.alias.lower() for c in tree.find_all(exp.CTE) if c.alias}
 
         def swap(node):
-            if isinstance(node, exp.Table) and not node.args.get("db") and not node.args.get("catalog"):
-                key = node.name.lower()
+            if isinstance(node, exp.Table) and not node.args.get("catalog"):
+                db = node.args.get("db")
+                # a dataset named like `test.Chocolate_Sales` parses as schema.table: match the whole dotted name
+                key = f"{db.name}.{node.name}".lower() if db else node.name.lower()
                 if key in names and key not in ctes:
                     new = exp.to_table(names[key])
                     new.set("alias", node.args.get("alias") or exp.TableAlias(this=exp.to_identifier(node.name)))

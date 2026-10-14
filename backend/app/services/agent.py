@@ -16,6 +16,7 @@ from ..core.security import UnsafeQueryError
 from ..core.store import store
 from . import ai as ai_svc
 from .dash_ai import json_objects
+from . import names
 from .engine import engine
 
 MAX_STEPS = 8
@@ -46,13 +47,9 @@ Rules:
 - The final answer is for a human: say what you found in plain words (numbers included), then mention the query used. No JSON in the answer."""
 
 
-_IDENT = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
-
-
 def _label(d: dict) -> str:
-    """The name the model should write in SQL: the dataset's own name when it is a plain identifier, else its physical table
-    (a name like `test.Chocolate_Sales` reads as schema.table and fails, which cost the agent two wasted steps)."""
-    return d["name"] if _IDENT.fullmatch(d["name"]) or not d.get("physical_name") else d["physical_name"]
+    """The name the model should write in SQL (names.label: the dataset's own name when SQL resolves it, else its physical table)."""
+    return names.label(d)
 
 
 def _shown(d: dict) -> str:
