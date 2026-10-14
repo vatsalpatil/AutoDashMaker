@@ -46,9 +46,19 @@ Rules:
 - The final answer is for a human: say what you found in plain words (numbers included), then mention the query used. No JSON in the answer."""
 
 
+_IDENT = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
+
+
 def _label(d: dict) -> str:
-    """The name to show / query: the dataset's own name when unique (SQL accepts it), else its physical table."""
-    return d["name"]
+    """The name the model should write in SQL: the dataset's own name when it is a plain identifier, else its physical table
+    (a name like `test.Chocolate_Sales` reads as schema.table and fails, which cost the agent two wasted steps)."""
+    return d["name"] if _IDENT.fullmatch(d["name"]) or not d.get("physical_name") else d["physical_name"]
+
+
+def _shown(d: dict) -> str:
+    """How a table is listed to the model: the queryable name, plus the user's name when it differs."""
+    q = _label(d)
+    return q if q == d["name"] else f'{q} (the user calls it "{d["name"]}")'
 
 
 _WORD = re.compile(r"[a-z0-9]+")
@@ -74,7 +84,7 @@ def context(active_sql: str, error: str | None, cells: list[dict], mode: str, ta
     for d in ds:
         c = cols.get(d["id"], [])
         if d["id"] in full:
-            lines.append(f"- {_label(d)} [{d.get('row_count', '?')} rows]: {', '.join(c[:30])}{' …' if len(c) > 30 else ''}")
+            lines.append(f"- {_shown(d)} [{d.get('row_count', '?')} rows]: {', '.join(c[:30])}{' …' if len(c) > 30 else ''}")
         else:
             rest.append(_label(d))
     text = "Tables:\n" + "\n".join(lines)[:6000]
@@ -120,7 +130,7 @@ def _tool(tool: str, args: dict[str, Any], mode: str) -> tuple[bool, str, dict[s
     try:
         if tool == "list_tables":
             ds = [d for d in store.list("datasets", order=None) if d.get("physical_name")]
-            return True, "\n".join(f"- {_label(d)} ({d.get('row_count', '?')} rows)" for d in ds), {}
+            return True, "\n".join(f"- {_shown(d)} ({d.get('row_count', '?')} rows)" for d in ds), {}
         if tool == "describe_table":
             d = _table(args.get("table", ""))
             if not d:
