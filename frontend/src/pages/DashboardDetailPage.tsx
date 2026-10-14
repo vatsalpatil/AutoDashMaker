@@ -16,6 +16,7 @@ import { PrintDialog } from '@/features/dashboards/PrintDialog';
 import { PrintSheet } from '@/features/dashboards/PrintSheet';
 import type { PrintOptions } from '@/features/dashboards/printLayout';
 import { PageTabs } from '@/features/dashboards/PageTabs';
+import { ShareDialog } from '@/features/dashboards/share/ShareDialog';
 import { PresentMode } from '@/features/dashboards/PresentMode';
 import { useDashboardPage } from '@/features/dashboards/useDashboardPage';
 import { WidgetGrid } from '@/features/dashboards/WidgetGrid';
@@ -32,6 +33,7 @@ export default function DashboardDetailPage() {
   const nav = useNavigate();
   const [aiOpen, setAiOpen] = useState(false);
   const [printOpen, setPrintOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const [printing, setPrinting] = useState<PrintOptions | null>(null);
   const donePrinting = useCallback(() => setPrinting(null), []);
   if (!d.dashboard) return d.error ? <ErrorBanner message={d.error} /> : <Loading />;
@@ -57,6 +59,7 @@ export default function DashboardDetailPage() {
             onAdd={() => d.setPickerOpen(true)}
             onAi={() => setAiOpen(true)}
             refresh={refresh.control}
+            onShare={() => setShareOpen(true)}
             onDuplicate={async () => { const nid = await d.duplicate(); if (nid) nav(`/dashboards/${nid}`); }}
           />
         }
@@ -102,6 +105,7 @@ export default function DashboardDetailPage() {
         />
       )}
       {d.presenting && <PresentMode dashboard={d.dashboard} pages={d.pages} onClose={() => d.setPresenting(false)} />}
+      <ShareDialog dashboardId={d.dashboard.id} open={shareOpen} onClose={() => setShareOpen(false)} />
       <PrintDialog open={printOpen} pageCount={d.pages.length} onClose={() => setPrintOpen(false)} onPrint={(o) => { setPrintOpen(false); setPrinting(o); }} />
       {printing && <PrintSheet dashboard={d.dashboard} pages={d.pages} options={printing} onDone={donePrinting} />}
       <DashboardAiPanel open={aiOpen} dashboardId={d.dashboard.id} activePage={d.activePage} onClose={() => setAiOpen(false)} onChanged={(page) => { d.load(); if (page) d.setActivePage(page); }} />

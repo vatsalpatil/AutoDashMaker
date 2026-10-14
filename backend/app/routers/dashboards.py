@@ -1,13 +1,11 @@
 """Dashboards: collections of chart widgets with positions + lineage."""
-import contextvars
-from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from ..core.store import store
-from ..services.engine import engine
+from ..services import dash_data
 from ..services.lineage import dashboard_lineage
 from ..services.brief import dashboard_brief
 
@@ -50,49 +48,17 @@ def create_dashboard(body: DashboardIn):
 
 @router.post("/{dashboard_id}/data")
 def dashboard_data(dashboard_id: str, fresh: bool = False):
-    """Every chart widget's chart (spec) and data in ONE request. The queries run concurrently on the server, identical queries
-    run once, and the page makes one round trip instead of two per widget."""
+    """Every chart widget's chart (spec) and data in ONE request (see services/dash_data.bundle)."""
     if not store.get("dashboards", dashboard_id):
         raise HTTPException(404, "dashboard not found")
-    ids = list(dict.fromkeys(w["chart_id"] for w in store.list("dashboard_widgets", where="dashboard_id = ?", params=[dashboard_id], order=None) if w.get("chart_id")))
-
-    def one(chart_id: str) -> dict[str, Any]:
-        try:
-            chart = store.get("charts", chart_id)
-            query = store.get("queries", chart["query_id"]) if chart and chart.get("query_id") else None
-            if not chart or not query:
-                return {"error": "chart or its query no longer exists"}
-            return {"chart": chart, "data": engine.execute(query["sql"], fresh=fresh)}
-        except Exception as e:   # one broken widget must not blank the dashboard
-            return {"error": str(e)[:300]}
-
-    with ThreadPoolExecutor(max_workers=min(6, max(len(ids), 1))) as pool:
-        futures = {cid: pool.submit(contextvars.copy_context().run, one, cid) for cid in ids}
-        return {cid: f.result() for cid, f in futures.items()}
-
-
-def _adopt_orphans(d: dict[str, Any]) -> None:
-    """Self-healing: a widget on a page the dashboard does not have is invisible (no tab shows it) and leaves a hole where it used to be.
-    An older "Edit with AI" saved its new / updated widgets on a page called `main` even when the dashboard's pages were overview,
-    breakdown, ... Such widgets move to the first real page; they keep their position, so they fill the gap they were meant for."""
-    pages = [p["id"] for p in (d.get("pages") or []) if isinstance(p, dict) and p.get("id")]
-    if not pages:
-        return
-    for w in d["widgets"]:
-        if (w.get("page") or "main") not in pages:
-            store.update("dashboard_widgets", w["id"], {"page": pages[0]})
-            w["page"] = pages[0]
+    return dash_data.bundle(dashboard_id, fresh)
 
 
 @router.get("/{dashboard_id}")
 def get_dashboard(dashboard_id: str):
-    d = store.get("dashboards", dashboard_id)
+    d = dash_data.load(dashboard_id)
     if not d:
         raise HTTPException(404, "dashboard not found")
-    d["widgets"] = store.list("dashboard_widgets",
-                              where="dashboard_id = ?", params=[dashboard_id],
-                              order="created_at ASC")
-    _adopt_orphans(d)
     return d
 
 

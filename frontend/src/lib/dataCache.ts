@@ -53,6 +53,11 @@ export function ensureBundle(dashboardId: string, key: string, fresh = false): P
   return p;
 }
 
+/** Fill the cache from an already-fetched bundle and keep it fresh for good (public share pages cannot re-ask the signed-in API). */
+export function prime(bundle: Bundle): void {
+  for (const [id, r] of Object.entries(bundle)) if (r.chart && r.data) entries.set(id, { chart: r.chart, data: r.data, at: Number.POSITIVE_INFINITY });
+}
+
 /** Forget everything (tests, sign-out). */
 export function clearDataCache(): void { entries.clear(); flights.clear(); bundles.clear(); }
 

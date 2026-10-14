@@ -135,6 +135,13 @@ CREATE TABLE IF NOT EXISTS relationships (
     source TEXT DEFAULT 'manual',    -- manual | suggested
     created_at TIMESTAMP
 );
+CREATE TABLE IF NOT EXISTS dashboard_shares (
+    id TEXT PRIMARY KEY, workspace_id TEXT, dashboard_id TEXT,
+    token TEXT UNIQUE,          -- secret part of the public link
+    expires_at TIMESTAMP,       -- NULL = never
+    revoked BOOLEAN DEFAULT FALSE, views INTEGER DEFAULT 0, last_viewed_at TIMESTAMP,
+    created_by TEXT, created_at TIMESTAMP, updated_at TIMESTAMP
+);
 CREATE TABLE IF NOT EXISTS audit_log (
     id TEXT PRIMARY KEY, workspace_id TEXT, actor TEXT,
     action TEXT,        -- query.run | ai.ask | dataset.ingest | dataset.delete | source.create | ...

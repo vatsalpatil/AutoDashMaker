@@ -39,3 +39,6 @@ Format: `D<n> · date · decision — why (rejected alternatives)`. Dates for D1
 
 ## AI determinism + token budget (2026-10-14)
 All provider calls use `TEMPERATURE = 0` (services/ai.py): analytics answers must be repeatable. Agent tunables live at the top of services/agent.py (STEP_TOKENS, TIME_BUDGET, FULL_TABLES, KEEP_OBS); relevance ranking is word-overlap, deterministic, so the prompt is stable across runs.
+
+## Public dashboard share links (2026-10-14)
+Token = `secrets.token_urlsafe(24)` in `dashboard_shares`; public endpoints `/api/public/shares/{token}` (+ `/data`) set the owner's workspace from the share row and only run that dashboard's saved chart queries; chart objects are stripped to id/name/spec/description (no query_id/SQL). The frontend renders `/s/<token>` outside AuthProvider (main.tsx) and primes dataCache so widgets never call the signed-in API.

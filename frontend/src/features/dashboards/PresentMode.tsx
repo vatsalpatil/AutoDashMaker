@@ -1,33 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
-import { useMeasure } from '@/hooks/useMeasure';
-import type { Dashboard, Widget } from '@/lib/types';
-import { ContentCard, isContent } from './ContentCards';
-import { useWidgetData } from './useWidgetData';
-import { WidgetBody } from './WidgetBody';
-
-function PresentSlide({ widget }: { widget: Widget }) {
-  const [bodyRef, bodySize] = useMeasure();
-  const { chart } = useWidgetData(widget.chart_id);
-  const s = widget.settings ?? {};
-  const titleOverride = typeof s.title === 'string' && s.title.trim() !== '' ? s.title : null;
-  if (widget.kind === 'section') {
-    return (
-      <div className="col-span-full flex items-center rounded-lg bg-slate-800 px-4">
-        <span className="truncate text-lg font-bold uppercase tracking-wide text-slate-100">{widget.title ?? 'Section'}</span>
-      </div>
-    );
-  }
-  if (isContent(widget)) return <ContentCard widget={widget} editing={false} onRemove={() => undefined} onEdit={() => undefined} />;
-  return (
-    <div className="flex h-full flex-col overflow-hidden rounded-lg border border-slate-700 bg-card p-3">
-      <span className="mb-1 truncate text-sm font-semibold">{titleOverride ?? chart?.name ?? ''}</span>
-      <div ref={bodyRef} className="min-h-0 flex-1 overflow-hidden">
-        <WidgetBody widget={widget} height={bodySize.h} view="chart" fit />
-      </div>
-    </div>
-  );
-}
+import type { Dashboard } from '@/lib/types';
+import { SavedLayout } from './SavedLayout';
 
 export function PresentMode({
   dashboard,
@@ -79,12 +53,6 @@ export function PresentMode({
 
   const page = pages[Math.min(pageIdx, count - 1)];
   const pageWidgets = (dashboard.widgets ?? []).filter((w) => (w.page ?? 'main') === page.id && !w.settings?.parked);
-  // the saved layout, scaled so the whole page fits the screen: every widget sits at its own column and row
-  const [gridRef, gridSize] = useMeasure();
-  const totalRows = Math.max(1, ...pageWidgets.map((w) => w.position.y + Math.max(w.position.h, 1)));
-  // same proportions as the dashboard (92 px rows at ~1500 px wide), scaled to the screen width; long pages scroll
-  const rowUnit = gridSize.w > 0 ? Math.min(140, Math.max(80, 92 * (gridSize.w / 1500))) : 92;
-
   return (
     <div ref={overlayRef} className="fixed inset-0 z-[100] flex flex-col bg-slate-950 p-6">
       <div className="mb-4 flex items-center justify-between">
@@ -114,28 +82,7 @@ export function PresentMode({
           </button>
         </div>
       </div>
-      <div ref={gridRef} className="min-h-0 flex-1 overflow-auto">
-      {/* exact saved positions (they can be fractional with fine snapping), widths as % of the screen, rows scaled to fit */}
-      <div className="relative" style={{ height: totalRows * rowUnit }}>
-        {pageWidgets.map((w) => (
-          <div
-            key={w.id}
-            className="absolute min-h-0 min-w-0 p-1.5"
-            style={{
-              left: `${(Math.max(w.position.x, 0) / 12) * 100}%`,
-              width: `${(Math.min(Math.max(w.position.w, 0.5), 12 - Math.max(w.position.x, 0)) / 12) * 100}%`,
-              top: w.position.y * rowUnit,
-              height: Math.max(w.position.h, 0.5) * rowUnit,
-            }}
-          >
-            <PresentSlide widget={w} />
-          </div>
-        ))}
-        {pageWidgets.length === 0 && (
-          <div className="flex h-full items-center justify-center text-sm text-muted-foreground/70">No widgets on this page.</div>
-        )}
-      </div>
-      </div>
+      <SavedLayout widgets={pageWidgets} />
       {count > 1 && (
         <div className="mt-4 flex justify-center gap-2">
           {pages.map((p, i) => (

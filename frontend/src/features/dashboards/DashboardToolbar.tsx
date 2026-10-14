@@ -1,8 +1,8 @@
-import { Copy, FileText, LayoutGrid, Pencil, Play, Plus, Printer, Sparkles } from 'lucide-react';
+import { Copy, FileText, Link2, LayoutGrid, Pencil, Play, Plus, Printer, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/kit';
 
 /** Actions in the dashboard header. Toggle buttons turn primary while their panel is open. */
-export function DashboardToolbar({ editing, onToggleEdit, showBrief, briefBusy, onBrief, showLineage, onLineage, onPresent, onPrint, onAdd, onAi, onDuplicate, refresh }: {
+export function DashboardToolbar({ editing, onToggleEdit, showBrief, briefBusy, onBrief, showLineage, onLineage, onPresent, onPrint, onAdd, onAi, onDuplicate, onShare, refresh }: {
   editing: boolean;
   onToggleEdit: () => void;
   showBrief: boolean;
@@ -15,6 +15,7 @@ export function DashboardToolbar({ editing, onToggleEdit, showBrief, briefBusy, 
   onAdd: () => void;
   onAi: () => void;
   onDuplicate: () => void;
+  onShare: () => void;
   refresh: React.ReactNode;
 }) {
   return (
@@ -25,6 +26,7 @@ export function DashboardToolbar({ editing, onToggleEdit, showBrief, briefBusy, 
       {refresh}
       <Button variant="secondary" icon={<Copy className="h-4 w-4" />} label="Duplicate" onClick={onDuplicate} />
       <Button variant="secondary" icon={<Printer className="h-4 w-4" />} label="Print / PDF" onClick={onPrint} />
+      <Button variant="secondary" icon={<Link2 className="h-4 w-4" />} label="Share" onClick={onShare} />
       <Button variant="secondary" icon={<Play className="h-4 w-4" />} label="Present" onClick={onPresent} />
       <Button variant="secondary" icon={<Sparkles className="h-4 w-4 text-primary" />} label="Edit with AI" onClick={onAi} />
       <Button variant="primary" icon={<Plus className="h-4 w-4" />} label="Add widget" onClick={onAdd} />
