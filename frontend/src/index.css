@@ -288,3 +288,6 @@ div.pointer-events-auto.touch-none > .bg-border:hover, div.pointer-events-auto.t
 .react-grid-item.react-grid-placeholder { background: var(--primary); opacity: .15; border-radius: .75rem; }
 .react-grid-item > .react-resizable-handle { opacity: 0; transition: opacity 150ms; }
 .react-grid-item:hover > .react-resizable-handle { opacity: 1; }
+/* the library's handle is a dark dotted image + dark corner, invisible on dark cards: use the theme foreground (white in dark, black in light) */
+.react-grid-item > .react-resizable-handle { background-image: none; }
+.react-grid-item > .react-resizable-handle::after { border-color: var(--foreground) !important; opacity: .85; width: 7px; height: 7px; border-right-width: 2px; border-bottom-width: 2px; }
