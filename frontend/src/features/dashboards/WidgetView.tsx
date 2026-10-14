@@ -73,7 +73,7 @@ export function WidgetView({
           )}
           <span className={`truncate font-semibold ${titleCls}`}>{titleOverride ?? chart?.name ?? `Chart #${widget.chart_id}`}</span>
         </div>
-        <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+        <div className="hidden shrink-0 items-center gap-1 group-hover:flex group-focus-within:flex">
           {editing && (
             <button onClick={onSettings} className="text-muted-foreground/70 hover:text-blue-500" aria-label="Widget settings" title="Widget settings">
               <Settings2 className="h-4 w-4" />
