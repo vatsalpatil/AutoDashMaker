@@ -63,6 +63,8 @@ export interface Dashboard {
   description?: string;
   widgets?: Widget[];
   pages?: DashboardPage[];
+  /** Pinned filters (labelled dropdowns with a scope), set by the dashboard owner. */
+  filters?: import('@/features/dashboards/filters/pinnedModel').PinnedFilter[];
   created_at?: string;
 }
 

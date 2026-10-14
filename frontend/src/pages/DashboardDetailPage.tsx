@@ -10,6 +10,7 @@ import { DashboardIdContext, RefreshContext, useDashboardRefresh } from '@/featu
 import { DashboardAiPanel } from '@/features/dashboards/DashboardAiPanel';
 import { DashboardToolbar } from '@/features/dashboards/DashboardToolbar';
 import { FilterViews } from '@/features/dashboards/FilterViews';
+import { DashboardFilterArea } from '@/features/dashboards/filters/DashboardFilterArea';
 import { DashboardParamsBar, DashboardParamsContext, useDashboardParamState } from '@/features/dashboards/params/DashboardParams';
 import { FullscreenModal } from '@/features/dashboards/FullscreenModal';
 import { BriefCard, LineageCard } from '@/features/dashboards/InsightPanels';
@@ -28,7 +29,7 @@ import { DashboardFilterProvider, useDashboardFilterState } from '@/features/das
 export default function DashboardDetailPage() {
   const { id } = useParams();
   const d = useDashboardPage(id);
-  const df = useDashboardFilterState(d.activePage, d.pages.find((p) => p.id === d.activePage)?.name);
+  const df = useDashboardFilterState(d.activePage, d.pages.find((p) => p.id === d.activePage)?.name, d.dashboard?.filters ?? []);
   const refresh = useDashboardRefresh();
   const params = useDashboardParamState(id ?? '');
   const groups = useWidgetGroups(d.widgets);
@@ -68,7 +69,7 @@ export default function DashboardDetailPage() {
         }
       />
       <ErrorBanner message={d.error} />
-      {df.bar && <div className="flex flex-wrap items-center gap-2">{df.bar}</div>}
+      <DashboardFilterArea df={df} dashboard={d.dashboard} pages={d.pages} activePage={d.activePage} onSaved={d.load} />
       <DashboardParamsBar state={params} />
       <FilterViews dashboardId={d.dashboard.id} state={df.state} active={df.active} onApply={df.setState} />
 

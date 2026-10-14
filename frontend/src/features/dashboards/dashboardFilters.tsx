@@ -5,10 +5,12 @@ import { createFilterQuery, createFilterRule, isFilterQueryEmpty } from '@/compo
 import type { FilterField, FilterQuery } from '@/components/reui/filters/filters-types';
 import { Globe, PanelTop } from 'lucide-react';
 import type { QueryResult } from '@/lib/types';
+import { inScope, rowPasses, type PinnedFilter, type PinnedValues } from './filters/pinnedModel';
 
 const MAX_OPTIONS = 30;
 
-interface ColumnInfo { values: Set<string>; many: boolean }
+/** What the widgets showed for a column: up to MAX_OPTIONS values, plus every distinct year-month for date columns. */
+export interface ColumnInfo { values: Set<string>; many: boolean; months: Set<string> }
 export interface DashboardFilterApi {
   /** Narrow a widget's rows by the dashboard filters (only filters on columns the widget has apply). */
   apply: (result: QueryResult) => QueryResult;
@@ -43,7 +45,11 @@ const narrow = (result: QueryResult, query: FilterQuery): QueryResult => {
  * Dashboard filters in two scopes, "All tabs" and "This tab" (ReUI Filters). They apply to every widget having the
  * column; columns come from the widgets' own data, so the menus only offer what the dashboard can actually filter.
  */
-export function useDashboardFilterState(activePage = 'main', pageName = 'this tab') {
+export function useDashboardFilterState(activePage = 'main', pageName = 'this tab', pinned: PinnedFilter[] = []) {
+  // pinned filters: viewers change a draft, Apply makes it the applied set (one recompute, like a report's Apply button)
+  const [draft, setDraft] = useState<PinnedValues>({});
+  const [applied, setApplied] = useState<PinnedValues>({});
+  const scoped = useMemo(() => inScope(pinned, activePage), [pinned, activePage]);
   const [state, setState] = useState<ScopedFilters>(emptyFilters);
   const [columns, setColumns] = useState<Record<string, ColumnInfo>>({});
   const pageQuery = state.pages[activePage] ?? createFilterQuery([]);
@@ -55,22 +61,28 @@ export function useDashboardFilterState(activePage = 'main', pageName = 'this ta
       let changed = false;
       const next = { ...prev };
       for (const c of result.columns) {
-        const info = next[c] ?? { values: new Set<string>(), many: false };
-        const before = info.values.size;
+        const info = next[c] ?? { values: new Set<string>(), many: false, months: new Set<string>() };
+        const before = info.values.size + info.months.size;
         for (const r of result.rows) {
           if (info.values.size > MAX_OPTIONS) break;
           const v = r[c];
           if (v !== null && v !== undefined && v !== '') info.values.add(String(v));
         }
+        for (const r of result.rows) { const v = String(r[c] ?? ''); if (/^\d{4}-\d{2}/.test(v)) info.months.add(v.slice(0, 7)); else break; }
         const many = info.values.size > MAX_OPTIONS;
-        if (!next[c] || info.values.size !== before || many !== info.many) { next[c] = { values: info.values, many }; changed = true; }
+        if (!next[c] || info.values.size + info.months.size !== before || many !== info.many) { next[c] = { values: info.values, many, months: info.months }; changed = true; }
       }
       return changed ? next : prev;
     });
   }, []);
 
   // the widgets on screen all belong to the active tab: all-tabs filters first, then this tab's
-  const apply = useCallback((result: QueryResult): QueryResult => narrow(narrow(result, state.global), pageQuery), [state.global, pageQuery]);
+  const apply = useCallback((result: QueryResult): QueryResult => {
+    const base = narrow(narrow(result, state.global), pageQuery);
+    if (!Object.values(applied).some(Boolean) || !scoped.length) return base;
+    const rows = base.rows.filter((r) => rowPasses(r as Record<string, unknown>, scoped, applied));
+    return { ...base, rows, row_count: rows.length };
+  }, [state.global, pageQuery, applied, scoped]);
 
   /** Cross-filter (click a bar / slice): filters THIS tab only; clicking the same value again clears it. */
   const pick = useCallback((field: string, value: string) => setPage((() => {
@@ -105,5 +117,6 @@ export function useDashboardFilterState(activePage = 'main', pageName = 'this ta
     </div>
   ) : null;
   const active = !isFilterQueryEmpty(state.global) || Object.values(state.pages).some((q) => !isFilterQueryEmpty(q));
-  return { api, bar, active, state, setState };
+  const pinnedState = { filters: scoped, columns, draft, setDraft, applied, apply: () => setApplied(draft), reset: () => { setDraft({}); setApplied({}); } };
+  return { api, bar, active, state, setState, pinned: pinnedState };
 }

@@ -157,7 +157,7 @@ class Store:
         JSON_COLS = {
             "config", "sample_values", "spec", "layout", "pages", "position",
             "settings", "details", "state", "filters", "metric_refs", "layers",
-            "history", "metric_refs"
+            "history", "metric_refs", "filters"
         }
         out = {}
         for k, v in row.items():

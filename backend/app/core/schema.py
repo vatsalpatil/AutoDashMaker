@@ -171,6 +171,7 @@ MIGRATIONS = [
       for t in ("columns_meta", "dashboard_widgets", "quality_runs", "ai_providers", "alert_runs", "report_runs")],
     "DELETE FROM ai_providers WHERE provider = 'ollama'",  # self-hosted option removed 2026-10-13: drop leftover rows
     "ALTER TABLE dashboards ADD COLUMN ai_undo TEXT",
+    "ALTER TABLE dashboards ADD COLUMN filters TEXT",  # JSON [{id, field, label, kind: select|year|month, scope: all|<page id>}]
     # AI usage limits per connected provider: your own caps (NULL = automatic), the latest rate-limit headers, and a pause after a 429
     "ALTER TABLE ai_providers ADD COLUMN limit_rpd INTEGER",
     "ALTER TABLE ai_providers ADD COLUMN limit_rpm INTEGER",

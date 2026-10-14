@@ -17,6 +17,7 @@ class DashboardIn(BaseModel):
     name: str
     description: str = ""
     pages: list[dict[str, str]] | None = None  # [{"id": "main", "name": "Overview"}]
+    filters: list[dict[str, str]] | None = None  # pinned filters: [{id, field, label, kind, scope}]
 
 
 class LayoutIn(BaseModel):

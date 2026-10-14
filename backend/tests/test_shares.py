@@ -73,6 +73,10 @@ try:
     assert len(rows({})) == 2 and [r["region"] for r in rows({"params": {"min_qty": 4}})] == ["South"]
     bad = c.post(f"/api/dashboards/{d['id']}/data", headers=A, json={"params": {"min_qty": "0; DROP TABLE x"}}).json()[ch2["id"]]
     assert "error" in bad and "unsafe" in bad["error"], bad
+    # pinned filters are stored on the dashboard and come back as a list
+    pf = [{"id": "f1", "field": "region", "label": "Region", "kind": "select", "scope": "all"}]
+    assert c.patch(f"/api/dashboards/{d['id']}", headers=A, json={"name": "Sales", "filters": pf}).status_code == 200
+    assert c.get(f"/api/dashboards/{d['id']}", headers=A).json()["filters"] == pf
     print("PASS test_shares")
 finally:
     shutil.rmtree(TMP, ignore_errors=True)
