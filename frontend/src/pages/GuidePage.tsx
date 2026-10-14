@@ -1,5 +1,8 @@
 import { useState } from 'react';
 import { SECTIONS, type SectionId } from '@/features/guide/guideContent';
+import { AiAssistantSection } from '@/features/guide/sections/AiAssistantSection';
+import { DataPrivacySection } from '@/features/guide/sections/DataPrivacySection';
+import { SharingSection } from '@/features/guide/sections/SharingSection';
 import { ConceptsSection } from '@/features/guide/sections/ConceptsSection';
 import { FaqSection } from '@/features/guide/sections/FaqSection';
 import { FlowsSection } from '@/features/guide/sections/FlowsSection';
@@ -51,6 +54,9 @@ export default function GuidePage() {
         {active === 'concepts' && <ConceptsSection />}
         {active === 'flows' && <FlowsSection />}
         {active === 'walkthroughs' && <WalkthroughsSection />}
+        {active === 'ai' && <AiAssistantSection />}
+        {active === 'sharing' && <SharingSection />}
+        {active === 'privacy' && <DataPrivacySection />}
         {active === 'tips' && <TipsSection />}
         {active === 'faq' && <FaqSection />}
       </div>

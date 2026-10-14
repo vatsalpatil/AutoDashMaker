@@ -96,3 +96,6 @@ Never add `caddy` to `nixPkgs` when the app has a Caddyfile: Nixpacks adds it it
 - react-grid-layout with compactType=null: on resize, compact() resolves overlaps top-down, so the RESIZED widget gets pushed below its neighbours. Fix = mutate the layout in `onResize` (it runs before compaction) to move neighbours first — see `features/dashboards/resizePush.ts`.
 
 - Widget positions are fractional (fine snap stores x/y/w/h in 12-col units with decimals). Any renderer outside react-grid-layout (Present, Print) must not use an integer 12-col CSS grid — use % / px or a finer grid.
+
+## Encrypted secret columns (2026-10-14)
+`ai_providers.api_key` and `datasources.config` are stored as `enc:v1:...` (core/secrets_box.py). Raw SQL (`store.execute`) reads still decrypt via `_row`, but NEVER filter/LIKE on these columns in SQL. Losing `backend/data/secret.key` (or changing DATA_ENCRYPTION_KEY) makes them read as empty: back the key up WITH the metadata DB. New secret column → add it to SECRET_COLUMNS.

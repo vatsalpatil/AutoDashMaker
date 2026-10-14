@@ -16,6 +16,7 @@ from typing import Any
 import duckdb
 
 from . import duck, tenant
+from .secrets_box import SECRET_COLUMNS, open_, seal
 from .config import settings
 
 from .schema import MIGRATIONS, SCHEMA
@@ -55,6 +56,10 @@ class Store:
                 "SELECT table_name FROM information_schema.columns WHERE column_name = 'workspace_id'").fetchall()]
             for t in tables:
                 con.execute(f"UPDATE {t} SET workspace_id = '{DEFAULT_WS}' WHERE workspace_id IS NULL")
+            # secrets saved before encryption at rest: encrypt them in place (idempotent)
+            for t, c in SECRET_COLUMNS:
+                for rid, val in con.execute(f"SELECT id, {c} FROM {t} WHERE {c} IS NOT NULL AND {c} <> '' AND {c} NOT LIKE 'enc:v1:%'").fetchall():
+                    con.execute(f"UPDATE {t} SET {c} = ? WHERE id = ?", [seal(t, c, val), rid])
 
     def version(self, table: str) -> int:
         return self._versions.get(table, 0)
@@ -75,7 +80,7 @@ class Store:
                 pass
         cols = ", ".join(row.keys())
         ph = ", ".join(["?"] * len(row))
-        vals = [self._ser(v) for v in row.values()]
+        vals = [seal(table, k, self._ser(v)) for k, v in row.items()]
         with self._lock, self._conn() as con:
             try:
                 con.execute(f"INSERT INTO {table} ({cols}) VALUES ({ph})", vals)
@@ -85,7 +90,7 @@ class Store:
                 row = {k: v for k, v in row.items() if k in cols_info}
                 cols = ", ".join(row.keys())
                 ph = ", ".join(["?"] * len(row))
-                vals = [self._ser(v) for v in row.values()]
+                vals = [seal(table, k, self._ser(v)) for k, v in row.items()]
                 con.execute(f"INSERT INTO {table} ({cols}) VALUES ({ph})", vals)
         self._bump(table)
         return row
@@ -117,7 +122,7 @@ class Store:
             return
         sets = ", ".join(f"{k} = ?" for k in patch)
         where, params = self._scoped("id = ?", [row_id])
-        vals = [self._ser(v) for v in patch.values()] + params
+        vals = [seal(table, k, self._ser(v)) for k, v in patch.items()] + params
         with self._lock, self._conn() as con:
             con.execute(f"UPDATE {table} SET {sets} WHERE {where}", vals)
         self._bump(table)
@@ -156,6 +161,7 @@ class Store:
         }
         out = {}
         for k, v in row.items():
+            v = open_(v)   # encrypted secret columns come back as plain values
             if k in JSON_COLS and isinstance(v, str) and v[:1] in ("{", "["):
                 try:
                     v = json.loads(v)
