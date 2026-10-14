@@ -277,3 +277,4 @@ Format: `YYYY-MM-DD · tool · files · what + why`
 - 2026-10-14 · frontend/nixpacks.toml (caddy in setup nixPkgs, npm/vite cache dirs, npm ci --prefer-offline), frontend/Caddyfile -> caddy.conf · one nixpkgs download per frontend build instead of two (the second one hung deploys).
 - 2026-10-14 · backend/nixpacks.toml (setup = python312 only, pip --prefer-binary, pip cache dir) · drops postgresql_16.dev + gcc from every backend build.
 - 2026-10-15 · NEW frontend/Dockerfile + .dockerignore, backend/Dockerfile + .dockerignore · builds no longer need nixpkgs downloads from GitHub (server could not fetch them).
+- 2026-10-15 · routers/queries.py run+save keeps the original SQL when it has {{placeholders}} (was saving the rendered SQL = parameter frozen), test_shares now saves via /api/queries/run · found while preparing the live test.

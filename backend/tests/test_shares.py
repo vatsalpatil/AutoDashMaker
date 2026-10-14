@@ -61,8 +61,10 @@ try:
         store.update("dashboard_shares", s2["id"], {"expires_at": "2000-01-01 00:00:00"})
     assert c.get(f"/api/public/shares/{s2['token']}").status_code == 404
     # dashboard parameters: a threshold placeholder becomes a number control and filters every widget's data
-    with tenant.use("ws_alice"):
-        q2 = store.insert("queries", {"name": "q2", "sql": "SELECT region, SUM(qty) AS qty FROM sales WHERE qty >= {{min_qty|0}} GROUP BY 1"})
+    # saved through the same /run endpoint the studio uses: the placeholder must survive saving
+    q2 = c.post("/api/queries/run", headers=A, json={"sql": "SELECT region, SUM(qty) AS qty FROM sales WHERE qty >= {{min_qty|0}} GROUP BY 1", "name": "q2", "save": True}).json()
+    q2["id"] = q2["query_id"]
+    assert "{{min_qty|0}}" in c.get(f"/api/queries/{q2['id']}", headers=A).json()["sql"]
     ch2 = c.post("/api/charts", headers=A, json={"name": "Qty2", "query_id": q2["id"], "spec": {"type": "bar"}}).json()
     c.post(f"/api/dashboards/{d['id']}/widgets", headers=A, json={"chart_id": ch2["id"]})
     ctl = c.get(f"/api/dashboards/{d['id']}/params", headers=A).json()

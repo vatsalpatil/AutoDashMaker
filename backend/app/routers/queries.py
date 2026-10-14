@@ -125,7 +125,8 @@ def run_query(body: QueryIn):
     if body.save:
         q = store.insert("queries", {
             "dataset_id": body.dataset_id, "name": body.name,
-            "sql": result["sql"], "status": "ok",
+            # keep {{name|default}} placeholders: saving the rendered SQL would freeze the parameter at its default
+            "sql": body.sql.strip().rstrip(";").strip() if "{{" in body.sql else result["sql"], "status": "ok",
             "row_count": result["row_count"], "duration_ms": result["duration_ms"],
         })
         result["query_id"] = q["id"]
