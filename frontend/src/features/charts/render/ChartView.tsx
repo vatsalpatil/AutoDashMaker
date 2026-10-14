@@ -22,6 +22,7 @@ import { SankeyView } from './SankeyView';
 import { ScatterView } from './ScatterView';
 import { Sunburst } from './Sunburst';
 import { Waterfall } from './Waterfall';
+import { TimeBreakdownTable } from './TimeBreakdownTable';
 import { PerformanceGroups, RankedBars } from './Comparison';
 
 const BACKGROUND: Record<string, string> = {
@@ -80,7 +81,8 @@ function ChartViewBase({ spec, result, height = 320, options, onPick, plain = fa
     ) : (
       <div style={{ height: Math.max(h, 160) }}><DataGrid columns={result.columns} rows={result.rows as Record<string, unknown>[]} bare expandable fill totals /></div>
     );
-  } else if (spec.type === 'pivot') body = <PivotTable spec={spec} result={result} o={o} />;
+  } else if (spec.type === 'timebreak') body = <div style={{ height: Math.max(h, 220) }}><TimeBreakdownTable spec={spec} result={result} o={o} /></div>;
+  else if (spec.type === 'pivot') body = <PivotTable spec={spec} result={result} o={o} />;
   else if (spec.type === 'kpi') body = <KpiCard spec={spec} result={result} o={o} height={h} />;
   else if (spec.type === 'waterfall') body = <Waterfall spec={spec} result={result} o={o} height={h} />;
   else if (spec.type === 'histogram') body = <Histogram spec={spec} result={result} o={o} height={h} />;

@@ -1,5 +1,5 @@
 import {
-  AreaChart, BarChart3, Funnel, Gauge, LayoutGrid, Layers, LineChart, PieChart, Radar, ScatterChart, Table2, Grid3x3, ChartColumn, ChartNoAxesColumn, ChartCandlestick, Target, Workflow, Sun, Waves, ListOrdered, Grid2x2,
+  AreaChart, BarChart3, Funnel, Gauge, LayoutGrid, Layers, LineChart, PieChart, Radar, ScatterChart, Table2, Grid3x3, ChartColumn, ChartNoAxesColumn, ChartCandlestick, Target, Workflow, Sun, Waves, ListOrdered, Grid2x2, CalendarRange,
   type LucideIcon,
 } from 'lucide-react';
 import type { ChartType } from '@/lib/types';
@@ -7,7 +7,7 @@ import type { ChartType } from '@/lib/types';
 export type Family = 'cartesian' | 'part' | 'radar' | 'kpi' | 'table' | 'pivot' | 'special';
 
 /** Drawn by their own component from the raw result (no shared X/series preparation). */
-const CUSTOM = new Set<string>(['histogram', 'waterfall', 'boxplot', 'gauge', 'progress', 'sankey', 'sunburst', 'ranked', 'quadrant']);
+const CUSTOM = new Set<string>(['histogram', 'waterfall', 'boxplot', 'gauge', 'progress', 'sankey', 'sunburst', 'ranked', 'quadrant', 'timebreak']);
 export const isCustom = (t: string) => CUSTOM.has(t);
 
 export interface ChartKind {
@@ -42,6 +42,7 @@ export const KINDS: ChartKind[] = [
   { id: 'sunburst', label: 'Sunburst', icon: Sun, family: 'special', roles: { x: 'Inner ring', y: 'Value', color: 'Outer ring' }, multiMeasure: false },
   { id: 'ranked', label: 'Ranked list', icon: ListOrdered, family: 'special', roles: { x: 'Items', y: 'Current value', color: 'Previous value (to compare)' }, multiMeasure: false },
   { id: 'quadrant', label: 'Performance groups', icon: Grid2x2, family: 'special', roles: { x: 'Items', y: 'Current value', color: 'Previous value (to compare)' }, multiMeasure: false },
+  { id: 'timebreak', label: 'Time breakdown', icon: CalendarRange, family: 'table', roles: { x: 'Rows (item)', y: 'Measure', color: 'Columns: time (date)' }, multiMeasure: false },
   { id: 'table', label: 'Table', icon: Table2, family: 'table', roles: { x: '', y: '', color: null }, multiMeasure: false },
   { id: 'pivot', label: 'Pivot table', icon: Grid3x3, family: 'pivot', roles: { x: 'Rows', y: 'Values', color: 'Columns' }, multiMeasure: false },
 ];

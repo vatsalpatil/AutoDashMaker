@@ -49,3 +49,13 @@ Token = `secrets.token_urlsafe(24)` in `dashboard_shares`; public endpoints `/ap
 - `services/dashboards/` (dash_* + dash_data, shares) · `services/qb/` (qb, qb_*) · `services/data/` (engine, ingest, columnar, quality, lineage, transforms, remote, refresh*)
 - `services/account/` (account_delete, contact_change, password_reset, signup, verification, gotrue, delivery, email_templates)
 Rules: new code goes straight into the package; tests that monkeypatch `module.attr` must patch the NEW module path.
+
+## Dashboard element patterns (2026-10-14, learned from ERP sales/report dashboards; build generic types, never copy)
+Each pattern = query shape + a generic chart type + an AI rule (dash_ai.py `_SQL_RULES`) + a template (dash_templates.py):
+- Period comparison (`ranked`, `quadrant`; data: item, current, previous). Growth = (cur-prev)/|prev|. Quadrant: big = share >= 1/n, fast = growth >= overall growth -> Stars/Watch/Rising/Laggards. Pure logic: features/charts/comparison.ts.
+- Drivers of change = `waterfall` of per-item deltas (top N + Others). KPI with previous value = kpi options showPrevious/previousColumn/previousLabel.
+- Time breakdown (`timebreak`; data: item, date at day/month grain, measure, optional text attrs): year columns open into months then days, grouped header, Total column + footer, metric/calculation pickers, search, sort, pages. Pure logic: features/charts/timeBreakdown.ts.
+- Report center = one page per dimension with the same strip (template `report_center`); daily comparison = template `sales_compare` (latest date in data, never the clock).
+- Indian money format `numberFormat: 'indian'` (₹ L / Cr).
+Adding a new pattern: pure model (+node test) -> render component -> chartKinds/ChartView/templates/viz type -> dash_ai CHART_TYPES + rule -> chart_suggest.encode.
+TODO from the reference: dashboard-wide Day/Week/Month switch, 2-3 tables side by side (compare), split-by column groups, per-column filters + column show/hide in timebreak, treemap coloured by growth, forecast by group with confidence, threshold parameters (return rate >= X%).

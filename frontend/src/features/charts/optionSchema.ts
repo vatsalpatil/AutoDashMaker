@@ -150,8 +150,8 @@ export const TABS: Tab[] = [
         sw('percentMain', 'Show the percentage as the main number', { for: ['kpi'], when: (o) => o.percentOf === 'column' || o.percentOf === 'fixed' }),
       ] },
       { id: 'table', label: 'Table', fields: [
-        sel('tableFontSize', 'Text size', [['xs', 'Small'], ['sm', 'Medium'], ['md', 'Large']], { for: ['table', 'pivot'] }),
-        sel('tableDensity', 'Density', [['compact', 'Compact'], ['comfortable', 'Comfortable']], { for: ['table', 'pivot'] }),
+        sel('tableFontSize', 'Text size', [['xs', 'Small'], ['sm', 'Medium'], ['md', 'Large']], { for: ['table', 'pivot', 'timebreak'] }),
+        sel('tableDensity', 'Density', [['compact', 'Compact'], ['comfortable', 'Comfortable']], { for: ['table', 'pivot', 'timebreak'] }),
         sw('tableStriped', 'Striped rows', { for: ['table', 'pivot'] }),
         sel('pivotAgg', 'Aggregate values by', [['sum', 'Sum'], ['avg', 'Average'], ['count', 'Count'], ['min', 'Min'], ['max', 'Max']], { for: ['pivot'] }),
         sw('pivotRowTotals', 'Row totals', { for: ['pivot'] }),

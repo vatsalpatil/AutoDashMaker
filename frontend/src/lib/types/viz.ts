@@ -5,7 +5,7 @@ import type { QualityRun } from './governance';
 export type ChartType =
   | 'bar' | 'line' | 'area' | 'composed' | 'scatter' | 'pie' | 'radar' | 'funnel' | 'treemap'
   | 'kpi' | 'table' | 'pivot'
-  | 'histogram' | 'waterfall' | 'boxplot' | 'gauge' | 'progress' | 'sankey' | 'sunburst' | 'ranked' | 'quadrant';
+  | 'histogram' | 'waterfall' | 'boxplot' | 'gauge' | 'progress' | 'sankey' | 'sunburst' | 'ranked' | 'quadrant' | 'timebreak';
 
 /** Which columns feed the chart. `y` is the first measure (kept for older charts); `ys` lists all measures. */
 export interface ChartEncoding {
