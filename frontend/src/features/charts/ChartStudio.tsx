@@ -1,4 +1,4 @@
-import { useDeferredValue, useState } from 'react';
+import { useDeferredValue, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, LayoutTemplate, Loader2, Save } from 'lucide-react';
 import { Button, Card, TextInput } from '@/components/ui/kit';
@@ -10,11 +10,13 @@ import { OptionsPanel } from './panels/OptionsPanel';
 import { TemplateGallery } from './panels/TemplateGallery';
 import { ChartView } from './render/ChartView';
 import { useChartDraft } from './useChartDraft';
+import { api } from '@/lib/api';
+import type { ChartType, Dashboard } from '@/lib/types';
 
 type Pane = 'data' | 'preview' | 'style';
 
 /** Full chart editor: data mapping on the left, live preview in the middle, every style option on the right. */
-export function ChartStudio({ id }: { id?: string }) {
+export function ChartStudio({ id, startType, target }: { id?: string; startType?: ChartType; target?: { dashboard: string; page: string } }) {
   const nav = useNavigate();
   const d = useChartDraft(id);
   const [gallery, setGallery] = useState(false);
@@ -24,11 +26,20 @@ export function ChartStudio({ id }: { id?: string }) {
   const spec = useDeferredValue(d.spec);
   const previewHeight = useDeferredValue(height);
 
+  // opened from a dashboard's "Add widget": start with the chosen element type
+  useEffect(() => { if (!id && startType && !d.loading) d.setType(startType); }, [d.loading]);  // eslint-disable-line react-hooks/exhaustive-deps
+
   if (d.loading) return <Loading />;
 
   const onSave = async () => {
     const saved = await d.save();
-    if (saved && !id) nav(`/charts/${saved}`, { replace: true });
+    if (saved && !id && target) {   // place it below everything on that dashboard page, then go back there
+      const dash = await api.get<Dashboard>(`/dashboards/${target.dashboard}`);
+      const y = (dash.widgets ?? []).filter((w) => (w.page ?? 'main') === target.page).reduce((m, w) => Math.max(m, w.position.y + w.position.h), 0);
+      const wide = ['timebreak', 'table', 'pivot', 'line', 'area', 'composed'].includes(d.spec.type);
+      await api.post(`/dashboards/${target.dashboard}/widgets`, { chart_id: saved, page: target.page, position: { x: 0, y, w: wide ? 12 : 6, h: d.spec.type === 'timebreak' ? 7 : d.spec.type === 'kpi' ? 2 : 4 } });
+      nav(`/dashboards/${target.dashboard}`);
+    } else if (saved && !id) nav(`/charts/${saved}`, { replace: true });
   };
   const col = (p: Pane) => (pane === p ? 'flex' : 'hidden xl:flex');
   const ready = d.result && d.spec.encoding.x !== undefined && (d.spec.type === 'table' || d.spec.encoding.y || d.spec.type === 'kpi');
@@ -42,7 +53,7 @@ export function ChartStudio({ id }: { id?: string }) {
         <div className="ml-auto flex items-center gap-2">
           <Button variant="outline" size="sm" icon={<LayoutTemplate className="size-4" />} label="Templates" onClick={() => setGallery(true)} />
           <Button variant="primary" size="sm" isDisabled={d.saving || !d.queryId} onClick={onSave}
-            icon={d.saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />} label={d.savedId ? 'Save' : 'Create chart'} />
+            icon={d.saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />} label={d.savedId ? 'Save' : target ? 'Create & add to dashboard' : 'Create chart'} />
         </div>
       </header>
 

@@ -48,7 +48,7 @@ export function DataPanel({ queries, queryId, onQuery, columns, spec, onType, on
 
       {columns.length === 0 && queryId === '' && <p className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">Pick a query to see its columns.</p>}
 
-      {columns.length > 0 && kind.family !== 'table' && (
+      {columns.length > 0 && kind.roles.x !== '' && (
         <div className="flex flex-col gap-3">
           <SelectField label={kind.roles.x} value={columns.includes(e.x) ? e.x : ''} onChange={(ev) => onEncoding({ x: ev.target.value })}>{colOptions}</SelectField>
 

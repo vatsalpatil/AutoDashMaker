@@ -14,7 +14,7 @@ from . import ai as ai_svc
 from .chart_suggest import column_roles, encode
 
 SLICED = {"pie", "funnel", "treemap"}
-NO_MEASURE_OK = {"table", "pivot"}
+NO_MEASURE_OK = {"table", "pivot", "timebreak"}
 
 
 def _num(v: Any) -> bool:

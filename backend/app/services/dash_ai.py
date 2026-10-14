@@ -20,7 +20,7 @@ from .dash_place import anchor_y, grid_positions, make_room
 from .engine import engine
 
 CHART_TYPES = ["kpi", "bar", "line", "area", "pie", "scatter", "table", "pivot", "funnel", "treemap", "radar", "composed", "waterfall", "ranked", "quadrant", "timebreak"]
-WIDE = {"line", "area", "table", "pivot", "composed"}
+WIDE = {"line", "area", "table", "pivot", "composed", "timebreak"}
 MAX_WIDGETS = 10
 
 _WIDGET_FORMAT = ('{"title": string, "type": one of ' + "|".join(CHART_TYPES) + ', "sql": one read-only DuckDB SELECT, '
@@ -180,7 +180,7 @@ def _layout(widgets: list[dict[str, Any]], start_y: int = 0) -> list[dict[str, i
         if w["chart"]["type"] in WIDE:
             if half:
                 y, half = y + 4, 0
-            h = _table_height(w) if w["chart"]["type"] in ("table", "pivot") else 4
+            h = 7 if w["chart"]["type"] == "timebreak" else _table_height(w) if w["chart"]["type"] in ("table", "pivot") else 5 if w["chart"]["type"] in ("ranked", "quadrant") else 4
             pos[i] = {"x": 0, "y": y, "w": 12, "h": h}
             y += h
         else:

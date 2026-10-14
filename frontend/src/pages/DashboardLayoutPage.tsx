@@ -114,7 +114,7 @@ export default function DashboardLayoutPage() {
         <WidgetSettingsPanel widget={d.settingsWidget} chart={d.settingsChart}
           onChange={(key, value) => d.updateWidgetSetting(d.settingsWidget!.id, key, value)} onClose={() => d.setSettingsWidget(null)} />
       )}
-      <AddWidgetDialog open={d.pickerOpen} charts={d.charts} onPick={d.addWidget} onContent={(k) => { d.setPickerOpen(false); d.setContentNew(k); }} onClose={() => d.setPickerOpen(false)} />
+      <AddWidgetDialog open={d.pickerOpen} charts={d.charts} dashboardId={d.dashboard.id} page={d.activePage} onPick={d.addWidget} onContent={(k) => { d.setPickerOpen(false); d.setContentNew(k); }} onClose={() => d.setPickerOpen(false)} />
       {(d.contentNew || d.contentEdit) && (
         <ContentDialog open kind={d.contentEdit ? (d.contentEdit.kind as 'text' | 'link' | 'iframe') : d.contentNew!} widget={d.contentEdit}
           onSave={d.saveContent} onClose={() => { d.setContentEdit(null); d.setContentNew(null); }} />

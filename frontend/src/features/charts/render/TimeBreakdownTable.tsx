@@ -26,12 +26,14 @@ export function TimeBreakdownTable({ spec, result, o }: { spec: ChartSpec; resul
   const agg = calc ?? ((o.pivotAgg as Agg) || (AVERAGED.test(metric) ? 'avg' : 'sum'));
   const fn = (v: number[]) => aggregate(v, agg);
   const tb = useMemo(() => buildBreakdown(result.rows, item, date, metric, attrs), [result.rows, item, date, metric, attrs.join()]);  // eslint-disable-line react-hooks/exhaustive-deps
-  const [open, setOpen] = useState<Set<string>>(new Set());
+  const [open, setOpen] = useState<Set<string>>(() => new Set(o.tbOpen === 'month' ? tb.years : []));
+  const [hidden, setHidden] = useState<Set<string>>(new Set());   // detail columns the viewer turned off
+  const shownAttrs = attrs.filter((a) => !hidden.has(a));
   const toggle = (k: string) => setOpen((s) => { const n = new Set(s); if (n.has(k)) { n.delete(k); for (const m of tb.monthsOf.get(k) ?? []) n.delete(m); } else n.add(k); return n; });
   const cols = timeColumns(tb, open);
   const [q, setQ] = useState('');
   const [sort, setSort] = useState<{ key: string; dir: 1 | -1 }>({ key: '__total', dir: -1 });
-  const [size, setSize] = useState(PAGE_SIZES[0]);
+  const [size, setSize] = useState(Number(o.tbPageSize) || PAGE_SIZES[0]);
   const [page, setPage] = useState(0);
 
   const sortVal = (r: TBRow, k: string): number | string | null => (k === '' ? r.id : k in r.attrs ? (r.attrs[k] as string) : cellValue(r, k, fn));
@@ -54,7 +56,11 @@ export function TimeBreakdownTable({ spec, result, o }: { spec: ChartSpec; resul
   );
   // grouped header: one cell per year spanning its visible columns, shown once any year is open
   const groups = tb.years.map((y) => ({ y, span: cols.filter((c) => c.year === y).length }));
-  const lead = 1 + attrs.length;
+  const lead = 1 + shownAttrs.length;
+  const all = rows.flatMap((r) => cols.map((c) => cellValue(r, c.key, fn)).filter((v): v is number => v !== null));
+  const lo = Math.min(...all), hi = Math.max(...all);
+  const heat = (v: number | null) => (o.pivotHeatmap !== true || v === null || hi === lo ? undefined
+    : { background: `color-mix(in oklab, var(--primary) ${Math.round(6 + ((v - lo) / (hi - lo)) * 50)}%, transparent)` });
 
   if (!date) return <p className="p-6 text-center text-sm text-muted-foreground">Choose a date column for “Columns: time”.</p>;
   return (
@@ -62,6 +68,15 @@ export function TimeBreakdownTable({ spec, result, o }: { spec: ChartSpec; resul
       <div className="flex shrink-0 flex-wrap items-end gap-2">
         {metrics.length > 1 && <div className="w-44"><SelectField label="Metric" value={metric} onChange={(e) => setPicked(e.target.value)}>{metrics.map((m) => <option key={m} value={m}>{m.replace(/_/g, ' ')}</option>)}</SelectField></div>}
         <div className="w-40"><SelectField label="Calculation" value={agg} onChange={(e) => setCalc(e.target.value as Agg)}>{CALCS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</SelectField></div>
+        {attrs.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1 text-xs" role="group" aria-label="Detail columns">
+            <span className="text-muted-foreground">Columns</span>
+            {attrs.map((a) => (
+              <button key={a} type="button" aria-pressed={!hidden.has(a)} onClick={() => setHidden((s) => { const n = new Set(s); if (n.has(a)) n.delete(a); else n.add(a); return n; })}
+                className={cn('rounded-full border px-2 py-0.5', hidden.has(a) ? 'text-muted-foreground line-through' : 'border-primary/50 bg-primary/10')}>{a.replace(/_/g, ' ')}</button>
+            ))}
+          </div>
+        )}
         <label className="relative ml-auto"><Search className="absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
           <input value={q} onChange={(e) => { setQ(e.target.value); setPage(0); }} placeholder={`Search ${item}`} aria-label="Search rows" className="h-8 w-44 rounded-md border bg-transparent pl-7 pr-2 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring/50" />
         </label>
@@ -82,7 +97,7 @@ export function TimeBreakdownTable({ spec, result, o }: { spec: ChartSpec; resul
             )}
             <TableRow>
               <TableHead className={cn(pad, 'sticky left-0 bg-card font-semibold')}>{sortBtn('', item.replace(/_/g, ' '), false)}</TableHead>
-              {attrs.map((a) => <TableHead key={a} className={cn(pad, 'font-semibold')}>{sortBtn(a, a.replace(/_/g, ' '), false)}</TableHead>)}
+              {shownAttrs.map((a) => <TableHead key={a} className={cn(pad, 'font-semibold')}>{sortBtn(a, a.replace(/_/g, ' '), false)}</TableHead>)}
               {cols.map((c) => (
                 <TableHead key={c.key} className={cn(pad, 'whitespace-nowrap text-right font-semibold', c.level !== 'day' && 'border-l')}>
                   <span className="inline-flex items-center gap-1">
@@ -101,8 +116,8 @@ export function TimeBreakdownTable({ spec, result, o }: { spec: ChartSpec; resul
             {shown.map((r) => (
               <TableRow key={r.id}>
                 <TableCell className={cn(pad, 'sticky left-0 bg-card font-medium')}>{r.id}</TableCell>
-                {attrs.map((a) => <TableCell key={a} className={pad}>{String(r.attrs[a] ?? '—')}</TableCell>)}
-                {cols.map((c) => <TableCell key={c.key} className={cn(pad, 'text-right', c.level !== 'day' && 'border-l')}>{fmtV(cellValue(r, c.key, fn))}</TableCell>)}
+                {shownAttrs.map((a) => <TableCell key={a} className={pad}>{String(r.attrs[a] ?? '—')}</TableCell>)}
+                {cols.map((c) => { const v = cellValue(r, c.key, fn); return <TableCell key={c.key} style={heat(v)} className={cn(pad, 'text-right', c.level !== 'day' && 'border-l')}>{fmtV(v)}</TableCell>; })}
                 <TableCell className={cn(pad, 'border-l text-right font-semibold')}>{fmtV(cellValue(r, '__total', fn))}</TableCell>
               </TableRow>
             ))}
