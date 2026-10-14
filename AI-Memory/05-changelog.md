@@ -244,3 +244,4 @@ Format: `YYYY-MM-DD · tool · files · what + why`
 - 2026-10-14 · dashboards/widgetGroups.tsx (new), WidgetGrid.tsx, DashboardDetailPage.tsx · widget grouping: Ctrl/Shift+click select, Group/Ungroup (settings.group), dragging one moves the whole group
 - 2026-10-14 · dashboards/widgetGroups.tsx · dragging a selected widget now moves the whole selection (not only saved groups)
 - 2026-10-14 · backend/app/services/dash_edit_ops.py, dash_ai.py · Edit-with-AI arrange: keeps heights (was forcing h=2), new rows=[[ids],...] for mixed layouts (2x2 + full-width); prompt: side by side = 2/row, no resize unless asked
+- 2026-10-14 · dashboards/autoLayouts.tsx (new), WidgetGrid.tsx, DashboardDetailPage.tsx · edit-mode Auto layout presets (Smart/2 col/3 col/Stacked/Focus/Shuffle); KPIs lead, heights kept

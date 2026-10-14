@@ -5,10 +5,13 @@ import { useMeasure } from '@/hooks/useMeasure';
 import type { Widget } from '@/lib/types';
 import { ContentCard, isContent } from './ContentCards';
 import { WidgetView } from './WidgetView';
+import { AutoLayoutBar, autoLayout } from './autoLayouts';
+import type { Chart } from '@/lib/types';
 import { GroupBar, groupOf, useWidgetGroups } from './widgetGroups';
 
 /** The draggable / resizable 12-column grid of widgets for one dashboard page. */
-export function WidgetGrid({ widgets, layout, editing, onLayoutChange, onRemove, onFullscreen, onSettings, onSetting, gridX = 2, gridY = 4 }: {
+export function WidgetGrid({ widgets, layout, editing, onLayoutChange, onRemove, onFullscreen, onSettings, onSetting, charts = [], gridX = 2, gridY = 4 }: {
+  charts?: Chart[];
   onSetting: (id: string, key: string, value: unknown) => void;
   gridX?: number;
   gridY?: number;
@@ -33,6 +36,10 @@ export function WidgetGrid({ widgets, layout, editing, onLayoutChange, onRemove,
   return (
     // measured with a ResizeObserver: the sidebar opening/closing resizes the container without a window resize
     <div ref={ref} className="min-w-0">
+    {editing && <AutoLayoutBar onPick={(p) => {
+      const type = new Map(charts.map((c) => [c.id, c.spec?.type as string | undefined]));
+      onLayoutChange(autoLayout(p, widgets, (w) => type.get(w.chart_id), gridX, gridY));
+    }} />}
     {editing && <GroupBar count={g.selected.size} canUngroup={selectedGrouped} onGroup={() => g.setGroup(`g${Date.now().toString(36)}`)} onUngroup={() => g.setGroup(null)} onClear={g.clear} />}
     {width > 0 && <Responsive
       width={width}

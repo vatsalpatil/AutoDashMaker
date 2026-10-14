@@ -101,6 +101,7 @@ export default function DashboardDetailPage() {
         onFullscreen={d.setFullscreenWidget}
         onSettings={d.openSettings}
         onSetting={d.updateWidgetSetting}
+        charts={d.charts}
       />
 
       {d.fullscreenWidget && <FullscreenModal widget={d.fullscreenWidget} onClose={() => d.setFullscreenWidget(null)} />}
