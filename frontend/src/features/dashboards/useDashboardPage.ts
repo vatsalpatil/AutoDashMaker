@@ -93,14 +93,15 @@ export function useDashboardPage(id: string | undefined) {
       saveTimer.current = null;
     }
     const pending = pendingLayout.current;
-    if (!pending) return;
+    if (!pending) return Promise.resolve();
     pendingLayout.current = null;
-    api
+    return api
       .put(`/dashboards/${id}/layout`, {
-        layout: pending.map((l) => ({ id: l.i, ...fromGrid(l, grid.current.x, grid.current.y), page: activePage })),
+        layout: pending.map((l) => ({ id: l.i, ...fromGrid(l, grid.current.x, grid.current.y) })),
       })
+      .then(() => undefined)
       .catch((e) => setError(e.message));
-  }, [id, activePage]);
+  }, [id]);
 
   const onLayoutChange = useCallback(
     (newLayout: Layout[]) => {
@@ -125,13 +126,15 @@ export function useDashboardPage(id: string | undefined) {
     [editing, flushLayoutSave],
   );
 
-  useEffect(() => () => {
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-  }, []);
+  // leaving the page (e.g. browser back from the layout editor) still saves the pending layout
+  const flushRef = useRef(flushLayoutSave);
+  flushRef.current = flushLayoutSave;
+  useEffect(() => () => { flushRef.current(); }, []);
 
-  function finishEditing() {
-    flushLayoutSave(); // persist immediately — don't lose the last drag
+  /** Persist immediately (don't lose the last drag) and resolve once the server has it, so a reload shows the new layout. */
+  async function finishEditing() {
     setEditing(false);
+    await flushLayoutSave();
   }
 
   async function addWidget(chartId: string) {

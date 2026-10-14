@@ -61,7 +61,7 @@ export default function DashboardLayoutPage() {
   });
 
   if (!d.dashboard) return d.error ? <ErrorBanner message={d.error} /> : <Loading />;
-  const done = () => { d.finishEditing(); nav(`/dashboards/${id}`); };
+  const done = async () => { await d.finishEditing(); nav(`/dashboards/${id}`); };
 
   return (
     <DashboardIdContext.Provider value={d.dashboard.id}>

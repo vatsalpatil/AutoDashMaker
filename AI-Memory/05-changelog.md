@@ -252,3 +252,4 @@ Format: `YYYY-MM-DD · tool · files · what + why`
 - 2026-10-14 · frontend/src/index.css · grid resize handles use theme foreground (visible in dark mode)
 - 2026-10-14 · dashboards/dropInsert.tsx (new), resizePush.ts (makeRoom export, down mode), WidgetGrid (allowOverlap, insert line), widgetGroups (hasMates), DashboardLayoutPage (tray drop makes room) · drag no longer shoves widgets live; insertion line on hovered widget edge, drop inserts and shifts others
 - 2026-10-14 · dashboards/PresentMode.tsx, PrintSheet.tsx, printLayout.ts · Present uses exact %/px positions and Print an 8x finer CSS grid: fractional (fine-snap) positions were mangled by the integer 12-col grid
+- 2026-10-14 · useDashboardPage.ts, DashboardLayoutPage.tsx · layout edits reverted after Done: Done now awaits the layout PUT before navigating, unmount flushes pending save, layout save no longer stamps activePage onto widgets (page switch before save moved widgets)
