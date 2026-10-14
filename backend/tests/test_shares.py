@@ -48,7 +48,8 @@ try:
     data = c.post(f"/api/public/shares/{s['token']}/data").json()
     entry = data[ch["id"]]
     assert sorted(r["qty"] for r in entry["data"]["rows"]) == [3, 5], entry
-    assert "query_id" not in entry["chart"] and "workspace_id" not in pub.json()
+    blob = str(data) + str(pub.json())
+    assert "query_id" not in blob and "sql" not in blob.lower() and "workspace_id" not in blob, blob[:300]
     assert c.get(f"/api/dashboards/{d['id']}/shares", headers=A).json()[0]["views"] == 1
 
     # wrong token, revoked, expired

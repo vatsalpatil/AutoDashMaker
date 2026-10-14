@@ -69,7 +69,11 @@ def public_dashboard(token: str, request: Request):
 def public_data(token: str, request: Request):
     s = _open(token, request)
     data = dash_data.bundle(s["dashboard_id"])
-    for r in data.values():   # viewers get the chart's look, not its query
+    for r in data.values():   # viewers get the chart's look and numbers, never its query or table names
         if r.get("chart"):
             r["chart"] = {k: r["chart"].get(k) for k in ("id", "name", "spec", "description")}
+        if r.get("data"):
+            r["data"] = {k: r["data"].get(k) for k in ("columns", "rows", "row_count")}
+        if r.get("error"):
+            r["error"] = "This chart could not be loaded."
     return data
