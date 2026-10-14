@@ -2,7 +2,7 @@ import { Globe, PanelTop, RotateCcw, SlidersHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/kit';
 import { cn } from '@/lib/utils';
 import type { ColumnInfo } from '../dashboardFilters';
-import { optionsFor, summary, type PinnedFilter, type PinnedValues } from './pinnedModel';
+import { allLabel, optionsFor, summary, type PinnedFilter, type PinnedValues } from './pinnedModel';
 
 /**
  * The dashboard's filter panel (modelled on report dashboards): one labelled dropdown per pinned field, "All …" by default,
@@ -37,7 +37,7 @@ export function PinnedFiltersBar({ filters, columns, draft, setDraft, applied, a
               </span>
               <select value={draft[f.id] ?? ''} onChange={(e) => setDraft({ ...draft, [f.id]: e.target.value })} aria-label={f.label}
                 className={cn('h-8 rounded-md border bg-transparent px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50', draft[f.id] && 'border-primary')}>
-                <option value="">All {f.label.toLowerCase().endsWith('s') ? f.label : `${f.label}s`}</option>
+                <option value="">{allLabel(f.label)}</option>
                 {optionsFor(f.kind, seen).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
             </label>

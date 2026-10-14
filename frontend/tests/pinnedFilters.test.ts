@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { inScope, isDateLike, optionsFor, rowPasses, summary, type PinnedFilter } from '../src/features/dashboards/filters/pinnedModel.ts';
+import { allLabel, inScope, isDateLike, optionsFor, rowPasses, summary, type PinnedFilter } from '../src/features/dashboards/filters/pinnedModel.ts';
 
 const F: PinnedFilter[] = [
   { id: 'y', field: 'order_date', label: 'Year', kind: 'year', scope: 'all' },
@@ -29,4 +29,8 @@ test('options and summary', () => {
   assert.equal(isDateLike(['2024-01-01', '2023-02']), true);
   assert.equal(isDateLike(['UK']), false);
   assert.equal(summary(F, { y: '2024', m: '03', c: 'UK' }), 'Year 2024 · Month Mar · Country UK');
+});
+
+test('"All ..." labels read naturally', () => {
+  assert.deepEqual(['Country', 'Year', 'Category', 'Status', 'Day'].map(allLabel), ['All Countries', 'All Years', 'All Categories', 'All Status', 'All Days']);
 });

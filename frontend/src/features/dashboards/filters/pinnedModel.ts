@@ -35,6 +35,9 @@ export function optionsFor(kind: PinnedKind, seen: Iterable<string>): { value: s
   return all.sort((a, b) => a.localeCompare(b, undefined, { numeric: true })).map((v) => ({ value: v, label: v }));
 }
 
+/** "All …" label: Country -> All Countries, Year -> All Years, Status -> All Status. */
+export const allLabel = (label: string) => `All ${/s$/i.test(label) ? label : /[^aeiou]y$/i.test(label) ? `${label.slice(0, -1)}ies` : `${label}s`}`;
+
 /** Plain-language summary of what is applied ("Year 2024 · Country UK"), for the "as of" line. */
 export const summary = (filters: PinnedFilter[], values: PinnedValues) => filters.filter((f) => values[f.id])
   .map((f) => `${f.label} ${f.kind === 'month' ? MONTHS[Number(values[f.id]) - 1] : values[f.id]}`).join(' · ');
