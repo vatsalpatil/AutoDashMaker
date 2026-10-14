@@ -1,14 +1,22 @@
 # Dokploy service "frontend": Build Type = Nixpacks, Base Directory = /frontend
 # Builds the Vite app, then Caddy serves dist/ and proxies /api to the backend (same origin, no CORS).
-# Do NOT list caddy in nixPkgs: Nixpacks detects ./Caddyfile and installs Caddy itself (listing it too conflicts).
+#
+# Fast, reliable builds: Caddy is installed in the SAME setup step as Node, so Nixpacks downloads ONE nixpkgs archive.
+# The Caddy config is named caddy.conf (not "Caddyfile") on purpose: a file called Caddyfile makes Nixpacks add its own
+# Caddy phase, which pulls a second, separate nixpkgs archive from GitHub (that download is what used to hang deploys).
 [variables]
 NIXPACKS_NODE_VERSION = "22"
 
+[phases.setup]
+nixPkgs = ["...", "caddy"]          # "..." keeps the Node provider's packages (nodejs_22, npm)
+
 [phases.install]
-cmds = ["npm ci"]
+cmds = ["npm ci --no-audit --no-fund --prefer-offline"]
+cacheDirectories = ["/root/.npm"]   # npm download cache survives between deploys
 
 [phases.build]
 cmds = ["npm run build"]
+cacheDirectories = ["node_modules/.vite"]
 
 [start]
-cmd = "caddy run --config Caddyfile --adapter caddyfile"
+cmd = "caddy run --config caddy.conf --adapter caddyfile"

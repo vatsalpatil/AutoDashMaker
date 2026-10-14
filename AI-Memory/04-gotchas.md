@@ -99,3 +99,8 @@ Never add `caddy` to `nixPkgs` when the app has a Caddyfile: Nixpacks adds it it
 
 ## Encrypted secret columns (2026-10-14)
 `ai_providers.api_key` and `datasources.config` are stored as `enc:v1:...` (core/secrets_box.py). Raw SQL (`store.execute`) reads still decrypt via `_row`, but NEVER filter/LIKE on these columns in SQL. Losing `backend/data/secret.key` (or changing DATA_ENCRYPTION_KEY) makes them read as empty: back the key up WITH the metadata DB. New secret column → add it to SECRET_COLUMNS.
+
+## Frontend Nixpacks build (2026-10-14)
+A file named `Caddyfile` makes Nixpacks add its own Caddy phase with a SECOND nixpkgs archive download from GitHub; that download hung deploys.
+Now: config is `frontend/caddy.conf`, Caddy is installed in `[phases.setup] nixPkgs = ["...", "caddy"]` (one archive), npm + vite caches kept.
+If a deploy fails with "caddy: command not found", the "..." merge did not apply: set nixPkgs = ["nodejs_22", "caddy"] explicitly.
