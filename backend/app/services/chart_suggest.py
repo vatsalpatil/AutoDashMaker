@@ -32,8 +32,9 @@ def column_roles(columns: list[str], rows: list[dict]) -> dict[str, list[str]]:
     return roles
 
 
-def suggest_chart(columns: list[str], rows: list[dict]) -> dict[str, Any]:
-    """A chart spec `{type, encoding, options}` that fits the result's shape; falls back to a table."""
+def suggest_chart(columns: list[str], rows: list[dict], sql: str = "") -> dict[str, Any]:
+    """A chart spec `{type, encoding, options}` that fits the result's shape; falls back to a table.
+    A LIMITed (top-N) result is not a whole, so it never becomes a pie."""
     if not rows:
         return {"type": "table", "encoding": {"x": "", "y": ""}, "options": {}}
     r = column_roles(columns, rows)
@@ -51,7 +52,7 @@ def suggest_chart(columns: list[str], rows: list[dict]) -> dict[str, Any]:
         distinct = len({str(x.get(cat[0])) for x in rows})
         if len(cat) >= 2 and distinct <= 12 and len(rows) <= 60:
             return {"type": "bar", "encoding": {"x": cat[0], "y": measure[0], "color": cat[1]}, "options": {"stacked": True, "barRadius": 0}}
-        if distinct <= 6 and len(measure) == 1 and len(rows) == distinct:
+        if distinct <= 6 and len(measure) == 1 and len(rows) == distinct and not re.search(r"LIMIT", sql, re.IGNORECASE):
             return {"type": "pie", "encoding": {"x": cat[0], "y": measure[0]}, "options": {"donut": True, "pieLabels": "percent"}}
         opts: dict[str, Any] = {"showLegend": False, "barRadius": 6}
         if distinct > 8:

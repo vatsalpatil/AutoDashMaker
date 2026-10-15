@@ -113,9 +113,10 @@ def _summarize(question: str, result: dict, insights: list[dict], provider_id: s
         return fallback, ideas
     text = ai_svc._THINK.sub("", ai_svc._ANSI.sub("", raw))
     m = re.search(r"SUMMARY:\s*(.+?)(?:\n\s*FOLLOW-?UPS?:|\Z)", text, re.DOTALL | re.IGNORECASE)
-    follow = re.findall(r"^\s*[-*•]\s*(.+)$", text.split("FOLLOW", 1)[-1] if "FOLLOW" in text.upper() else "", re.MULTILINE)
+    tail = re.split(r"FOLLOW-?\s?UPS?[ \t*]*:[ \t*]*", text, maxsplit=1, flags=re.IGNORECASE)
+    follow = re.findall(r"^\s*(?:[-*•]|\d+[.)])\s*(.+)$", tail[1] if len(tail) > 1 else "", re.MULTILINE)
     said = m.group(1).strip() if m else ""
-    follow = [f.strip() for f in follow if _usable(f.strip())][:3]
+    follow = [f.strip(" *") for f in follow if _usable(f.strip(" *")) and not f.strip(" *").endswith(":")][:3]
     return (said if _usable(said) else fallback), (follow or ideas)
 
 
@@ -149,7 +150,7 @@ def answer(question: str, history: list[dict], dataset_id: str | None, provider_
     summary, follow = _summarize(question, result, insights, provider_id)
     return {
         "status": "ok", "sql": result["sql"], "result": result, "summary": summary, "followups": follow,
-        "chart": suggest_chart(result["columns"], result["rows"]), "explanation": explain_sql(result["sql"]),
+        "chart": suggest_chart(result["columns"], result["rows"], result["sql"]), "explanation": explain_sql(result["sql"]),
         "insights": insights, "confidence": _confidence(result, result["sql"]),
         "provenance": {"tables": explain_sql(result["sql"]).get("tables", []), "rows": result["row_count"],
                        "duration_ms": result["duration_ms"], "warnings": result["warnings"]},
