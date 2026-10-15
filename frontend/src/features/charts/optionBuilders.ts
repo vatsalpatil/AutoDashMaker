@@ -27,8 +27,12 @@ export interface Field {
 export interface Section { id: string; label: string; fields: Field[] }
 export interface Tab { id: string; label: string; sections: Section[] }
 
+/** Bar / line / area / combo: drawn by CartesianChart, which implements every axis, scale and data option. */
+export const STD: Scope[] = ['bar', 'line', 'area', 'composed'];
 export const CART: Scope[] = ['cartesian'];
 export const VISUAL: Scope[] = ['cartesian', 'part', 'radar'];
+/** Options that prepare rows before drawing (aggregate, sort, top N): only renderers that use the shared preparation. */
+export const PREPARED: Scope[] = [...STD, 'part', 'radar'];
 export const sw = (key: string, label: string, f: Partial<Field> = {}): Field => ({ key, label, kind: 'switch', ...f });
 export const sel = (key: string, label: string, options: [string, string][], f: Partial<Field> = {}): Field => ({ key, label, kind: 'select', options, ...f });
 export const sld = (key: string, label: string, min: number, max: number, step = 1, f: Partial<Field> = {}): Field => ({ key, label, kind: 'slider', min, max, step, ...f });

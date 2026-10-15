@@ -6,7 +6,7 @@ import { BAR_STYLES } from './render/Bar3D';
 import { FILL_STYLES } from './render/fills';
 
 export * from './optionBuilders';
-import { CART, VISUAL, col, colf, numf, sel, sld, sw, txt, type Field, type Section, type Tab } from './optionBuilders';
+import { CART, PREPARED, STD, VISUAL, col, colf, numf, sel, sld, sw, txt, type Field, type Section, type Tab } from './optionBuilders';
 import { ELEMENT_SECTIONS, LIST_SECTIONS } from './optionSections';
 
 const NUMBER_FORMATS: [string, string][] = [['auto', 'Auto'], ['compact', 'Compact (1.2K)'], ['decimal', 'Decimal (1,234.5)'], ['currency', 'Currency'], ['indian', 'Indian (₹ L / Cr)'], ['ratio', 'Ratio (3.2 : 1)'], ['percent', 'Percent']];
@@ -15,16 +15,16 @@ export const TABS: Tab[] = [
   {
     id: 'style', label: 'Style', sections: [
       { id: 'look', label: 'Look', fields: [
-        sel('palette', 'Colour palette', PALETTES.map((p) => [p.id, p.label]), { for: [...VISUAL, 'sunburst', 'sankey'] }),
-        col('seriesColor', 'Override first series colour', { for: ['cartesian', 'radar'] }),
+        sel('palette', 'Colour palette', PALETTES.map((p) => [p.id, p.label]), { for: [...STD, 'scatter', 'histogram', 'part', 'radar', 'sunburst', 'sankey'] }),
+        col('seriesColor', 'Override first series colour', { for: [...STD, 'scatter', 'histogram', 'radar'] }),
         sel('background', 'Panel background', [['none', 'None'], ['card', 'Card'], ['muted', 'Muted'], ['gradient', 'Accent gradient']]),
-        sw('showLegend', 'Legend', { for: ['cartesian', 'part', 'radar'] }),
-        sel('legendPosition', 'Legend position', [['bottom', 'Bottom'], ['top', 'Top']], { for: VISUAL, when: (o) => o.showLegend !== false }),
+        sw('showLegend', 'Legend', { for: [...STD, 'scatter', 'pie', 'radar'] }),
+        sel('legendPosition', 'Legend position', [['bottom', 'Bottom'], ['top', 'Top']], { for: [...STD, 'scatter', 'pie', 'radar'], when: (o) => o.showLegend !== false }),
         sw('showTooltip', 'Tooltip on hover', { for: VISUAL }),
         sel('tooltipIndicator', 'Tooltip marker', [['dot', 'Dot'], ['line', 'Line'], ['dashed', 'Dashed line']], { for: VISUAL, when: (o) => o.showTooltip !== false }),
         sw('tooltipCursor', 'Hover guide line / highlight', { for: ['bar', 'line', 'area', 'composed', 'scatter'], when: (o) => o.showTooltip !== false }),
         sw('animate', 'Animation', { for: VISUAL }),
-        sw('glow', 'Glow effect', { for: ['line', 'area', 'composed', 'radar', 'scatter'] }),
+        sw('glow', 'Glow effect', { for: ['line', 'area', 'composed', 'radar'] }),
         sw('rangeSelect', 'Range selector (last 7 / 30 / 90 points)', { for: ['bar', 'line', 'area', 'composed'] }),
         sw('trendBadge', 'Trend badge (change vs previous point)', { for: ['bar', 'line', 'area', 'composed'] }),
       ] },
@@ -94,8 +94,8 @@ export const TABS: Tab[] = [
         sel('kpiAlign', 'Alignment', [['left', 'Left'], ['center', 'Centre'], ['right', 'Right']], { for: ['kpi'] }),
         sw('showDelta', 'Change vs previous row', { for: ['kpi'] }),
         sw('showPrevious', 'Show previous value', { for: ['kpi'] }),
-        colf('previousColumn', 'Previous value column (same row)', { for: ['kpi'] }),
-        txt('previousLabel', 'Previous period name', { for: ['kpi'], placeholder: 'previous (e.g. day before)' }),
+        colf('previousColumn', 'Previous value column (same row)', { for: ['kpi'], when: (o) => o.showPrevious === true || o.showDelta === true }),
+        txt('previousLabel', 'Previous period name', { for: ['kpi'], placeholder: 'previous (e.g. day before)', when: (o) => o.showPrevious === true || o.showDelta === true }),
         sel('deltaGood', 'Increase is…', [['up', 'Good'], ['down', 'Bad']], { for: ['kpi'], when: (o) => o.showDelta === true }),
         sw('showSparkline', 'Sparkline', { for: ['kpi'] }),
         sel('percentOf', 'Show a percentage', [['none', 'No'], ['column', 'Of another column in the result'], ['fixed', 'Of a fixed target']], { for: ['kpi'] }),
@@ -124,25 +124,25 @@ export const TABS: Tab[] = [
   {
     id: 'axes', label: 'Axes', sections: [
       { id: 'axes', label: 'Axes & grid', fields: [
-        sw('showXAxis', 'X axis', { for: CART }),
-        sw('showYAxis', 'Y axis', { for: CART }),
+        sw('showXAxis', 'X axis', { for: [...STD, 'histogram', 'waterfall'] }),
+        sw('showYAxis', 'Y axis', { for: [...STD, 'histogram', 'waterfall'] }),
         sel('grid', 'Grid lines', [['horizontal', 'Horizontal'], ['vertical', 'Vertical'], ['both', 'Both'], ['none', 'None']], { for: CART }),
-        sel('axisFontSize', 'Axis text size', [['xs', 'Small'], ['sm', 'Medium'], ['md', 'Large']], { for: CART }),
-        sld('xTickAngle', 'X label angle', -90, 90, 15, { for: CART }),
-        txt('xLabel', 'X axis title', { for: CART }),
-        txt('yLabel', 'Y axis title', { for: CART }),
+        sel('axisFontSize', 'Axis text size', [['xs', 'Small'], ['sm', 'Medium'], ['md', 'Large']], { for: [...STD, 'scatter', 'histogram', 'waterfall'] }),
+        sld('xTickAngle', 'X label angle', -90, 90, 15, { for: STD }),
+        txt('xLabel', 'X axis title', { for: STD }),
+        txt('yLabel', 'Y axis title', { for: STD }),
       ] },
       { id: 'scale', label: 'Scale', fields: [
-        numf('yMin', 'Y minimum', { for: CART, placeholder: 'auto' }),
-        numf('yMax', 'Y maximum', { for: CART, placeholder: 'auto' }),
-        sel('yScale', 'Y scale', [['linear', 'Linear'], ['sqrt', 'Square root'], ['log', 'Logarithmic']], { for: CART }),
-        sw('unpinZero', 'Do not force the axis to start at zero', { for: CART }),
-        numf('tickCount', 'Number of Y ticks (blank = auto)', { for: CART, placeholder: 'auto' }),
+        numf('yMin', 'Y minimum', { for: [...STD, 'waterfall', 'boxplot'], placeholder: 'auto' }),
+        numf('yMax', 'Y maximum', { for: [...STD, 'waterfall', 'boxplot'], placeholder: 'auto' }),
+        sel('yScale', 'Y scale', [['linear', 'Linear'], ['sqrt', 'Square root'], ['log', 'Logarithmic']], { for: [...STD, 'waterfall'] }),
+        sw('unpinZero', 'Do not force the axis to start at zero', { for: STD }),
+        numf('tickCount', 'Number of Y ticks (blank = auto)', { for: [...STD, 'waterfall', 'boxplot'], placeholder: 'auto' }),
         sw('dualAxis', '2nd measure on right axis', { for: ['line', 'bar', 'area', 'composed'] }),
       ] },
       { id: 'ref', label: 'Reference line', fields: [
-        numf('refValue', 'Value', { for: CART, placeholder: 'none' }),
-        txt('refLabel', 'Label', { for: CART }),
+        numf('refValue', 'Value', { for: [...STD, 'waterfall', 'boxplot'], placeholder: 'none' }),
+        txt('refLabel', 'Label', { for: [...STD, 'waterfall', 'boxplot'], when: (o) => o.refValue !== undefined && o.refValue !== '' }),
       ] },
     ],
   },
@@ -156,8 +156,8 @@ export const TABS: Tab[] = [
         col('titleColor', 'Title colour', { when: (o) => !!o.chartTitle }),
       ] },
       { id: 'data-labels', label: 'Data labels', fields: [
-        sel('dataLabels', 'Show values on chart', [['none', 'None'], ['some', 'Some (when not crowded)'], ['all', 'All']], { for: ['cartesian'] }),
-        sw('showDataLabels', 'Show values on chart', { for: ['part', 'waterfall', 'sankey', 'sunburst'] }),
+        sel('dataLabels', 'Show values on chart', [['none', 'None'], ['some', 'Some (when not crowded)'], ['all', 'All']], { for: STD }),
+        sw('showDataLabels', 'Show values on chart', { for: ['funnel', 'waterfall', 'sankey', 'sunburst'] }),
         sel('pieLabels', 'Slice labels', [['name', 'Name'], ['value', 'Value'], ['percent', 'Percent'], ['none', 'None']], { for: ['pie', 'sunburst'] }),
       ] },
       { id: 'format', label: 'Number format', fields: [
@@ -172,10 +172,10 @@ export const TABS: Tab[] = [
   {
     id: 'data', label: 'Data', sections: [
       { id: 'transform', label: 'Prepare data', fields: [
-        sel('agg', 'Aggregate by X', [['none', 'None (raw rows)'], ['sum', 'Sum'], ['avg', 'Average'], ['count', 'Count'], ['min', 'Min'], ['max', 'Max']], { for: ['cartesian', 'part', 'radar'] }),
-        sel('sortBy', 'Sort by', [['none', 'Query order'], ['x', 'X / category'], ['value', 'Value']], { for: ['cartesian', 'part', 'radar'] }),
-        sel('sortDir', 'Direction', [['desc', 'High → low'], ['asc', 'Low → high']], { for: ['cartesian', 'part', 'radar'], when: (o) => o.sortBy === 'x' || o.sortBy === 'value' }),
-        numf('limit', 'Top N (0 = all)', { for: ['cartesian', 'part', 'radar', 'ranked'], placeholder: '0' }),
+        sel('agg', 'Aggregate by X', [['none', 'None (raw rows)'], ['sum', 'Sum'], ['avg', 'Average'], ['count', 'Count'], ['min', 'Min'], ['max', 'Max']], { for: PREPARED }),
+        sel('sortBy', 'Sort by', [['none', 'Query order'], ['x', 'X / category'], ['value', 'Value']], { for: PREPARED }),
+        sel('sortDir', 'Direction', [['desc', 'High → low'], ['asc', 'Low → high']], { for: PREPARED, when: (o) => o.sortBy === 'x' || o.sortBy === 'value' }),
+        numf('limit', 'Top N (0 = all)', { for: [...PREPARED, 'ranked'], placeholder: '0' }),
         sel('missing', 'Replace missing values with', [['zero', 'Zero'], ['gap', 'Nothing (a gap in the line)'], ['interpolate', 'A straight line across']], { for: ['line', 'area', 'composed', 'bar'] }),
         sw('cumulative', 'Running total', { for: ['line', 'area', 'bar'] }),
         sw('trendline', 'Trend line', { for: ['line', 'area', 'bar', 'scatter'] }),
@@ -198,6 +198,7 @@ export const DEFAULTS: Opts = {
   showSummary: true, showHints: true, showValues: true, showVerdict: true, showTiles: true, reconStart: 'auto',
   ruleFill: 'text', dataBars: false, wrapText: false, showTotalsRow: true, titleSize: 'sm', titleAlign: 'left',
   gaugeThickness: 22, gaugeValueSize: 24, showMinMax: true, showRangeLabel: true, progressHeight: 20, progressValueSize: 30, showGoal: true, showStatus: true,
+  tileLabelSize: 12, showTileGrowth: true, showTotal: true, showMean: true, tileGap: 2, tileRadius: 4,
   nodeWidth: 10, linkOpacity: 0.3, showNodeLabels: true, labelSize: 11, sbHole: 12, sbInner: 45, sbOuter: 78, sbOuterOpacity: 0.65,
 };
 

@@ -22,8 +22,14 @@ export function Sunburst({ spec, result, o, height }: { spec: ChartSpec; result:
   const outer = kids.map((k) => ({ name: `${keys[k.parent]} › ${k.name}`, value: k.value, fill: palette[k.parent % palette.length] })).sort((a, b) => keys.findIndex((p) => a.name.startsWith(`${p} ›`)) - keys.findIndex((p) => b.name.startsWith(`${p} ›`)));
   const config = Object.fromEntries([...inner, ...outer].map((d) => [d.name, { label: d.name, color: d.fill }]));
   const total = inner.reduce((a, d) => a + d.value, 0) || 1;
-  const labels = o.showDataLabels !== false;
-  const text = (d: { name?: string; value?: number }) => (labels ? `${(d.name ?? '').split(' › ').pop()}${o.pieLabels === 'percent' ? ` ${(((d.value ?? 0) / total) * 100).toFixed(0)}%` : ''}` : '');
+  const labels = o.showDataLabels === true;
+  const mode = opt.str(o.pieLabels, 'name');
+  const text = (d: { name?: string; value?: number }) => {
+    if (!labels || mode === 'none') return '';
+    const name = (d.name ?? '').split(' › ').pop();
+    if (mode === 'value') return `${name} ${formatValue(d.value ?? 0, o)}`;
+    return mode === 'percent' ? `${name} ${(((d.value ?? 0) / total) * 100).toFixed(0)}%` : String(name);
+  };
   return (
     <ChartContainer config={config} className="aspect-auto w-full" style={{ height }}>
       <PieChart>

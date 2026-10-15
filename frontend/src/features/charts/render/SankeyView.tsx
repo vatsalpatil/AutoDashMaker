@@ -28,7 +28,8 @@ export function SankeyView({ spec, result, o, height }: { spec: ChartSpec; resul
   if (links.length === 0) return <p className="p-6 text-center text-sm text-muted-foreground">No flows to draw.</p>;
   const palette = paletteColors(o.palette);
   const edge = opt.str(o.edgeColor, 'gray');
-  const fmt = { numberFormat: opt.str(o.edgeLabels, 'compact') === 'full' ? 'decimal' : 'compact' };
+  // the chart's own number format (prefix, currency, decimals...) wins; otherwise compact or full as chosen under Sankey
+  const fmt = o.numberFormat && o.numberFormat !== 'auto' ? o : { ...o, numberFormat: opt.str(o.edgeLabels, 'compact') === 'full' ? 'decimal' : 'compact' };
   const Link = (p: { sourceX: number; targetX: number; sourceY: number; targetY: number; sourceControlX: number; targetControlX: number; linkWidth: number; index: number; payload: { source: { index: number }; target: { index: number }; value: number } }) => {
     const stroke = edge === 'source' ? palette[p.payload.source.index % palette.length] : edge === 'target' ? palette[p.payload.target.index % palette.length] : 'var(--muted-foreground)';
     return (

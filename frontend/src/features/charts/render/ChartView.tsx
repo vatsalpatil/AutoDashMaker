@@ -27,6 +27,7 @@ import { TimeBreakdownTable } from './TimeBreakdownTable';
 import { ReconcileView } from './ReconcileView';
 import { PerformanceGroups, RankedBars } from './Comparison';
 
+const TABLE_TEXT: Record<string, string> = { xs: '[&_td]:text-xs [&_th]:text-xs', md: '[&_td]:text-base [&_th]:text-base' };
 const TITLE_SIZE: Record<string, string> = { sm: 'text-sm', md: 'text-base', lg: 'text-lg', xl: 'text-xl' };
 
 const BACKGROUND: Record<string, string> = {
@@ -80,7 +81,7 @@ function ChartViewBase({ spec, result, height = 320, options, onPick, plain = fa
     return {
       labels: parseLabels(o.columnLabels), fill: o.ruleFill === 'fill', bars: o.dataBars === true, wrap: o.wrapText === true,
       color: rules.length ? (c: string, v: unknown) => ruleColor(rules, c, v) : undefined,
-      format: o.numberFormat && o.numberFormat !== 'auto' ? (v: unknown) => formatValue(v, o) : undefined,
+      format: (o.numberFormat && o.numberFormat !== 'auto') || o.prefix || o.suffix || (o.decimals !== undefined && o.decimals !== '') ? (v: unknown) => formatValue(v, o) : undefined,
     };
   }, [o]);
   const hidden = parseList(o.hiddenColumns);
@@ -95,7 +96,7 @@ function ChartViewBase({ spec, result, height = 320, options, onPick, plain = fa
       <DataTable columns={result.columns.filter((c) => !hidden.includes(c))} rows={result.rows} fontSize={o.tableFontSize as 'xs' | 'sm' | 'md'}
         density={o.tableDensity as 'compact' | 'comfortable'} striped={o.tableStriped === true} maxRows={60} />
     ) : (
-      <div style={{ height: Math.max(h, 160) }}><DataGrid columns={result.columns.filter((c) => !hidden.includes(c))} rows={result.rows as Record<string, unknown>[]} bare expandable fill totals={o.showTotalsRow !== false} look={look} /></div>
+      <div style={{ height: Math.max(h, 160) }} className={cn(TABLE_TEXT[String(o.tableFontSize)] ?? '', o.tableDensity === 'comfortable' ? '[&_td]:py-2.5' : '', o.tableStriped === true ? '[&_tbody_tr:nth-child(even)]:bg-muted/40' : '')}><DataGrid columns={result.columns.filter((c) => !hidden.includes(c))} rows={result.rows as Record<string, unknown>[]} bare expandable fill totals={o.showTotalsRow !== false} look={look} /></div>
     );
   } else if (spec.type === 'timebreak') body = <div style={natural ? { maxHeight: 900 } : { height: Math.max(h, 220) }}><TimeBreakdownTable spec={spec} result={result} o={o} /></div>;
   else if (spec.type === 'pivot') body = <PivotTable spec={spec} result={result} o={o} />;

@@ -6,6 +6,7 @@ import { useMeasure } from '@/hooks/useMeasure';
 import type { ChartSpec, QueryResult } from '@/lib/types';
 import { exactValue, formatValue, opt, toNumber, type Opts } from '../format';
 
+const LABEL_SIZE: Record<string, string> = { sm: 'text-xs', md: 'text-sm', lg: 'text-base', xl: 'text-lg' };
 const ALIGN = { left: 'items-start text-left', right: 'items-end text-right', center: 'items-center text-center' } as const;
 
 /** "<50:#dc2626; >=50:#16a34a" -> the colour of the first rule the value satisfies (Metabase's conditional colours for numbers). */
@@ -49,7 +50,11 @@ export function KpiCard({ spec, result, o, height }: { spec: ChartSpec; result: 
 
   return (
     <div ref={boxRef} className={`relative flex h-full flex-col justify-center gap-1 overflow-hidden ${height < 150 ? 'px-4 py-2' : 'p-6'} ${align}`} style={{ minHeight: height }}>
-      {o.showLabel !== false && <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{String(o.chartTitle || y || x).replace(/_/g, ' ')}</div>}
+      {o.showLabel !== false && (
+        <div className={`font-medium uppercase tracking-wider text-muted-foreground ${LABEL_SIZE[String(o.titleSize)] ?? 'text-xs'}`}
+          style={{ color: opt.str(o.titleColor, '') || undefined, alignSelf: o.chartTitle && o.titleAlign === 'center' ? 'center' : undefined }}>{String(o.chartTitle || y || x).replace(/_/g, ' ')}</div>
+      )}
+      {o.chartSubtitle ? <div className="text-xs text-muted-foreground">{String(o.chartSubtitle)}</div> : null}
       <Tooltip>
         <TooltipTrigger render={<div className={`cursor-default font-semibold tabular-nums leading-tight ${color ? '' : 'text-foreground'}`} style={{ fontSize, color }} />}>
           {shown}

@@ -9,7 +9,23 @@ import type { Field } from '@/features/charts/optionBuilders';
 import { TABS, sectionsFor } from '@/features/charts/optionSchema';
 import { autoEncode } from '@/features/charts/templates';
 
-export interface Case { id: string; type: ChartType; label: string; options: Opts; data: 'main' | 'empty' | 'single' }
+/** `key`/`value`: the single option a case changes (for the effect check: does changing it change the chart?). */
+export interface Case { id: string; type: ChartType; label: string; options: Opts; data: 'main' | 'empty' | 'single'; key?: string; value?: unknown; base?: string }
+
+/** Turns on the settings other options depend on ("Title size" needs a title, "Currency code" needs the currency format...),
+ *  so an option that only shows under a parent setting is compared against a baseline where that parent is on. */
+export const ENABLE: Opts = {
+  animate: false, chartTitle: 'Bench title', donut: true, centerLabel: 'custom', showDelta: true, showPrevious: true, percentOf: 'column',
+  dots: true, forecastPoints: 3, stacked: true, sortBy: 'value', cellRules: 'this_month>2000:#16a34a', showDataLabels: true, dataLabels: 'all',
+  showLegend: true, numberFormat: 'currency', showHints: true, showBar: true, refValue: 2000, growthColumn: 'last_month', pieLabels: 'value', edgeLabels: 'full',
+};
+/** Number-format options mostly show in value labels: test them with labels on. */
+const FORMAT_KEYS = new Set(['numberFormat', 'decimals', 'prefix', 'suffix', 'currency', 'pieLabels', 'edgeLabels']);
+/** Parent-setting presets to try, in order, until the option's own `when` holds (some parents exclude each other). */
+const PRESETS: Opts[] = [ENABLE, { ...ENABLE, stacked: false, horizontal: false }, { ...ENABLE, percentOf: 'fixed' }, { ...ENABLE, numberFormat: 'auto' }];
+const presetFor = (f: Field) => PRESETS.find((p) => !f.when || f.when(p));
+/** Visible only on hover / over time: a still render cannot show them. */
+export const HOVER_ONLY = new Set(['tooltipIndicator', 'tooltipCursor', 'showTooltip', 'animate']);
 
 const COUNTRIES = ['UK', 'France', 'Canada', 'Germany', 'India', 'USA'];
 const CATS = ['Dark', 'Milk', 'Praline', 'White'];
@@ -28,7 +44,7 @@ export const dataFor = (d: Case['data']): QueryResult => (d === 'empty' ? { ...M
 const TEXT: Record<string, string[]> = {
   cellRules: ['this_month>2000:#16a34a; status=Late:red; *<0:#dc2626', 'garbage rule'],
   columnLabels: ['this_month=This Month; qty=Units'], hiddenColumns: ['qty, target'],
-  gaugeRanges: ['0-2000 Low #dc2626; 2000-5000 High #16a34a', 'bad'], valueRules: ['<1000:#dc2626; >=3000:#16a34a'],
+  gaugeRanges: ['0-2000 Low #dc2626; 2000-5000 High #16a34a', 'bad'], valueRules: ['<1000000:#dc2626'],
   chartTitle: ['A fairly long chart title to test wrapping'], centerText: ['Total'], percentColumn: ['qty'], goalColumn: ['target'],
 };
 
@@ -54,10 +70,18 @@ export function buildCases(randomPerType = 25): Case[] {
   for (const k of KINDS) {
     const type = k.id;
     const fields = fieldsFor(type);
-    out.push({ id: `${type}:default`, type, label: 'defaults', options: {}, data: 'main' });
+    out.push({ id: `${type}:default`, type, label: 'defaults', options: { animate: false }, data: 'main' });
     out.push({ id: `${type}:empty`, type, label: 'no rows', options: {}, data: 'empty' });
     out.push({ id: `${type}:single`, type, label: 'one row', options: {}, data: 'single' });
-    for (const f of fields) for (const v of valuesOf(f, MAIN.columns)) out.push({ id: `${type}:${f.key}=${String(v)}`, type, label: `${f.key} = ${JSON.stringify(v)}`, options: { [f.key]: v }, data: 'main' });
+    // animation off so two renders of the same options are identical (the effect check compares the output)
+    PRESETS.forEach((p, n) => out.push({ id: `${type}:enabled${n}`, type, label: `parent settings on #${n}`, options: p, data: 'main' }));
+    for (const f of fields) {
+      const p = f.when || FORMAT_KEYS.has(f.key) ? presetFor(f) : undefined;
+      const base = p ? `enabled${PRESETS.indexOf(p)}` : 'default';
+      for (const v of valuesOf(f, MAIN.columns)) {
+        out.push({ id: `${type}:${f.key}=${String(v)}`, type, label: `${f.key} = ${JSON.stringify(v)}`, options: p ? { ...p, [f.key]: v } : { animate: false, [f.key]: v }, data: 'main', key: f.key, value: v, base });
+      }
+    }
     const r = rng(type.length * 7919 + 17);
     for (let i = 0; i < randomPerType; i++) {
       const options: Opts = {};
@@ -68,4 +92,8 @@ export function buildCases(randomPerType = 25): Case[] {
   return out;
 }
 
-export const encodingFor = (type: ChartType) => autoEncode(type, MAIN);
+/** Two measures wherever the type takes several (exercises legends, dual axis, missing values on the 2nd series). */
+export const encodingFor = (type: ChartType) => {
+  const e = autoEncode(type, MAIN);
+  return KINDS.find((k) => k.id === type)?.multiMeasure && ['bar', 'line', 'area', 'composed'].includes(type) ? { ...e, ys: ['this_month', 'last_month'] } : e;
+};

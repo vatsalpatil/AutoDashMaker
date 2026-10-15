@@ -98,18 +98,20 @@ export function PartToWhole({ spec, prep, o, height, onPick, result }: Props) {
 }
 
 function TreemapTile(p: { depth?: number; x?: number; y?: number; width?: number; height?: number; name?: string; value?: number; fill?: string; growth?: number | null; o: Opts; showValue: boolean }) {
-  const { x = 0, y = 0, width = 0, height = 0 } = p;
+  const { x = 0, y = 0, width = 0, height = 0, o } = p;
   if (width < 4 || height < 4 || p.depth === 0 || !p.name) return null;   // depth 0 = Recharts' invisible root box, not a tile
+  // label: name and / or value, its size and colour; stroke="none" so the tile border never outlines the text
+  const mode = opt.str(o.tileLabel, p.showValue ? 'both' : 'name');
+  const size = opt.num(o.tileLabelSize, 12);
+  const color = opt.str(o.tileLabelColor, '') || 'white';
+  const label = mode === 'none' ? '' : mode === 'value' ? formatValue(p.value, o) : mode === 'both' ? `${p.name} · ${formatValue(p.value, o)}` : String(p.name);
+  const fits = width > size * 4 && height > size * 2;
   return (
     <g>
-      <rect x={x} y={y} width={width} height={height} rx={4} fill={p.fill} stroke="var(--card)" strokeWidth={2} />
-      {width > 50 && height > 24 && (
-        <text x={x + 8} y={y + 18} fontSize={12} fontWeight={600} fill="white">
-          {String(p.name ?? '')}{p.showValue ? ` · ${formatValue(p.value, p.o)}` : ''}
-        </text>
-      )}
-      {p.growth != null && width > 50 && height > 40 && (
-        <text x={x + 8} y={y + 34} fontSize={11} fill="white" opacity={0.9}>{p.growth >= 0 ? '+' : ''}{Math.round(p.growth * 100)}%</text>
+      <rect x={x} y={y} width={width} height={height} rx={opt.num(o.tileRadius, 4)} fill={p.fill} stroke="var(--card)" strokeWidth={opt.num(o.tileGap, 2)} />
+      {label && fits && <text x={x + 8} y={y + size + 6} fontSize={size} fontWeight={600} fill={color} stroke="none">{label}</text>}
+      {o.showTileGrowth !== false && p.growth != null && fits && height > size * 3.2 && (
+        <text x={x + 8} y={y + size * 2 + 10} fontSize={Math.max(size - 1, 9)} fill={color} stroke="none" opacity={0.9}>{p.growth >= 0 ? '+' : ''}{Math.round(p.growth * 100)}%</text>
       )}
     </g>
   );

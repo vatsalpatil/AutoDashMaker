@@ -4,7 +4,7 @@ import {
 } from 'lucide-react';
 import type { ChartType } from '@/lib/types';
 
-export type Family = 'cartesian' | 'part' | 'radar' | 'kpi' | 'table' | 'pivot' | 'special';
+export type Family = 'cartesian' | 'part' | 'radar' | 'kpi' | 'table' | 'pivot' | 'breakdown' | 'special';
 
 /** Drawn by their own component from the raw result (no shared X/series preparation). */
 const CUSTOM = new Set<string>(['histogram', 'waterfall', 'boxplot', 'gauge', 'progress', 'sankey', 'sunburst', 'ranked', 'quadrant', 'timebreak', 'reconcile']);
@@ -43,7 +43,7 @@ export const KINDS: ChartKind[] = [
   { id: 'ranked', label: 'Ranked list', icon: ListOrdered, family: 'special', roles: { x: 'Items', y: 'Current value', color: 'Previous value (to compare)' }, multiMeasure: false },
   { id: 'quadrant', label: 'Performance groups', icon: Grid2x2, family: 'special', roles: { x: 'Items', y: 'Current value', color: 'Previous value (to compare)' }, multiMeasure: false },
   { id: 'reconcile', label: 'Reconcile sources', icon: GitCompare, family: 'special', roles: { x: 'Key (e.g. SKU)', y: 'Sources to compare (2-3)', color: null }, multiMeasure: true },
-  { id: 'timebreak', label: 'Time breakdown', icon: CalendarRange, family: 'table', roles: { x: 'Rows (item)', y: 'Measure', color: 'Columns: time (date)' }, multiMeasure: false },
+  { id: 'timebreak', label: 'Time breakdown', icon: CalendarRange, family: 'breakdown', roles: { x: 'Rows (item)', y: 'Measure', color: 'Columns: time (date)' }, multiMeasure: false },
   { id: 'table', label: 'Table', icon: Table2, family: 'table', roles: { x: '', y: '', color: null }, multiMeasure: false },
   { id: 'pivot', label: 'Pivot table', icon: Grid3x3, family: 'pivot', roles: { x: 'Rows', y: 'Values', color: 'Columns' }, multiMeasure: false },
 ];

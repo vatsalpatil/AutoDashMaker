@@ -21,7 +21,7 @@ export function chartConfig(series: Series[], colors: string[]): ChartConfig {
 
 /** Axis ticks read better compact unless the user chose a format. */
 export const axisFormatter = (o: Opts) => (v: unknown) =>
-  formatValue(v, o.numberFormat === 'auto' || !o.numberFormat ? { numberFormat: 'compact' } : o);
+  formatValue(v, o.numberFormat === 'auto' || !o.numberFormat ? { ...o, numberFormat: 'compact' } : o);   // prefix / suffix / decimals still apply
 
 /** Themed tooltip that formats values with the chart's number format; the marker follows the "Tooltip marker" option. */
 export function valueTooltip(o: Opts, config: ChartConfig, extra: Record<string, unknown> = {}) {

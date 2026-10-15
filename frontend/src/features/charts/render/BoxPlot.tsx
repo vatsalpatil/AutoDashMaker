@@ -48,7 +48,7 @@ export function BoxPlot({ spec, result, o, height }: { spec: ChartSpec; result: 
   const colors = paletteColors(o.palette);
   const nTicks = Math.min(20, Math.max(2, Math.round(opt.num(o.tickCount, 5))));
   const ticks = Array.from({ length: nTicks }, (_, i) => lo + ((hi - lo) * i) / (nTicks - 1));
-  const compact = { numberFormat: 'compact' };
+  const compact = o.numberFormat && o.numberFormat !== 'auto' ? o : { ...o, numberFormat: 'compact' };
   const label = opt.str(o.boxLabels, 'median');
   const goal = o.refValue === undefined || o.refValue === '' ? null : opt.num(o.refValue, 0);
   return (
@@ -58,6 +58,7 @@ export function BoxPlot({ spec, result, o, height }: { spec: ChartSpec; result: 
           <g key={i}><line x1={pad.l} x2={W - pad.r} y1={sy(t)} y2={sy(t)} stroke="var(--border)" strokeDasharray="3 3" /><text x={pad.l - 6} y={sy(t) + 4} textAnchor="end" fontSize={11} fill="var(--muted-foreground)">{formatValue(t, compact)}</text></g>
         ))}
         {goal !== null && <line x1={pad.l} x2={W - pad.r} y1={sy(goal)} y2={sy(goal)} stroke="var(--destructive)" strokeDasharray="4 3" />}
+        {goal !== null && o.refLabel ? <text x={W - pad.r - 4} y={sy(goal) - 4} textAnchor="end" fontSize={11} fill="var(--destructive)">{String(o.refLabel)}</text> : null}
         {list.map((s, i) => {
           const cx = pad.l + band * (i + 0.5);
           const bw = Math.min(band * 0.55, 56);
