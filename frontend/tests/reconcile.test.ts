@@ -24,3 +24,8 @@ test('match rate, mismatches, diffs and missing per source', () => {
 test('tolerance counts small differences as matches', () => {
   assert.equal(reconcile(rows, 'sku', ['uni', 'portal', 'raw'], 1).matched, 2);
 });
+
+test('percentage tolerance: within 10% of the larger value counts as a match', () => {
+  const s = reconcile([{ k: 'a', x: 100, y: 95 }, { k: 'b', x: 100, y: 80 }], 'k', ['x', 'y'], 0, 10);
+  assert.deepEqual(s.rows.map((r) => [r.key, r.ok]), [['b', false], ['a', true]]);
+});

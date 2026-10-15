@@ -34,12 +34,13 @@ export function DataPanel({ queries, queryId, onQuery, columns, spec, onType, on
 
       <div className="flex flex-col gap-2">
         <Label className="font-normal text-muted-foreground">Chart type</Label>
-        <div className="grid grid-cols-3 gap-1.5">
+        {/* buttons size to their own label and wrap: no fixed column count, long names never overflow */}
+        <div className="flex flex-wrap gap-1.5">
           {KINDS.map((k) => (
-            <button key={k.id} type="button" onClick={() => onType(k.id)} aria-pressed={spec.type === k.id}
-              className={cn('flex flex-col items-center gap-1 rounded-lg border px-1 py-2 text-[11px] font-medium transition-colors hover:bg-accent',
+            <button key={k.id} type="button" onClick={() => onType(k.id)} aria-pressed={spec.type === k.id} title={k.label}
+              className={cn('inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-accent',
                 spec.type === k.id ? 'border-primary bg-primary/10 text-primary' : 'text-muted-foreground')}>
-              <k.icon className="size-4" />
+              <k.icon className="size-3.5 shrink-0" />
               {k.label}
             </button>
           ))}

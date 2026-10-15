@@ -16,17 +16,25 @@ export function compareRows(rows: Record<string, unknown>[], x: string, y: strin
   }).sort((a, b) => b.cur - a.cur);
 }
 
-/** Growth-share groups: "big" = share at/above the average share, "fast" = growth at/above the overall growth. */
-export function groupRows(rows: Compared[]): { overall: number | null; avgShare: number; groupOf: (r: Compared) => Group } {
+/** Where the "big" and "fast" lines sit. Leave a field out to use the automatic line (average share / overall growth). */
+export interface GroupThresholds { bigShare?: number; fastGrowth?: number }
+
+/**
+ * Growth-share groups: "big" = share at/above the line (default: the average share 1/n), "fast" = growth at/above the line
+ * (default: the overall growth). Both lines can be set by the user, e.g. big = 10% share, fast = +5%.
+ */
+export function groupRows(rows: Compared[], t: GroupThresholds = {}): { overall: number | null; avgShare: number; bigLine: number; fastLine: number; groupOf: (r: Compared) => Group } {
   const avgShare = 1 / Math.max(rows.length, 1);
   const cur = rows.reduce((s, r) => s + r.cur, 0);
   const prev = rows.reduce((s, r) => s + (r.prev ?? 0), 0);
   const overall = prev ? (cur - prev) / prev : null;
+  const bigLine = t.bigShare ?? avgShare;
+  const fastLine = t.fastGrowth ?? overall ?? 0;
   return {
-    overall, avgShare,
+    overall, avgShare, bigLine, fastLine,
     groupOf: (r) => {
-      const big = r.share >= avgShare;
-      const fast = (r.growth ?? 0) >= (overall ?? 0);
+      const big = r.share >= bigLine;
+      const fast = (r.growth ?? 0) >= fastLine;
       return big ? (fast ? 'stars' : 'watch') : (fast ? 'rising' : 'laggards');
     },
   };

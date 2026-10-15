@@ -27,3 +27,10 @@ test('performance groups: big/small by average share, fast/slow by overall growt
   assert.equal(overall, (1000 - 910) / 910);
   assert.deepEqual(Object.fromEntries(rows.map((r) => [r.name, groupOf(r)])), { star: 'stars', watch: 'watch', rising: 'rising', laggard: 'laggards' });
 });
+
+test('performance groups with your own lines: big = share >= 50%, fast = growth >= 0', () => {
+  const rows = compareRows([{ c: 'a', y: 60, p: 70 }, { c: 'b', y: 30, p: 20 }, { c: 'c', y: 10, p: 12 }], 'c', 'y', 'p');
+  const { groupOf, bigLine, fastLine } = groupRows(rows, { bigShare: 0.5, fastGrowth: 0 });
+  assert.deepEqual([bigLine, fastLine], [0.5, 0]);
+  assert.deepEqual(Object.fromEntries(rows.map((r) => [r.name, groupOf(r)])), { a: 'watch', b: 'rising', c: 'laggards' });
+});

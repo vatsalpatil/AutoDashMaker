@@ -3,7 +3,7 @@
  * A key matches when every source agrees within `tolerance`; diff = max - min across the sources.
  */
 
-export interface ReconRow { key: string; values: (number | null)[]; diff: number; missing: boolean[] }
+export interface ReconRow { key: string; values: (number | null)[]; diff: number; missing: boolean[]; ok: boolean }
 export interface ReconSummary {
   rows: ReconRow[];                 // biggest difference first
   totals: number[];                 // per source
@@ -19,13 +19,16 @@ const num = (v: unknown): number | null => {
   return Number.isFinite(n) ? n : null;
 };
 
-export function reconcile(rows: Record<string, unknown>[], key: string, sources: string[], tolerance = 0): ReconSummary {
+/** A key matches when its difference is within `tolerance` (an amount) OR within `tolerancePct` % of its largest value. */
+export function reconcile(rows: Record<string, unknown>[], key: string, sources: string[], tolerance = 0, tolerancePct = 0): ReconSummary {
   const out: ReconRow[] = rows.map((r) => {
     const values = sources.map((s) => num(r[s]));
     const present = values.map((v) => v ?? 0);
-    return { key: String(r[key] ?? ''), values, diff: Math.max(...present) - Math.min(...present), missing: values.map((v) => v === null || v === 0) };
+    const diff = Math.max(...present) - Math.min(...present);
+    const allowed = Math.max(tolerance, (tolerancePct / 100) * Math.max(...present.map(Math.abs)));
+    return { key: String(r[key] ?? ''), values, diff, missing: values.map((v) => v === null || v === 0), ok: diff <= allowed };
   }).sort((a, b) => b.diff - a.diff);
-  const mismatchedRows = out.filter((r) => r.diff > tolerance);
+  const mismatchedRows = out.filter((r) => !r.ok);
   const totalDiff = mismatchedRows.reduce((s, r) => s + r.diff, 0);
   return {
     rows: out,

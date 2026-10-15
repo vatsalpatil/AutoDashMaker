@@ -21,28 +21,30 @@ const Tile = ({ label, value, exact, sub, tone }: { label: string; value: string
 export function ReconcileView({ spec, result, o }: { spec: ChartSpec; result: QueryResult; o: Opts }) {
   const sources = (spec.encoding.ys?.length ? spec.encoding.ys : [spec.encoding.y]).filter(Boolean).slice(0, 3);
   const tol = opt.num(o.tolerance, 0);
+  const tolPct = opt.num(o.tolerancePct, 0);
   const [onlyDiff, setOnlyDiff] = useState<boolean | null>(null);
   if (sources.length < 2) return <p className="p-6 text-center text-sm text-muted-foreground">Pick 2 or 3 source columns to compare.</p>;
-  const s = reconcile(result.rows, spec.encoding.x, sources, tol);
+  const s = reconcile(result.rows, spec.encoding.x, sources, tol, tolPct);
   const label = (c: string) => c.replace(/_/g, ' ');
   const keyName = label(spec.encoding.x);
   const fo = { ...o, numberFormat: o.numberFormat && o.numberFormat !== 'auto' ? o.numberFormat : 'compact' };
   const n = (v: number | null) => (v === null ? '—' : formatValue(v, fo));
-  const differ = onlyDiff ?? s.mismatched > 0;   // default: show the problems when there are some, else everything
-  const rows = (differ ? s.rows.filter((r) => r.diff > tol) : s.rows).slice(0, opt.num(o.limit, 0) || 200);
+  const start = opt.str(o.reconStart, 'auto');
+  const differ = onlyDiff ?? (start === 'auto' ? s.mismatched > 0 : start === 'diff');   // default: the problems when there are some
+  const rows = (differ ? s.rows.filter((r) => !r.ok) : s.rows).slice(0, opt.num(o.limit, 0) || 200);
   const ok = s.mismatched === 0;
   return (
     <div className="flex h-full min-h-0 flex-col gap-2 text-sm">
-      <p className={cn('flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium', ok ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive')}>
+      {o.showVerdict !== false && <p className={cn('flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium', ok ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive')}>
         {ok ? <CheckCircle2 className="size-4 shrink-0" /> : <TriangleAlert className="size-4 shrink-0" />}
-        {ok ? `All ${s.rows.length.toLocaleString()} ${keyName} values agree${tol ? ` within ±${tol}` : ''}.`
+        {ok ? `All ${s.rows.length.toLocaleString()} ${keyName} values agree${tol ? ` within ±${tol}` : ''}${tolPct ? ` (or ${tolPct}%)` : ''}.`
           : `${s.mismatched.toLocaleString()} of ${s.rows.length.toLocaleString()} ${keyName} values differ · total difference ${n(s.totalDiff)}${s.largest ? ` · largest: ${s.largest.key} (${n(s.largest.diff)})` : ''}`}
-      </p>
-      <div className="grid shrink-0 gap-2" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(8.5rem, 1fr))' }}>
+      </p>}
+      {o.showTiles !== false && <div className="grid shrink-0 gap-2" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(8.5rem, 1fr))' }}>
         {sources.map((c, i) => <Tile key={c} label={label(c)} value={n(s.totals[i])} exact={exactValue(s.totals[i], o)} />)}
         <Tile label="Match rate" value={`${(s.matchRate * 100).toFixed(1)}%`} sub={`${s.matched.toLocaleString()} of ${s.rows.length.toLocaleString()}`} tone={s.matchRate >= 0.99 ? 'good' : 'bad'} />
         <Tile label="Missing per source" value={s.missing.join(' / ')} sub={s.missing.some(Boolean) ? 'empty or zero' : 'none missing'} tone={s.missing.some(Boolean) ? 'bad' : undefined} />
-      </div>
+      </div>}
       <div className="flex shrink-0 items-center justify-between text-xs text-muted-foreground">
         <label className="flex items-center gap-1.5"><input type="checkbox" checked={differ} onChange={(e) => setOnlyDiff(e.target.checked)} /> Only rows that differ</label>
         <span>{rows.length.toLocaleString()} rows</span>
@@ -59,7 +61,7 @@ export function ReconcileView({ spec, result, o }: { spec: ChartSpec; result: Qu
               <tr key={r.key}>
                 <td className="px-2 py-1 font-medium">{r.key}</td>
                 {r.values.map((v, i) => <td key={i} className={cn('px-2 py-1 text-right', r.missing[i] && 'text-destructive')} title={exactValue(v, o)}>{n(v)}</td>)}
-                <td className={cn('px-2 py-1 text-right font-semibold', r.diff > tol ? 'text-destructive' : 'text-muted-foreground')} title={exactValue(r.diff, o)}>{r.diff ? n(r.diff) : '0'}</td>
+                <td className={cn('px-2 py-1 text-right font-semibold', !r.ok ? 'text-destructive' : 'text-muted-foreground')} title={exactValue(r.diff, o)}>{r.diff ? n(r.diff) : '0'}</td>
               </tr>
             ))}
           </tbody>
