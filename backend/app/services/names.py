@@ -41,9 +41,33 @@ def invalidate() -> None:
         _cache.clear()
 
 
+_PHYSICAL = re.compile(r"\bds_(\w+?)_([0-9a-f]{6})\b", re.IGNORECASE)
+
+
+def restale(sql: str) -> str:
+    """A saved query can name a dataset's old table (`ds_sales_75c35d`) after the file was re-uploaded under a new id
+    (`ds_sales_bda92d`): point it at the current table when exactly one dataset table has that base name."""
+    if not _PHYSICAL.search(sql):
+        return sql
+    tables = {(r.get("physical_name") or "").lower() for r in store.list("datasets", order=None)} - {""}
+    by_base: dict[str, list[str]] = {}
+    for t in tables:
+        m = _PHYSICAL.fullmatch(t)
+        if m:
+            by_base.setdefault(m.group(1), []).append(t)
+
+    def fix(m: re.Match) -> str:
+        name, base = m.group(0).lower(), m.group(1).lower()
+        if name in tables or len(by_base.get(base, [])) != 1:
+            return m.group(0)
+        return by_base[base][0]
+    return _PHYSICAL.sub(fix, sql)
+
+
 def resolve(sql: str) -> str:
     """Rewrite friendly dataset names used as tables to their physical tables (a no-op when none is used)."""
     try:
+        sql = restale(sql)
         names = _map()
         low = sql.lower()
         if not names or not any(n in low for n in names):

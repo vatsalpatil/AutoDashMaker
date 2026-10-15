@@ -36,7 +36,7 @@ export function AskAiPanel({ result, onPick }: { result?: QueryResult; onPick: (
       </button>
       <p className="text-[11px] text-muted-foreground">The AI sees column names and 8 sample rows only. Uses 1 AI request.</p>
       {err && <p className="text-xs text-destructive">{err}</p>}
-      {picks && picks.length > 0 && <SuggestionCards list={picks} result={result} onPick={onPick} min={150} />}
+      {picks && picks.length > 0 && <SuggestionCards list={picks} result={result} onPick={onPick} />}
     </form>
   );
 }
