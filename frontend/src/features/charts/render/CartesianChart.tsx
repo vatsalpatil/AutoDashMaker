@@ -19,6 +19,13 @@ const fillStyleOf = (o: Opts, type: string): FillStyle =>
   (opt.str(o.fillStyle, type === 'area' && o.gradient !== false ? 'gradient' : 'solid') as FillStyle);
 
 /** Bar, line, area and combo charts: multi-series, stacking, horizontal bars, dual axis, reference line, trend, pattern fills, glow. */
+/** How many times larger the biggest series' peak is than the 2nd series' peak (1 when it can't tell). */
+function scaleGap(rows: Record<string, unknown>[], keys: string[]): number {
+  const peak = (k: string) => rows.reduce((m, r) => Math.max(m, Math.abs(Number(r[k]) || 0)), 0);
+  const [a, b] = [peak(keys[0]), peak(keys[1])];
+  return a > 0 && b > 0 ? Math.max(a, b) / Math.min(a, b) : 1;
+}
+
 function CartesianChartBase({ spec, prep, o, height, compact = false, onPick }: Props) {
   const uid = useUid();
   const type = spec.type;
@@ -33,7 +40,8 @@ function CartesianChartBase({ spec, prep, o, height, compact = false, onPick }: 
   const stacked = (type === 'bar' || type === 'area') && o.stacked === true;
   const barStyle = (!horizontal && !stacked ? opt.str(o.barStyle, 'flat') : 'flat') as BarStyle;
   const depth = depthOf(barStyle, opt.num(o.barSize, 0) || 28);
-  const dual = o.dualAxis === true && series.length > 1;
+  // 2nd measure on its own axis when asked, or (unless switched off) when the scales differ 5x+: one axis flattens the smaller series
+  const dual = series.length > 1 && !stacked && (o.dualAxis === true || (o.dualAxis === undefined && scaleGap(rows, series.map((s) => s.key)) >= 5));
   const font = (AXIS_FONT[opt.str(o.axisFontSize, 'sm')] ?? 12) - (compact ? 1 : 0);
   const curve = opt.str(o.curve, 'monotone') as Curve;
   const grid = opt.str(o.grid, 'horizontal');
