@@ -7,6 +7,16 @@ import { isRule, ruleMatches, type ColKind } from './ColumnRuleFilter';
 
 export type Row = Record<string, unknown>;
 
+/** Optional look of a chart table: column titles, colour rules, in-cell bars, number format, wrapping. */
+export interface TableLook {
+  labels?: Record<string, string>;
+  color?: (col: string, v: unknown) => string | undefined;
+  fill?: boolean;            // rule colour as the cell background instead of the text colour
+  bars?: boolean;            // a bar under each number, relative to the column's largest value
+  format?: (v: unknown) => string;
+  wrap?: boolean;
+}
+
 const isDate = (v: unknown) => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}([T ]|$)/.test(v);
 const isNum = (v: unknown) => typeof v === 'number' || (typeof v === 'string' && v.trim() !== '' && !Number.isNaN(Number(v)));
 const num = (v: unknown) => (v === null || v === undefined || v === '' ? Number.NEGATIVE_INFINITY : Number(v));
@@ -30,12 +40,14 @@ function autoWidth(title: string, shown: string[]): number {
 
 /** Column definitions for ReUI's Data Grid from plain column names + rows: numeric sorting and alignment,
  *  a pick-list filter on low-cardinality columns, NULL styling. */
-export function buildColumns(columns: string[], rows: Row[], leftAlign = false): ColumnDef<DataGridFeatures, Row>[] {
+export function buildColumns(columns: string[], rows: Row[], leftAlign = false, look: TableLook = {}): ColumnDef<DataGridFeatures, Row>[] {
   const sample = rows.slice(0, 200);
   const widthSample = rows.slice(0, 1000);
   return columns.map((c) => {
     const values = sample.map((r) => r[c]).filter((v) => v !== null && v !== undefined && v !== '');
     const numeric = values.length > 0 && values.every(isNum);
+    const title = look.labels?.[c] || c;
+    const max = look.bars && numeric ? Math.max(0, ...rows.map((r) => Math.abs(Number(r[c]) || 0))) : 0;
     const kind: ColKind = numeric ? 'num' : values.length > 0 && values.every(isDate) ? 'date' : 'text';
     const counts = new Map<string, number>();
     for (const r of rows) { const t = cellText(r[c]); counts.set(t, (counts.get(t) ?? 0) + 1); }
@@ -48,20 +60,28 @@ export function buildColumns(columns: string[], rows: Row[], leftAlign = false):
       minSize: 80,
       header: ({ column }) => (
         <div className="flex min-w-0 items-center gap-0.5">
-          <div className="min-w-0 flex-1"><DataGridColumnHeader column={column} title={c} visibility /></div>
+          <div className="min-w-0 flex-1"><DataGridColumnHeader column={column} title={title} visibility /></div>
           <ColumnFilter column={column} title={c} kind={kind} values={filterValues} />
         </div>
       ),
       cell: ({ getValue }) => {
         const v = getValue();
         if (v === null || v === undefined) return <span className="text-xs text-muted-foreground/60">NULL</span>;
-        return <span className={numeric && !leftAlign ? 'block text-right tabular-nums' : 'block truncate'} title={cellText(v)}>{numeric ? fmt(v) : cellText(v)}</span>;
+        const text = numeric ? (look.format ? look.format(v) : fmt(v)) : cellText(v);
+        const color = look.color?.(c, v);
+        const style = color ? (look.fill ? { background: `color-mix(in oklab, ${color} 22%, transparent)`, borderRadius: 4, padding: '0 4px' } : { color }) : undefined;
+        return (
+          <span className={`relative block ${numeric && !leftAlign ? 'text-right tabular-nums' : look.wrap ? 'whitespace-normal break-words' : 'truncate'}`} title={cellText(v)} style={style}>
+            {max > 0 && <span className="absolute inset-y-0.5 left-0 -z-0 rounded-sm bg-primary/15" style={{ width: `${(Math.abs(Number(v) || 0) / max) * 100}%` }} />}
+            <span className="relative">{text}</span>
+          </span>
+        );
       },
       sortFn: numeric ? (a: { getValue: (id: string) => unknown }, b: { getValue: (id: string) => unknown }) => num(a.getValue(c)) - num(b.getValue(c)) : undefined,
       filterFn: (row: { getValue: (id: string) => unknown }, id: string, value: unknown) =>
         isRule(value) ? ruleMatches(row.getValue(id), value, kind)
           : !Array.isArray(value) || value.length === 0 || value.includes(cellText(row.getValue(id))),
-      meta: { headerTitle: c },
+      meta: { headerTitle: title },
     } as ColumnDef<DataGridFeatures, Row>;
   });
 }

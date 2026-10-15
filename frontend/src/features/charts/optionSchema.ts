@@ -194,6 +194,15 @@ export const TABS: Tab[] = [
         sw('showTiles', 'Summary tiles', { for: ['reconcile'] }),
         sel('reconStart', 'Rows shown first', [['auto', 'Differences if any, else all'], ['diff', 'Only differences'], ['all', 'All rows']], { for: ['reconcile'] }),
       ] },
+      { id: 'cells', label: 'Columns & cell colours', fields: [
+        txt('columnLabels', 'Rename columns: column=Name; …', { for: ['table'], placeholder: 'revenue=Revenue (₹); qty=Units' }),
+        txt('hiddenColumns', 'Hide columns (comma separated)', { for: ['table'], placeholder: 'order_id, customer_id' }),
+        txt('cellRules', 'Colour rules: column>value:colour; …', { for: ['table', 'pivot', 'timebreak'], placeholder: 'revenue>100000:#16a34a; status=Late:red; *<0:#dc2626' }),
+        sel('ruleFill', 'Rule colours', [['text', 'Colour the text'], ['fill', 'Tint the cell']], { for: ['table', 'pivot', 'timebreak'] }),
+        sw('dataBars', 'Bars inside number cells', { for: ['table'] }),
+        sw('wrapText', 'Wrap long text', { for: ['table'] }),
+        sw('showTotalsRow', 'Totals row', { for: ['table'] }),
+      ] },
       { id: 'table', label: 'Table', fields: [
         sel('tableFontSize', 'Text size', [['xs', 'Small'], ['sm', 'Medium'], ['md', 'Large']], { for: ['table', 'pivot', 'timebreak'] }),
         sel('tableDensity', 'Density', [['compact', 'Compact'], ['comfortable', 'Comfortable']], { for: ['table', 'pivot', 'timebreak'] }),
@@ -281,6 +290,7 @@ export const DEFAULTS: Opts = {
   // ranked / groups / reconcile parts are on unless turned off
   rankOrder: 'desc', showRank: true, showBar: true, showKey: true, showGrowth: true, growthDecimals: 0, groupLayout: 'auto', groupMaxItems: 0,
   showSummary: true, showHints: true, showValues: true, showVerdict: true, showTiles: true, reconStart: 'auto',
+  ruleFill: 'text', dataBars: false, wrapText: false, showTotalsRow: true,
 };
 
 const matches = (f: Field, type: ChartType) => !f.for || f.for.includes(type) || f.for.includes(kindOf(type).family);

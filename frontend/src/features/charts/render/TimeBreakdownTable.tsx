@@ -6,6 +6,7 @@ import type { ChartSpec, QueryResult } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { AVERAGED, CALCS, aggregate, type Agg } from '../chartData';
 import { formatValue, opt, type Opts } from '../format';
+import { parseRules, ruleStyle } from '../tableStyle';
 import { buildBreakdown, cellValue, footerValue, splitKey, timeColumns, type TBRow, type TimeCol } from '../timeBreakdown';
 
 type VCol = TimeCol & { base: string; group: string; total?: boolean };
@@ -27,6 +28,7 @@ export function TimeBreakdownCore({ spec, result, o }: { spec: ChartSpec; result
   const [calc, setCalc] = useState<Agg | null>(null);
   const agg = calc ?? ((o.pivotAgg as Agg) || (AVERAGED.test(metric) ? 'avg' : 'sum'));
   const fn = (v: number[]) => aggregate(v, agg);
+  const rules = parseRules(o.cellRules);
   const [split, setSplit] = useState(() => (attrs.includes(String(o.tbSplit)) ? String(o.tbSplit) : ''));
   const tb = useMemo(() => buildBreakdown(result.rows, item, date, metric, attrs, split), [result.rows, item, date, metric, attrs.join(), split]);  // eslint-disable-line react-hooks/exhaustive-deps
   const [open, setOpen] = useState<Set<string>>(() => new Set(o.tbOpen === 'month' ? tb.years : []));
@@ -126,7 +128,7 @@ export function TimeBreakdownCore({ spec, result, o }: { spec: ChartSpec; result
               <TableRow key={r.id}>
                 <TableCell className={cn(pad, 'sticky left-0 bg-card font-medium')}>{r.id}</TableCell>
                 {shownAttrs.map((a) => <TableCell key={a} className={pad}>{String(r.attrs[a] ?? '—')}</TableCell>)}
-                {vcols.map((c) => { const v = cellValue(r, c.key, fn); return <TableCell key={c.key} style={c.total ? undefined : heat(v)} className={cn(pad, 'text-right', c.level !== 'day' && 'border-l', c.total && 'bg-muted/50 font-medium')}>{fmtV(v)}</TableCell>; })}
+                {vcols.map((c) => { const v = cellValue(r, c.key, fn); return <TableCell key={c.key} style={ruleStyle(rules, metric, v, o.ruleFill === 'fill') ?? (c.total ? undefined : heat(v))} className={cn(pad, 'text-right', c.level !== 'day' && 'border-l', c.total && 'bg-muted/50 font-medium')}>{fmtV(v)}</TableCell>; })}
                 <TableCell className={cn(pad, 'border-l text-right font-semibold')}>{fmtV(cellValue(r, '__total', fn))}</TableCell>
               </TableRow>
             ))}

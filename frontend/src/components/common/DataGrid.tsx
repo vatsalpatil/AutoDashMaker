@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils';
 import { DataGridColumnsMenu } from './DataGridColumnsMenu';
 import { DataGridTotals } from './DataGridTotals';
 import type { Agg } from '@/features/charts/chartData';
-import { buildColumns, cellText, type Row } from './dataGridColumns';
+import { buildColumns, cellText, type Row, type TableLook } from './dataGridColumns';
 
 const PAGE_SIZES = [10, 25, 50, 100, 250, 500, 1000];
 
@@ -33,13 +33,15 @@ interface DataGridProps {
   expandable?: boolean;
   /** Show a Total row (per numeric column, over the filtered rows) with a calculation picker. */
   totals?: boolean;
+  /** Chart-table styling: titles, colour rules, data bars, number format, wrapping. */
+  look?: TableLook;
 }
 
 /**
  * Results table on ReUI's Data Grid (TanStack Table): global search, per-column pick-list filters, sort,
  * pin / hide / resize / reorder columns, page size + pagination, CSV/JSON export of what you are looking at.
  */
-export function DataGrid({ columns, rows, maxHeight = '65vh', fill = false, bare = false, leftAlign = false, expandable = true, totals = false }: DataGridProps) {
+export function DataGrid({ columns, rows, maxHeight = '65vh', fill = false, bare = false, leftAlign = false, expandable = true, totals = false, look }: DataGridProps) {
   const [calc, setCalc] = useState<Agg | 'auto'>('auto');
   const [full, setFull] = useState(false);
   const [pageSize, setPageSize] = useLocalStorage('datagrid.pageSize', 25);
@@ -53,7 +55,7 @@ export function DataGrid({ columns, rows, maxHeight = '65vh', fill = false, bare
   const anchor = useRef<string | null>(null);
   const [columnVisibility, setColumnVisibility] = useState<ColumnVisibilityState>({});
   const colKey = columns.join('\u0001');
-  const columnDefs = useMemo(() => buildColumns(columns, rows, leftAlign), [columns, rows, leftAlign]);
+  const columnDefs = useMemo(() => buildColumns(columns, rows, leftAlign, look), [columns, rows, leftAlign, look]);
 
   // a different result set starts clean (pins/size/visibility of unknown columns would only confuse)
   useEffect(() => {

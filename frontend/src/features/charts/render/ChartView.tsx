@@ -6,7 +6,8 @@ import { DataTable } from '@/components/common/DataTable';
 import type { ChartSpec, QueryResult } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { prepare } from '../chartData';
-import { opt, toNumber } from '../format';
+import { formatValue, opt, toNumber } from '../format';
+import { parseLabels, parseList, parseRules, ruleColor } from '../tableStyle';
 import { isCustom, kindOf } from '../chartKinds';
 import { resolveOptions } from '../optionSchema';
 import { BoxPlot } from './BoxPlot';
@@ -71,6 +72,16 @@ function ChartViewBase({ spec, result, height = 320, options, onPick, plain = fa
     return before === 0 ? null : ((last - before) / Math.abs(before)) * 100;
   }, [prep, cartesian, o.trendBadge]);
   const controls = cartesian && (o.rangeSelect === true || trend !== null);
+  // table look from the chart's options: renames, hidden columns, colour rules, data bars, number format, wrapping
+  const look = useMemo(() => {
+    const rules = parseRules(o.cellRules);
+    return {
+      labels: parseLabels(o.columnLabels), fill: o.ruleFill === 'fill', bars: o.dataBars === true, wrap: o.wrapText === true,
+      color: rules.length ? (c: string, v: unknown) => ruleColor(rules, c, v) : undefined,
+      format: o.numberFormat && o.numberFormat !== 'auto' ? (v: unknown) => formatValue(v, o) : undefined,
+    };
+  }, [o]);
+  const hidden = parseList(o.hiddenColumns);
   const heading = (Boolean(o.chartTitle || o.chartSubtitle) || controls) && spec.type !== 'kpi';
   const headingH = heading ? (o.chartSubtitle ? 52 : 32) : 0;
   const h = Math.max(height - headingH, 80);
@@ -79,10 +90,10 @@ function ChartViewBase({ spec, result, height = 320, options, onPick, plain = fa
   if (spec.type === 'table') {
     // interactive grid (sort, per-column filter, search, column visibility) on screen; a plain table when printing
     body = plain ? (
-      <DataTable columns={result.columns} rows={result.rows} fontSize={o.tableFontSize as 'xs' | 'sm' | 'md'}
+      <DataTable columns={result.columns.filter((c) => !hidden.includes(c))} rows={result.rows} fontSize={o.tableFontSize as 'xs' | 'sm' | 'md'}
         density={o.tableDensity as 'compact' | 'comfortable'} striped={o.tableStriped === true} maxRows={60} />
     ) : (
-      <div style={{ height: Math.max(h, 160) }}><DataGrid columns={result.columns} rows={result.rows as Record<string, unknown>[]} bare expandable fill totals /></div>
+      <div style={{ height: Math.max(h, 160) }}><DataGrid columns={result.columns.filter((c) => !hidden.includes(c))} rows={result.rows as Record<string, unknown>[]} bare expandable fill totals={o.showTotalsRow !== false} look={look} /></div>
     );
   } else if (spec.type === 'timebreak') body = <div style={natural ? { maxHeight: 900 } : { height: Math.max(h, 220) }}><TimeBreakdownTable spec={spec} result={result} o={o} /></div>;
   else if (spec.type === 'pivot') body = <PivotTable spec={spec} result={result} o={o} />;

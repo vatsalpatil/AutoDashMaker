@@ -5,6 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import type { ChartSpec, QueryResult } from '@/lib/types';
 import { AVERAGED, CALCS, pivot } from '../chartData';
 import { formatValue, opt, toNumber, type Opts } from '../format';
+import { parseRules, ruleStyle } from '../tableStyle';
 
 
 const SIZE = { xs: 'text-xs', sm: 'text-sm', md: 'text-base' } as const;
@@ -21,6 +22,7 @@ export function PivotTable({ spec, result, o }: { spec: ChartSpec; result: Query
   const agg = calc ?? o.pivotAgg ?? (AVERAGED.test(metric) ? 'avg' : 'sum');
   const p = pivot(result, { ...spec, encoding: { ...spec.encoding, y: metric } }, { ...o, pivotAgg: agg });
   const heat = o.pivotHeatmap === true;
+  const rules = parseRules(o.cellRules);   // colour rules win over heatmap shading
   const pad = opt.str(o.tableDensity, 'compact') === 'comfortable' ? 'px-3 py-2.5' : 'px-3 py-1.5';
   const shade = (v: number | null) => {
     if (!heat || v === null || p.max === p.min) return undefined;
@@ -80,7 +82,7 @@ export function PivotTable({ spec, result, o }: { spec: ChartSpec; result: Query
               <TableCell className={`${pad} font-medium`}>{r || '(blank)'}</TableCell>
               {p.colKeys.map((c) => {
                 const v = p.cell(r, c);
-                return <TableCell key={c} className={`${pad} text-right tabular-nums`} style={shade(v)}>{v === null ? '' : formatValue(v, o)}</TableCell>;
+                return <TableCell key={c} className={`${pad} text-right tabular-nums`} style={ruleStyle(rules, metric, v, o.ruleFill === 'fill') ?? shade(v)}>{v === null ? '' : formatValue(v, o)}</TableCell>;
               })}
               {o.pivotRowTotals !== false && <TableCell className={`${pad} text-right font-semibold tabular-nums`}>{formatValue(p.rowTotal(r), o)}</TableCell>}
             </TableRow>
