@@ -30,6 +30,8 @@ SUMMARY_SYSTEM = (
 
 _NUMERIC = re.compile(r"INT|DOUBLE|DECIMAL|FLOAT|REAL|NUMERIC|HUGEINT", re.IGNORECASE)
 _TEMPORAL = re.compile(r"DATE|TIMESTAMP", re.IGNORECASE)
+_IDLIKE = re.compile(r"(^|_)(id|uuid|key|code)$|^(year|month|day|week|day_of_week|quarter|hour)$", re.IGNORECASE)
+_MONEY = re.compile(r"revenue|sales|amount|profit|total|price|cost|quantity|qty", re.IGNORECASE)
 
 
 def starter_questions(dataset_id: str | None = None, limit: int = 6) -> list[str]:
@@ -41,8 +43,9 @@ def starter_questions(dataset_id: str | None = None, limit: int = 6) -> list[str
         out.append(f"What is {m['label'].lower()}?")
     for d in datasets[:3]:
         mine = [c for c in cols if c["dataset_id"] == d["id"]]
-        measures = [c["name"] for c in mine if _NUMERIC.search(c["dtype"] or "") and not c["name"].lower().endswith("id")]
-        dims = [c["name"] for c in mine if "VARCHAR" in (c["dtype"] or "").upper()]
+        measures = [c["name"] for c in mine if _NUMERIC.search(c["dtype"] or "") and not _IDLIKE.search(c["name"])]
+        measures.sort(key=lambda n: not _MONEY.search(n))   # business measures first (stable)
+        dims = [c["name"] for c in mine if "VARCHAR" in (c["dtype"] or "").upper() and not _IDLIKE.search(c["name"])]
         times = [c["name"] for c in mine if _TEMPORAL.search(c["dtype"] or "")]
         t = names.label(d)
         if measures and dims:
