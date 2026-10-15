@@ -1,17 +1,33 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-/** Browser fullscreen for one element: `<div ref={ref}>…</div>` + `toggle()`. `active` follows Esc and F11-style exits too. */
+/**
+ * Browser fullscreen for one element: `<div ref={ref} className={active ? overlayClass : ''}>…</div>` + `toggle()`.
+ * `active` follows Esc and F11-style exits too. When the browser refuses real fullscreen (embedded views, policies),
+ * it falls back to covering the window (`pseudo`), so callers should add `FULLSCREEN_OVERLAY` while `pseudo` is true.
+ */
+export const FULLSCREEN_OVERLAY = 'fixed inset-0 z-[100] overflow-auto';
+
 export function useFullscreen<T extends HTMLElement>() {
   const ref = useRef<T>(null);
-  const [active, setActive] = useState(false);
+  const [real, setReal] = useState(false);
+  const [pseudo, setPseudo] = useState(false);
   useEffect(() => {
-    const on = () => setActive(document.fullscreenElement === ref.current);
+    const on = () => setReal(document.fullscreenElement === ref.current);
     document.addEventListener('fullscreenchange', on);
     return () => document.removeEventListener('fullscreenchange', on);
   }, []);
+  useEffect(() => {   // Esc closes the fallback overlay like it closes real fullscreen
+    if (!pseudo) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setPseudo(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [pseudo]);
   const toggle = useCallback(() => {
-    if (document.fullscreenElement) void document.exitFullscreen();
-    else void ref.current?.requestFullscreen?.();
-  }, []);
-  return { ref, active, toggle };
+    if (pseudo) { setPseudo(false); return; }
+    if (document.fullscreenElement) { void document.exitFullscreen(); return; }
+    const req = ref.current?.requestFullscreen?.();
+    if (!req) setPseudo(true);
+    else req.catch(() => setPseudo(true));
+  }, [pseudo]);
+  return { ref, active: real || pseudo, pseudo, toggle };
 }

@@ -5,7 +5,7 @@ import { Button, Card, TextInput } from '@/components/ui/kit';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ErrorBanner } from '@/components/common/ErrorBanner';
 import { ResizeHandle, useResizableWidth } from '@/components/common/ResizeHandle';
-import { useFullscreen } from '@/hooks/useFullscreen';
+import { FULLSCREEN_OVERLAY, useFullscreen } from '@/hooks/useFullscreen';
 import { Loading } from '@/components/common/Loading';
 import { DataPanel } from './panels/DataPanel';
 import { OptionsPanel } from './panels/OptionsPanel';
@@ -83,7 +83,7 @@ export function ChartStudio({ id, startType, target }: { id?: string; startType?
 
         <main className={`${col('preview')} min-h-0 min-w-0 flex-col gap-3 overflow-y-auto p-4 xl:flex-1`}>
           <ErrorBanner message={d.error} onDismiss={() => d.setError(null)} />
-          <div ref={full.ref} className={full.active ? 'flex flex-col bg-background p-6' : 'shrink-0'}>
+          <div ref={full.ref} className={full.active ? `flex flex-col bg-background p-6 ${full.pseudo ? FULLSCREEN_OVERLAY : ''}` : 'shrink-0'}>
             <div className="mb-1.5 flex items-center justify-end">
               <Button variant="ghost" size="sm" icon={full.active ? <Minimize2 className="size-4" /> : <Maximize2 className="size-4" />}
                 label={full.active ? 'Exit full screen' : 'Full screen'} title={full.active ? 'Exit full screen (Esc)' : 'View this chart full screen'} onClick={full.toggle} />

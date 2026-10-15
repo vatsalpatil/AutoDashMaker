@@ -1,6 +1,6 @@
 import { Braces, Globe, Maximize2, Minimize2, Radio, Share2, Zap } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { useFullscreen } from '@/hooks/useFullscreen';
+import { FULLSCREEN_OVERLAY, useFullscreen } from '@/hooks/useFullscreen';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
@@ -28,7 +28,7 @@ export function ApiStudio() {
   const [mode, setMode] = useLocalStorage<Mode>('studio.mode', 'rest');
   const full = useFullscreen<HTMLDivElement>();
   return (
-    <div ref={full.ref} className="flex h-full min-h-0 bg-background">
+    <div ref={full.ref} className={`flex h-full min-h-0 bg-background ${full.pseudo ? FULLSCREEN_OVERLAY : ''}`}>
       <nav aria-label="Studio mode" className="flex w-14 shrink-0 flex-col items-center gap-1 border-r bg-card py-2">
         {MODES.map(({ id, label, icon: Icon, hint }) => (
           <Tooltip key={id}>

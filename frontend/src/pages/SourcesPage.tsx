@@ -15,7 +15,7 @@ import { DatasetsTab } from '@/features/sources/DatasetsTab';
 import { ImportTablesDialog } from '@/features/sources/ImportTablesDialog';
 import { SourcePanel } from '@/features/sources/SourcePanel';
 import { useSources } from '@/features/sources/useSources';
-import { useFullscreen } from '@/hooks/useFullscreen';
+import { FULLSCREEN_OVERLAY, useFullscreen } from '@/hooks/useFullscreen';
 import { useListView } from '@/hooks/useListView';
 import type { Dataset, Source } from '@/lib/types';
 
@@ -41,7 +41,7 @@ export default function SourcesPage() {
   if (!s.sources || !s.datasets) return s.error ? <ErrorBanner message={s.error} /> : <Loading />;
 
   return (
-    <div ref={full.ref} className={`flex flex-col gap-6 ${full.active ? 'h-screen overflow-auto bg-background p-6' : ''}`}>
+    <div ref={full.ref} className={`flex flex-col gap-6 ${full.active ? 'h-screen overflow-auto bg-background p-6' : ''} ${full.pseudo ? FULLSCREEN_OVERLAY : ''}`}>
       <PageHeader
         title="Data Sources"
         description="Manage your datasets, upload local files, or connect external databases and APIs."
