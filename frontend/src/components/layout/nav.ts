@@ -11,7 +11,7 @@ export const NAV: NavItem[] = [
   { to: '/sources', label: 'Data Sources', icon: Database, group: 'Work' },
   { to: '/workbench', label: 'Workbench', icon: TerminalSquare, group: 'Work' },
   { to: '/builder', label: 'Query Builder', icon: Blocks, group: 'Work' },
-  { to: '/metrics', label: 'Metrics', icon: BookOpen, group: 'Work' },
+  { to: '/metrics', label: 'Key Numbers', icon: BookOpen, group: 'Work' },
   { to: '/charts', label: 'Charts', icon: BarChart3, group: 'Work' },
   { to: '/dashboards', label: 'Dashboards', icon: LayoutDashboard, group: 'Work' },
   { to: '/alerts', label: 'Alerts', icon: Bell, group: 'Govern' },
@@ -25,7 +25,7 @@ export const NAV: NavItem[] = [
 export const GROUPS: NavItem['group'][] = ['Work', 'Govern', 'Help'];
 
 export const CRUMB_LABELS: Record<string, string> = {
-  ask: 'Ask', sources: 'Data Sources', datasets: 'Data Sources', workbench: 'Workbench', builder: 'Query Builder', metrics: 'Metrics', charts: 'Charts',
+  ask: 'Ask', sources: 'Data Sources', datasets: 'Data Sources', workbench: 'Workbench', builder: 'Query Builder', metrics: 'Key Numbers', charts: 'Charts',
   dashboards: 'Dashboards', alerts: 'Alerts', reports: 'Reports', quality: 'Quality', activity: 'Activity', settings: 'Settings', guide: 'Guide', new: 'New', generate: 'Generate with AI', studio: 'API Studio',
 };
 
