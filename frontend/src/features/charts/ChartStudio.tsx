@@ -1,10 +1,11 @@
 import { useDeferredValue, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, LayoutTemplate, Loader2, Save } from 'lucide-react';
+import { ArrowLeft, LayoutTemplate, Loader2, Maximize2, Minimize2, Save } from 'lucide-react';
 import { Button, Card, TextInput } from '@/components/ui/kit';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ErrorBanner } from '@/components/common/ErrorBanner';
 import { ResizeHandle, useResizableWidth } from '@/components/common/ResizeHandle';
+import { useFullscreen } from '@/hooks/useFullscreen';
 import { Loading } from '@/components/common/Loading';
 import { DataPanel } from './panels/DataPanel';
 import { OptionsPanel } from './panels/OptionsPanel';
@@ -34,6 +35,7 @@ export function ChartStudio({ id, startType, target }: { id?: string; startType?
   const right = useResizableWidth({ key: 'studio.right', initial: 320, min: 260, max: 600, edge: 'left' });
   const tall = useResizableWidth({ key: 'studio.preview', initial: 420, min: 200, max: 1200, edge: 'right', axis: 'y' });
   const height = tall.width;
+  const full = useFullscreen<HTMLDivElement>();   // view the element being built on the whole screen
   // the options panel and sliders stay instant while the (heavier) chart catches up
   const spec = useDeferredValue(d.spec);
   const previewHeight = useDeferredValue(height);
@@ -81,10 +83,16 @@ export function ChartStudio({ id, startType, target }: { id?: string; startType?
 
         <main className={`${col('preview')} min-h-0 min-w-0 flex-col gap-3 overflow-y-auto p-4 xl:flex-1`}>
           <ErrorBanner message={d.error} onDismiss={() => d.setError(null)} />
-          <Card padding={4} className="shrink-0">
-            {ready && d.result ? <ChartView spec={spec} result={d.result} height={previewHeight} />
-              : <div className="grid h-80 place-items-center text-sm text-muted-foreground">Choose a query and map its columns to see a live preview.</div>}
-          </Card>
+          <div ref={full.ref} className={full.active ? 'flex flex-col bg-background p-6' : 'shrink-0'}>
+            <div className="mb-1.5 flex items-center justify-end">
+              <Button variant="ghost" size="sm" icon={full.active ? <Minimize2 className="size-4" /> : <Maximize2 className="size-4" />}
+                label={full.active ? 'Exit full screen' : 'Full screen'} title={full.active ? 'Exit full screen (Esc)' : 'View this chart full screen'} onClick={full.toggle} />
+            </div>
+            <Card padding={4} className="min-h-0 flex-1">
+              {ready && d.result ? <ChartView spec={spec} result={d.result} height={full.active ? Math.max(300, window.innerHeight - 136) : previewHeight} />
+                : <div className="grid h-80 place-items-center text-sm text-muted-foreground">Choose a query and map its columns to see a live preview.</div>}
+            </Card>
+          </div>
           <div className="-mt-1.5 pt-1.5"><ResizeHandle {...tall.handleProps} vertical label="Resize preview height" /></div>
           <div className="flex items-center gap-3 text-xs text-muted-foreground">
             <span>Drag the grip above to resize the preview</span>
