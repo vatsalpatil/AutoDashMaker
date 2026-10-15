@@ -1,14 +1,11 @@
 """Visual query builder API: schema for the pickers, compile (spec -> SQL), run, distinct values, join suggestions."""
-import difflib
-import re
-
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from ..core.security import UnsafeQueryError, quote_ident
 from ..core.store import store
 from ..services import ai_vision
-from ..services import audit
+from ..services import audit, sql_errors
 from ..services.engine import engine
 from ..services.qb import compile_spec
 
@@ -52,18 +49,6 @@ def _compile(spec: dict, upto: int | None) -> str:
         raise HTTPException(400, str(e))
 
 
-def _friendly(err: str, spec: dict) -> str:
-    """DuckDB binder errors -> 'column X is not in table T. Did you mean Y?'"""
-    m = re.search(r'[Cc]olumn "([^"]+)"', err)
-    if not m or "Binder Error" not in err:
-        return err
-    names = {c["name"] for c in store.list("columns_meta", order=None)}
-    if m.group(1) in names:
-        return err
-    near = difflib.get_close_matches(m.group(1), names, n=1)
-    return f"column '{m.group(1)}' does not exist" + (f". Did you mean '{near[0]}'?" if near else "")
-
-
 @router.post("/compile")
 def compile_(body: SpecIn):
     return {"sql": _compile(body.spec, body.upto)}
@@ -78,7 +63,7 @@ def run(body: SpecIn):
         raise HTTPException(400, f"unsafe query: {e}")
     except Exception as e:
         audit.record("qb.run", detail=f"{sql} -- {e}", status="error")
-        raise HTTPException(400, _friendly(str(e), body.spec)[:500])
+        raise HTTPException(400, sql_errors.friendly(str(e))[:500])
     audit.record("qb.run", detail=result["sql"], duration_ms=result["duration_ms"])
     return result
 

@@ -8,7 +8,7 @@ from ..core.config import settings
 from ..core.security import UnsafeQueryError, validate_readonly
 from ..services import sql_params
 from ..core.store import store
-from ..services import audit
+from ..services import audit, sql_errors
 from ..services.compose import compose_cell_sql, compose_sql, format_sql
 from ..services.dialects import DIALECTS, convert_sql
 from ..services.engine import engine
@@ -113,6 +113,8 @@ def format_query(body: FormatIn):
 
 @router.post("/run")
 def run_query(body: QueryIn):
+    if not re.sub(r"--[^\n]*|/\*.*?\*/", "", body.sql, flags=re.S).strip(" ;\n\t\r"):
+        raise HTTPException(400, "Write a query first (only comments or nothing to run).")
     try:
         result = engine.execute(body.sql, body.row_limit)
     except UnsafeQueryError as e:
@@ -120,7 +122,7 @@ def run_query(body: QueryIn):
         raise HTTPException(400, f"unsafe query: {e}")
     except Exception as e:
         audit.record("query.run", detail=f"{body.sql} -- {e}", status="error")
-        raise HTTPException(400, str(e)[:500])
+        raise HTTPException(400, sql_errors.friendly(str(e))[:500])
     audit.record("query.run", detail=result["sql"], duration_ms=result["duration_ms"])
     if body.save:
         q = store.insert("queries", {
