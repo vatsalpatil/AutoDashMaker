@@ -119,3 +119,4 @@ AND corrupted its global decimal state, breaking every later chart on the page (
 invalid currency codes throw in Intl; repeated item names (ungrouped queries) gave duplicate React keys -> elements add them up.
 - **Requests before auth init (2026-10-15):** with Supabase on, any API call made before `initAuth()` resolved went out with no bearer → 401 'Not signed in' on deep-link reloads. `authFetch` now awaits `initAuth()`; don't add raw `fetch` calls to protected APIs.
 - **inf/NaN in results (2026-10-15):** DuckDB DOUBLE division by zero gives inf/NaN, which is not valid JSON → FastAPI 500. `engine._finite` maps them to null at the single point where result rows are built; keep new result paths going through `engine.execute`.
+- **Source secrets (2026-10-15):** source configs leave the API masked (`core/secret_fields.mask`); anything that saves or tests a config must run `restore(new, stored)` or it will save/test the literal mask.

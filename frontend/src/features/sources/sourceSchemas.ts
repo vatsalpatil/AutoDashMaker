@@ -153,5 +153,5 @@ export function buildPayload(schema: SourceSchema, values: Record<string, string
   if (editing && schema.fields.some((f) => f.kind === 'password') && !config.password) {
     config.password = editing.config?.password ?? '';
   }
-  return { name: values.name, type: schema.id, config };
+  return { name: values.name, type: schema.id, config, source_id: editing?.id };
 }

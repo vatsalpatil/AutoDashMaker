@@ -11,6 +11,7 @@ from pydantic import BaseModel
 
 from ..connectors import get_connector, ConnectorError
 from ..connectors.tls import CERT_EXTENSIONS, MAX_CERT_BYTES, cert_dir
+from ..core.secret_fields import public_source, restore
 from ..core.store import store
 from ..services import audit
 from ..core import tenant
@@ -22,20 +23,21 @@ class SourceIn(BaseModel):
     name: str
     type: str  # file | postgres | rest
     config: dict[str, Any] = {}
+    source_id: str | None = None   # set when testing an edited source: masked secrets come from the stored config
 
 
 @router.get("")
 def list_sources():
-    return store.list("datasources")
+    return [public_source(s) for s in store.list("datasources")]
 
 
 @router.post("")
 def create_source(body: SourceIn):
     if body.type not in ("file", "postgres", "mysql", "sqlite", "rest", "graphql", "url", "gsheets"):
         raise HTTPException(400, f"unsupported type {body.type}")
-    src = store.insert("datasources", body.model_dump())
+    src = store.insert("datasources", body.model_dump(exclude={"source_id"}))
     audit.record("source.create", entity_type="source", entity_id=src["id"], detail=f"{body.name} ({body.type})")
-    return src
+    return public_source(src)
 
 
 @router.post("/files")
@@ -97,7 +99,8 @@ def sources_health(check: bool = True):
 
 @router.post("/test")
 def test_connection(body: SourceIn):
-    return get_connector(body.type, body.config).test_connection()
+    stored = store.get("datasources", body.source_id) if body.source_id else None
+    return get_connector(body.type, restore(body.config, (stored or {}).get("config"))).test_connection()
 
 
 @router.get("/{source_id}/discover")
@@ -117,11 +120,11 @@ def update_source(source_id: str, body: SourceIn):
     src = store.get("datasources", source_id)
     if not src:
         raise HTTPException(404, "source not found")
-    store.update("datasources", source_id, {"name": body.name, "config": body.config})
+    store.update("datasources", source_id, {"name": body.name, "config": restore(body.config, src.get("config"))})
     from ..services.remote import invalidate  # linked datasets read the source's config on every query
     invalidate()
     audit.record("source.update", entity_type="source", entity_id=source_id, detail=body.name)
-    return store.get("datasources", source_id)
+    return public_source(store.get("datasources", source_id))
 
 
 @router.post("/{source_id}/test-saved")
