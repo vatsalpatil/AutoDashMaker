@@ -1,45 +1,13 @@
 import type { ChartType } from '@/lib/types';
 import { PALETTES } from './palettes';
-import { kindOf, type Family } from './chartKinds';
+import { kindOf } from './chartKinds';
 import type { Opts } from './format';
 import { BAR_STYLES } from './render/Bar3D';
 import { FILL_STYLES } from './render/fills';
 
-/**
- * Every chart option, declared once. The options panel renders whatever applies to the chosen chart type,
- * so adding an option is one line here plus one read in the renderer.
- */
-export type FieldKind = 'switch' | 'select' | 'number' | 'slider' | 'color' | 'text' | 'column';
-type Scope = ChartType | Family;
-
-export interface Field {
-  key: string;
-  label: string;
-  kind: FieldKind;
-  options?: [string, string][];
-  min?: number;
-  max?: number;
-  step?: number;
-  placeholder?: string;
-  /** Show only for these chart types / families (omitted = every chart). */
-  for?: Scope[];
-  /** Show only while this holds for the current options. */
-  when?: (o: Opts) => boolean;
-}
-
-export interface Section { id: string; label: string; fields: Field[] }
-export interface Tab { id: string; label: string; sections: Section[] }
-
-const CART: Scope[] = ['cartesian'];
-const VISUAL: Scope[] = ['cartesian', 'part', 'radar'];
-const sw = (key: string, label: string, f: Partial<Field> = {}): Field => ({ key, label, kind: 'switch', ...f });
-const sel = (key: string, label: string, options: [string, string][], f: Partial<Field> = {}): Field => ({ key, label, kind: 'select', options, ...f });
-const sld = (key: string, label: string, min: number, max: number, step = 1, f: Partial<Field> = {}): Field => ({ key, label, kind: 'slider', min, max, step, ...f });
-const txt = (key: string, label: string, f: Partial<Field> = {}): Field => ({ key, label, kind: 'text', ...f });
-const numf = (key: string, label: string, f: Partial<Field> = {}): Field => ({ key, label, kind: 'number', ...f });
-const col = (key: string, label: string, f: Partial<Field> = {}): Field => ({ key, label, kind: 'color', ...f });
-/** A column of the chart's query result (dropdown). */
-const colf = (key: string, label: string, f: Partial<Field> = {}): Field => ({ key, label, kind: 'column', ...f });
+export * from './optionBuilders';
+import { CART, VISUAL, col, colf, numf, sel, sld, sw, txt, type Field, type Section, type Tab } from './optionBuilders';
+import { ELEMENT_SECTIONS, LIST_SECTIONS } from './optionSections';
 
 const NUMBER_FORMATS: [string, string][] = [['auto', 'Auto'], ['compact', 'Compact (1.2K)'], ['decimal', 'Decimal (1,234.5)'], ['currency', 'Currency'], ['indian', 'Indian (₹ L / Cr)'], ['ratio', 'Ratio (3.2 : 1)'], ['percent', 'Percent']];
 
@@ -47,7 +15,7 @@ export const TABS: Tab[] = [
   {
     id: 'style', label: 'Style', sections: [
       { id: 'look', label: 'Look', fields: [
-        sel('palette', 'Colour palette', PALETTES.map((p) => [p.id, p.label]), { for: [...VISUAL] }),
+        sel('palette', 'Colour palette', PALETTES.map((p) => [p.id, p.label]), { for: [...VISUAL, 'sunburst', 'sankey'] }),
         col('seriesColor', 'Override first series colour', { for: ['cartesian', 'radar'] }),
         sel('background', 'Panel background', [['none', 'None'], ['card', 'Card'], ['muted', 'Muted'], ['gradient', 'Accent gradient']]),
         sw('showLegend', 'Legend', { for: ['cartesian', 'part', 'radar'] }),
@@ -105,21 +73,7 @@ export const TABS: Tab[] = [
         sw('showMean', 'Mean marker (◇)', { for: ['boxplot'] }),
         sel('boxLabels', 'Value labels', [['median', 'Median only'], ['all', 'Min, Q1, median, Q3, max'], ['none', 'None']], { for: ['boxplot'] }),
       ] },
-      { id: 'gauge', label: 'Gauge', fields: [
-        txt('gaugeRanges', 'Ranges: from-to Label #colour; …', { for: ['gauge'], placeholder: '0-33 Low #dc2626; 33-66 Medium #f59e0b; 66-100 High #16a34a' }),
-      ] },
-      { id: 'progress', label: 'Progress', fields: [
-        numf('goalValue', 'Goal (fixed number)', { for: ['progress'], placeholder: '100' }),
-        txt('goalColumn', 'Goal from column (overrides the number)', { for: ['progress'] }),
-        sw('progressPercent', 'Show as percent', { for: ['progress'] }),
-        col('progressColor', 'Bar colour', { for: ['progress'] }),
-        col('goalReachedColor', 'Colour when the goal is reached', { for: ['progress'] }),
-      ] },
-      { id: 'sankey', label: 'Sankey', fields: [
-        sel('edgeColor', 'Edge colour', [['gray', 'Gray'], ['source', 'From source node'], ['target', 'From target node']], { for: ['sankey'] }),
-        sel('edgeLabels', 'Value format', [['compact', 'Compact'], ['full', 'Full']], { for: ['sankey'] }),
-        sld('nodePadding', 'Node spacing', 4, 40, 2, { for: ['sankey'] }),
-      ] },
+      ...ELEMENT_SECTIONS,
       { id: 'pie', label: 'Pie / donut', fields: [
         sld('minSlicePercent', 'Fold slices under this % into "Other"', 0, 20, 1, { for: ['pie'] }),
         sw('donut', 'Donut', { for: ['pie'] }),
@@ -151,58 +105,7 @@ export const TABS: Tab[] = [
         sld('percentDecimals', 'Percentage decimals', 0, 3, 1, { for: ['kpi'], when: (o) => o.percentOf === 'column' || o.percentOf === 'fixed' }),
         sw('percentMain', 'Show the percentage as the main number', { for: ['kpi'], when: (o) => o.percentOf === 'column' || o.percentOf === 'fixed' }),
       ] },
-      { id: 'ranked', label: 'Ranked list', fields: [
-        sel('rankOrder', 'Order', [['desc', 'Biggest first'], ['asc', 'Smallest first']], { for: ['ranked'] }),
-        sw('showRank', 'Rank numbers', { for: ['ranked'] }),
-        sw('showBar', 'Bar with previous-period marker', { for: ['ranked'] }),
-        col('barColor', 'Bar colour', { for: ['ranked'], when: (o) => o.showBar !== false }),
-        col('markerColor', 'Previous marker colour', { for: ['ranked'], when: (o) => o.showBar !== false }),
-        sw('showKey', 'Key under the list', { for: ['ranked'] }),
-        txt('currentLabel', 'Current period name', { for: ['ranked'], placeholder: 'current (e.g. this month)' }),
-      ] },
-      { id: 'groups', label: 'Performance groups', fields: [
-        numf('bigSharePct', '"Big" when share is at least (%)', { for: ['quadrant'], placeholder: 'average share' }),
-        numf('fastGrowthPct', '"Fast" when growth is at least (%)', { for: ['quadrant'], placeholder: 'overall growth' }),
-        sel('groupLayout', 'Layout', [['auto', 'Automatic (by widget width)'], ['1', 'One column'], ['2', 'Two columns'], ['4', 'Four in a row']], { for: ['quadrant'] }),
-        numf('groupMaxItems', 'Items per group (0 = all)', { for: ['quadrant'], placeholder: '0' }),
-        sw('showSummary', 'Line explaining the thresholds', { for: ['quadrant'] }),
-        sw('showHints', 'Advice text under each group', { for: ['quadrant'] }),
-        sw('showValues', 'Values', { for: ['quadrant'] }),
-        txt('starsLabel', 'Stars: name', { for: ['quadrant'], placeholder: 'Stars' }),
-        txt('starsHint', 'Stars: advice text', { for: ['quadrant'], when: (o) => o.showHints !== false }),
-        col('starsColor', 'Stars: colour', { for: ['quadrant'] }),
-        txt('risingLabel', 'Rising: name', { for: ['quadrant'], placeholder: 'Rising' }),
-        txt('risingHint', 'Rising: advice text', { for: ['quadrant'], when: (o) => o.showHints !== false }),
-        col('risingColor', 'Rising: colour', { for: ['quadrant'] }),
-        txt('watchLabel', 'Watch: name', { for: ['quadrant'], placeholder: 'Watch' }),
-        txt('watchHint', 'Watch: advice text', { for: ['quadrant'], when: (o) => o.showHints !== false }),
-        col('watchColor', 'Watch: colour', { for: ['quadrant'] }),
-        txt('laggardsLabel', 'Laggards: name', { for: ['quadrant'], placeholder: 'Laggards' }),
-        txt('laggardsHint', 'Laggards: advice text', { for: ['quadrant'], when: (o) => o.showHints !== false }),
-        col('laggardsColor', 'Laggards: colour', { for: ['quadrant'] }),
-      ] },
-      { id: 'growth', label: 'Growth', fields: [
-        sw('showGrowth', 'Growth %', { for: ['ranked', 'quadrant'] }),
-        sel('deltaGood', 'An increase is…', [['up', 'Good (green)'], ['down', 'Bad (red, e.g. returns)']], { for: ['ranked', 'quadrant'] }),
-        sld('growthDecimals', 'Growth decimals', 0, 2, 1, { for: ['ranked', 'quadrant'] }),
-        txt('previousLabel', 'Previous period name', { for: ['ranked'], placeholder: 'previous (e.g. last month)' }),
-      ] },
-      { id: 'reconcile', label: 'Reconcile', fields: [
-        numf('tolerance', 'Count as a match within ± (amount)', { for: ['reconcile'], placeholder: '0' }),
-        numf('tolerancePct', 'or within ± (% of the larger value)', { for: ['reconcile'], placeholder: '0' }),
-        sw('showVerdict', 'Verdict line', { for: ['reconcile'] }),
-        sw('showTiles', 'Summary tiles', { for: ['reconcile'] }),
-        sel('reconStart', 'Rows shown first', [['auto', 'Differences if any, else all'], ['diff', 'Only differences'], ['all', 'All rows']], { for: ['reconcile'] }),
-      ] },
-      { id: 'cells', label: 'Columns & cell colours', fields: [
-        txt('columnLabels', 'Rename columns: column=Name; …', { for: ['table'], placeholder: 'revenue=Revenue (₹); qty=Units' }),
-        txt('hiddenColumns', 'Hide columns (comma separated)', { for: ['table'], placeholder: 'order_id, customer_id' }),
-        txt('cellRules', 'Colour rules: column>value:colour; …', { for: ['table', 'pivot', 'timebreak'], placeholder: 'revenue>100000:#16a34a; status=Late:red; *<0:#dc2626' }),
-        sel('ruleFill', 'Rule colours', [['text', 'Colour the text'], ['fill', 'Tint the cell']], { for: ['table', 'pivot', 'timebreak'] }),
-        sw('dataBars', 'Bars inside number cells', { for: ['table'] }),
-        sw('wrapText', 'Wrap long text', { for: ['table'] }),
-        sw('showTotalsRow', 'Totals row', { for: ['table'] }),
-      ] },
+      ...LIST_SECTIONS,
       { id: 'table', label: 'Table', fields: [
         sel('tableFontSize', 'Text size', [['xs', 'Small'], ['sm', 'Medium'], ['md', 'Large']], { for: ['table', 'pivot', 'timebreak'] }),
         sel('tableDensity', 'Density', [['compact', 'Compact'], ['comfortable', 'Comfortable']], { for: ['table', 'pivot', 'timebreak'] }),
@@ -248,6 +151,9 @@ export const TABS: Tab[] = [
       { id: 'text', label: 'Heading', fields: [
         txt('chartTitle', 'Chart title'),
         txt('chartSubtitle', 'Subtitle'),
+        sel('titleSize', 'Title size', [['sm', 'Small'], ['md', 'Medium'], ['lg', 'Large'], ['xl', 'Extra large']], { when: (o) => !!o.chartTitle }),
+        sel('titleAlign', 'Title alignment', [['left', 'Left'], ['center', 'Centre']], { when: (o) => !!o.chartTitle }),
+        col('titleColor', 'Title colour', { when: (o) => !!o.chartTitle }),
       ] },
       { id: 'data-labels', label: 'Data labels', fields: [
         sel('dataLabels', 'Show values on chart', [['none', 'None'], ['some', 'Some (when not crowded)'], ['all', 'All']], { for: ['cartesian'] }),
@@ -290,7 +196,9 @@ export const DEFAULTS: Opts = {
   // ranked / groups / reconcile parts are on unless turned off
   rankOrder: 'desc', showRank: true, showBar: true, showKey: true, showGrowth: true, growthDecimals: 0, groupLayout: 'auto', groupMaxItems: 0,
   showSummary: true, showHints: true, showValues: true, showVerdict: true, showTiles: true, reconStart: 'auto',
-  ruleFill: 'text', dataBars: false, wrapText: false, showTotalsRow: true,
+  ruleFill: 'text', dataBars: false, wrapText: false, showTotalsRow: true, titleSize: 'sm', titleAlign: 'left',
+  gaugeThickness: 22, gaugeValueSize: 24, showMinMax: true, showRangeLabel: true, progressHeight: 20, progressValueSize: 30, showGoal: true, showStatus: true,
+  nodeWidth: 10, linkOpacity: 0.3, showNodeLabels: true, labelSize: 11, sbHole: 12, sbInner: 45, sbOuter: 78, sbOuterOpacity: 0.65,
 };
 
 const matches = (f: Field, type: ChartType) => !f.for || f.for.includes(type) || f.for.includes(kindOf(type).family);

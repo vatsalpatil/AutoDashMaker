@@ -32,18 +32,18 @@ export function SankeyView({ spec, result, o, height }: { spec: ChartSpec; resul
   const Link = (p: { sourceX: number; targetX: number; sourceY: number; targetY: number; sourceControlX: number; targetControlX: number; linkWidth: number; index: number; payload: { source: { index: number }; target: { index: number }; value: number } }) => {
     const stroke = edge === 'source' ? palette[p.payload.source.index % palette.length] : edge === 'target' ? palette[p.payload.target.index % palette.length] : 'var(--muted-foreground)';
     return (
-      <path d={`M${p.sourceX},${p.sourceY} C${p.sourceControlX},${p.sourceY} ${p.targetControlX},${p.targetY} ${p.targetX},${p.targetY}`} fill="none" stroke={stroke} strokeOpacity={0.3} strokeWidth={Math.max(p.linkWidth, 1)} />
+      <path d={`M${p.sourceX},${p.sourceY} C${p.sourceControlX},${p.sourceY} ${p.targetControlX},${p.targetY} ${p.targetX},${p.targetY}`} fill="none" stroke={stroke} strokeOpacity={opt.num(o.linkOpacity, 0.3)} strokeWidth={Math.max(p.linkWidth, 1)} />
     );
   };
   const Node = (p: { x: number; y: number; width: number; height: number; index: number; payload: { name: string; value: number } }) => (
     <Layer>
       <Rectangle x={p.x} y={p.y} width={p.width} height={p.height} fill={palette[p.index % palette.length]} fillOpacity={0.95} />
-      {p.height > 12 && <text x={p.x + p.width + 6} y={p.y + p.height / 2 + 4} fontSize={11} fill="var(--foreground)">{p.payload.name}{o.showDataLabels === true ? ` · ${formatValue(p.payload.value, fmt)}` : ''}</text>}
+      {o.showNodeLabels !== false && p.height > 12 && <text x={p.x + p.width + 6} y={p.y + p.height / 2 + 4} fontSize={opt.num(o.labelSize, 11)} fill="var(--foreground)">{p.payload.name}{o.showDataLabels === true ? ` · ${formatValue(p.payload.value, fmt)}` : ''}</text>}
     </Layer>
   );
   return (
     <ChartContainer config={{}} className="aspect-auto w-full" style={{ height }}>
-      <Sankey data={{ nodes: names.map((name) => ({ name })), links }} nodePadding={opt.num(o.nodePadding, 18)} nodeWidth={10} margin={{ top: 8, right: 110, bottom: 8, left: 8 }} link={Link as never} node={Node as never}>
+      <Sankey data={{ nodes: names.map((name) => ({ name })), links }} nodePadding={opt.num(o.nodePadding, 18)} nodeWidth={opt.num(o.nodeWidth, 10)} margin={{ top: 8, right: 110, bottom: 8, left: 8 }} link={Link as never} node={Node as never}>
         {o.showTooltip !== false && <Tooltip formatter={(v) => formatValue(v, fmt)} />}
       </Sankey>
     </ChartContainer>

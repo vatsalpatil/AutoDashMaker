@@ -27,6 +27,8 @@ import { TimeBreakdownTable } from './TimeBreakdownTable';
 import { ReconcileView } from './ReconcileView';
 import { PerformanceGroups, RankedBars } from './Comparison';
 
+const TITLE_SIZE: Record<string, string> = { sm: 'text-sm', md: 'text-base', lg: 'text-lg', xl: 'text-xl' };
+
 const BACKGROUND: Record<string, string> = {
   none: '',
   card: 'rounded-xl border bg-card',
@@ -118,8 +120,8 @@ function ChartViewBase({ spec, result, height = 320, options, onPick, plain = fa
     <div ref={box} className={cn('flex flex-col gap-2', BACKGROUND[String(o.background)] ?? '', o.background !== 'none' && 'p-3')}>
       {heading && (
         <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0">
-            {o.chartTitle ? <h3 className="truncate text-sm font-semibold leading-tight">{String(o.chartTitle)}</h3> : null}
+          <div className={cn('min-w-0', o.titleAlign === 'center' && 'flex-1 text-center')}>
+            {o.chartTitle ? <h3 className={cn('truncate font-semibold leading-tight', TITLE_SIZE[String(o.titleSize)] ?? 'text-sm')} style={{ color: opt.str(o.titleColor, '') || undefined }}>{String(o.chartTitle)}</h3> : null}
             {o.chartSubtitle ? <p className="truncate text-xs text-muted-foreground">{String(o.chartSubtitle)}</p> : null}
           </div>
           <div className="flex shrink-0 items-center gap-2">

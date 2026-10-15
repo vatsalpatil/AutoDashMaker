@@ -25,8 +25,10 @@ export function Gauge({ spec, result, o, height }: { spec: ChartSpec; result: Qu
   const last = result.rows[result.rows.length - 1];
   const value = toNumber(last?.[y] ?? last?.[x]);
   const ranges = parseRanges(opt.str(o.gaugeRanges, '0-33 Low; 33-66 Medium; 66-100 High')).map((r, i) => ({ ...r, color: r.color || FALLBACK[i % FALLBACK.length] }));
-  const min = ranges.length ? Math.min(...ranges.map((r) => r.from)) : 0;
-  const max = ranges.length ? Math.max(...ranges.map((r) => r.to)) : 100;
+  const has = (k: string) => o[k] !== undefined && o[k] !== '';
+  const min = has('gaugeMin') ? opt.num(o.gaugeMin, 0) : ranges.length ? Math.min(...ranges.map((r) => r.from)) : 0;
+  const max = has('gaugeMax') ? opt.num(o.gaugeMax, 100) : ranges.length ? Math.max(...ranges.map((r) => r.to)) : 100;
+  const thick = opt.num(o.gaugeThickness, 22);
   const angle = (v: number) => Math.min(Math.max((v - min) / (max - min || 1), 0), 1) * Math.PI;
   const hit = ranges.find((r) => value >= r.from && value <= r.to);
   const w = 300;
@@ -38,14 +40,15 @@ export function Gauge({ spec, result, o, height }: { spec: ChartSpec; result: Qu
   return (
     <div className="flex flex-col items-center justify-center" style={{ height }}>
       <svg viewBox={`0 0 ${w} ${cy + 36}`} className="max-h-full w-full max-w-sm" role="img" aria-label={`Gauge: ${formatValue(value, o)}`}>
-        {ranges.map((r, i) => <path key={i} d={arc(cx, cy, R, angle(r.from), angle(r.to))} stroke={r.color} strokeWidth={22} fill="none" />)}
-        <line x1={cx} y1={cy} x2={nx} y2={ny} stroke="var(--foreground)" strokeWidth={3} strokeLinecap="round" />
-        <circle cx={cx} cy={cy} r={7} fill="var(--foreground)" />
-        <text x={cx - R} y={cy + 18} textAnchor="middle" fontSize={11} fill="var(--muted-foreground)">{formatValue(min, o)}</text>
-        <text x={cx + R} y={cy + 18} textAnchor="middle" fontSize={11} fill="var(--muted-foreground)">{formatValue(max, o)}</text>
-        <text x={cx} y={cy + 34} textAnchor="middle" fontSize={24} fontWeight={600} fill="var(--foreground)">{formatValue(value, o)}</text>
+        {ranges.map((r, i) => <path key={i} d={arc(cx, cy, R, angle(r.from), angle(r.to))} stroke={r.color} strokeWidth={thick} fill="none" />)}
+        <line x1={cx} y1={cy} x2={nx} y2={ny} stroke={opt.str(o.needleColor, 'var(--foreground)')} strokeWidth={3} strokeLinecap="round" />
+        <circle cx={cx} cy={cy} r={7} fill={opt.str(o.needleColor, 'var(--foreground)')} />
+        {o.showMinMax !== false && <><text x={cx - R} y={cy + 18} textAnchor="middle" fontSize={11} fill="var(--muted-foreground)">{formatValue(min, o)}</text>
+        <text x={cx + R} y={cy + 18} textAnchor="middle" fontSize={11} fill="var(--muted-foreground)">{formatValue(max, o)}</text></>}
+        <text x={cx} y={cy + 34} textAnchor="middle" fontSize={opt.num(o.gaugeValueSize, 24)} fontWeight={600} fill="var(--foreground)">{formatValue(value, o)}</text>
       </svg>
-      {hit?.label && <span className="rounded-full px-2 py-0.5 text-xs font-medium text-white" style={{ background: hit.color }}>{hit.label}</span>}
+      {o.gaugeLabel ? <span className="text-xs text-muted-foreground">{String(o.gaugeLabel)}</span> : null}
+      {o.showRangeLabel !== false && hit?.label && <span className="rounded-full px-2 py-0.5 text-xs font-medium text-white" style={{ background: hit.color }}>{hit.label}</span>}
     </div>
   );
 }

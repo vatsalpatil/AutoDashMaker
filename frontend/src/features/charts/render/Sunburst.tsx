@@ -28,12 +28,12 @@ export function Sunburst({ spec, result, o, height }: { spec: ChartSpec; result:
     <ChartContainer config={config} className="aspect-auto w-full" style={{ height }}>
       <PieChart>
         {o.showTooltip !== false && <ChartTooltip content={valueTooltip(o, config, { nameKey: 'name', hideLabel: true })} />}
-        <Pie data={inner} dataKey="value" nameKey="name" outerRadius="45%" innerRadius="12%" stroke="var(--card)" isAnimationActive={o.animate !== false} label={labels ? (p) => text(p as { name?: string; value?: number }) : false} labelLine={false}>
+        <Pie data={inner} dataKey="value" nameKey="name" outerRadius={`${opt.num(o.sbInner, 45)}%`} innerRadius={`${opt.num(o.sbHole, 12)}%`} stroke="var(--card)" isAnimationActive={o.animate !== false} label={labels ? (p) => text(p as { name?: string; value?: number }) : false} labelLine={false}>
           {inner.map((d) => <Cell key={d.name} fill={d.fill} />)}
         </Pie>
         {outer.length > 0 && (
-          <Pie data={outer} dataKey="value" nameKey="name" innerRadius="48%" outerRadius="78%" stroke="var(--card)" isAnimationActive={o.animate !== false} label={labels && outer.length <= 30 ? (p) => text(p as { name?: string; value?: number }) : false}>
-            {outer.map((d, i) => <Cell key={i} fill={d.fill} fillOpacity={0.65} />)}
+          <Pie data={outer} dataKey="value" nameKey="name" innerRadius={`${opt.num(o.sbInner, 45) + 3}%`} outerRadius={`${opt.num(o.sbOuter, 78)}%`} stroke="var(--card)" isAnimationActive={o.animate !== false} label={labels && outer.length <= 30 ? (p) => text(p as { name?: string; value?: number }) : false}>
+            {outer.map((d, i) => <Cell key={i} fill={d.fill} fillOpacity={opt.num(o.sbOuterOpacity, 0.65)} />)}
           </Pie>
         )}
       </PieChart>

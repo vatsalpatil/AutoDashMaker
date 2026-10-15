@@ -16,13 +16,13 @@ export function ProgressBar({ spec, result, o }: { spec: ChartSpec; result: Quer
   return (
     <div className="flex h-full flex-col justify-center gap-2 p-6">
       <div className="flex items-baseline justify-between">
-        <span className="text-3xl font-semibold tabular-nums">{text}</span>
-        <span className="text-sm text-muted-foreground">Goal {formatValue(goal, o)}</span>
+        <span className="font-semibold tabular-nums" style={{ fontSize: opt.num(o.progressValueSize, 30) }}>{text}</span>
+        {o.showGoal !== false && <span className="text-sm text-muted-foreground">{opt.str(o.goalLabel, 'Goal')} {formatValue(goal, o)}</span>}
       </div>
-      <div className="h-5 w-full overflow-hidden rounded-full bg-muted" role="progressbar" aria-valuenow={Math.round(pct)} aria-valuemin={0} aria-valuemax={100}>
+      <div className="w-full overflow-hidden rounded-full bg-muted" style={{ height: opt.num(o.progressHeight, 20), background: opt.str(o.trackColor, '') || undefined }} role="progressbar" aria-valuenow={Math.round(pct)} aria-valuemin={0} aria-valuemax={100}>
         <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: color }} />
       </div>
-      <span className="text-xs text-muted-foreground">{reached ? 'Goal reached' : `${(ratio * 100).toFixed(0)}% of the way`}</span>
+      {o.showStatus !== false && <span className="text-xs text-muted-foreground">{reached ? `${opt.str(o.goalLabel, 'Goal')} reached` : `${(ratio * 100).toFixed(0)}% of the way`}</span>}
     </div>
   );
 }
