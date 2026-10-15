@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Braces, Database, GitMerge, Maximize2, Minimize2, Plus, Table2 } from 'lucide-react';
 import { BlendDialog } from '@/components/BlendDialog';
+import { RelationshipsPanel } from '@/components/RelationshipsPanel';
 import { ErrorBanner } from '@/components/common/ErrorBanner';
 import { SearchBox, UnderlineTabs, ViewToggle } from '@/components/common/ListControls';
 import { Loading } from '@/components/common/Loading';
@@ -18,7 +19,7 @@ import { useFullscreen } from '@/hooks/useFullscreen';
 import { useListView } from '@/hooks/useListView';
 import type { Dataset, Source } from '@/lib/types';
 
-type Tab = 'datasets' | 'connections';
+type Tab = 'datasets' | 'connections' | 'relationships';
 
 const DATASET_FIELDS: FieldDef<Dataset>[] = [
   { id: 'name', label: 'Name', type: 'text', get: (d) => d.name },
@@ -66,16 +67,17 @@ export default function SourcesPage() {
           tabs={[
             { id: 'datasets', label: 'Datasets', icon: <Table2 className="h-4 w-4" />, count: s.datasets.length },
             { id: 'connections', label: 'Connected Sources', icon: <Database className="h-4 w-4" />, count: s.sources.length },
+            { id: 'relationships', label: 'Relationships', icon: <GitMerge className="h-4 w-4" /> },
           ]}
         />
-        <div className="flex items-center gap-3">
+        {tab !== 'relationships' && <div className="flex items-center gap-3">
           <SearchBox value={list.query} onChange={list.setQuery} placeholder={`Search ${tab === 'datasets' ? 'datasets' : 'sources'}…`} />
           <ViewToggle value={list.view} onChange={list.setView} />
-        </div>
+        </div>}
       </div>
 
       {tab === 'datasets' && <div className="flex flex-wrap items-center gap-2">{filters.bar}</div>}
-      {tab === 'datasets' ? (
+      {tab === 'relationships' ? <RelationshipsPanel datasets={s.datasets} /> : tab === 'datasets' ? (
         <DatasetsTab
           datasets={filters.apply(list.filter(s.datasets, (d) => [d.name, d.kind]))}
           view={list.view}

@@ -11,7 +11,6 @@ const ApiStudioPage = lazy(() => import('@/pages/ApiStudioPage'));
 const DatasetDetailPage = lazy(() => import('@/pages/DatasetDetailPage'));
 const WorkbenchPage = lazy(() => import('@/pages/WorkbenchPage'));
 const QueryBuilderPage = lazy(() => import('@/pages/QueryBuilderPage'));
-const MetricsPage = lazy(() => import('@/pages/MetricsPage'));
 const ChartsPage = lazy(() => import('@/pages/ChartsPage'));
 const ChartDetailPage = lazy(() => import('@/pages/ChartDetailPage'));
 const DashboardsPage = lazy(() => import('@/pages/DashboardsPage'));
@@ -43,7 +42,7 @@ export default function App() {
         <Route path="/datasets/:id" element={<DatasetDetailPage />} />
         <Route path="/workbench" element={null} />
         <Route path="/builder" element={null} />
-        <Route path="/metrics" element={<MetricsPage />} />
+        <Route path="/metrics" element={<Navigate to="/" replace />} />
         <Route path="/charts" element={<ChartsPage />} />
         <Route path="/charts/new" element={<ChartDetailPage />} />
         <Route path="/charts/:id" element={<ChartDetailPage />} />
