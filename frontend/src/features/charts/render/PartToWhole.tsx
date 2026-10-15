@@ -78,7 +78,7 @@ export function PartToWhole({ spec, prep, o, height, onPick, result }: Props) {
         <PieChart>
           {fillStyle !== 'solid' && <FillDefs uid={uid} items={data.map((d) => ({ key: d.key, color: d.fill }))} vertical={false} />}
           {tip}
-          <Pie data={data} dataKey="value" nameKey="name" onClick={onPick ? (d: { name?: string }) => d?.name && onPick(d.name) : undefined} outerRadius={semi ? '120%' : '80%'} innerRadius={semi && inner ? `${opt.num(o.innerRadius, 55) * 1.5}%` : inner} cy={semi ? '78%' : '50%'}
+          <Pie data={data} dataKey="value" nameKey="name" onClick={onPick ? (d: { name?: string }) => d?.name && onPick(d.name) : undefined} outerRadius={semi ? '120%' : labelMode === 'none' ? '80%' : '70%'} innerRadius={semi && inner ? `${opt.num(o.innerRadius, 55) * 1.5}%` : inner} cy={semi ? '78%' : '50%'}
             paddingAngle={opt.num(o.padAngle, 0)} cornerRadius={opt.num(o.cornerRadius, 0)}
             startAngle={semi ? 180 : 90 - start} endAngle={semi ? 0 : -270 - start} isAnimationActive={animate}
             label={labelMode === 'none' || semi ? false : (p: { name?: string; value?: number }) => text({ name: p.name ?? '', value: p.value ?? 0 })}>
