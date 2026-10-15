@@ -45,9 +45,10 @@ def _like_escape(v) -> str:
 
 def _positive(n, default: int) -> int:
     try:
-        return max(1, int(n))
+        n = int(n)
     except (TypeError, ValueError):
         return default
+    return n if n >= 1 else default
 
 
 class _Stage:
