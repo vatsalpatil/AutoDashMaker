@@ -60,3 +60,7 @@ USER: default AI model is `openrouter/free` (random model per request = inconsis
 
 ## 2026-10-15 live test (Docker deploys)
 Both apps now deploy with Dockerfiles (Nixpacks could not fetch nixpkgs from GitHub). Live-tested on dashboard "Pattern Test (Claude)" (id 72a7c183a46f, user's Chocolate Sales data): KPI vs previous, ratio, ranked, quadrant, growth treemap, reconcile, timebreak (expand / split / compare 1-3), period + number params (UI switch -> one batched request; injection refused), Add widget -> new element -> studio preselected, 'Dashboard patterns' gallery. Fixed during the test: saved queries lost {{placeholders}}, treemap root tile, mixed detail values, split column shown twice. Frontend still needs a manual Deploy in Dokploy after each push.
+
+## 2026-10-15 live test loop (dashtor.laveyent.com, all tabs, first pass done)
+Fixed + verified live: QB friendly column errors/limits; Ask failed answers visible, follow-up chips, no pie for top-N; Workbench empty-SQL / unknown-table messages; deep-link reload 'Not signed in' (auth race); inf/NaN results no longer 500; source passwords masked in API (SECURITY); report webhook SSRF guard (SECURITY); smarter starter questions + metric suggestions; '1 row'. Details in 05-changelog.
+USER: rotate the TiDB password (was returned to the browser before 25aafde). Free model `openrouter/free` ignores NOT_A_QUERY, so off-topic questions get the generic error.
