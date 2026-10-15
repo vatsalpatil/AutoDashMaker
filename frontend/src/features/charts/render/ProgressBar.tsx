@@ -12,7 +12,7 @@ export function ProgressBar({ spec, result, o }: { spec: ChartSpec; result: Quer
   const pct = Math.min(Math.max(ratio, 0), 1) * 100;
   const reached = ratio >= 1;
   const color = reached ? opt.str(o.goalReachedColor, '#16a34a') : opt.str(o.progressColor, 'var(--primary)');
-  const text = o.progressPercent === true ? `${(ratio * 100).toFixed(opt.num(o.decimals, 0))}%` : formatValue(value, o);
+  const text = o.progressPercent === true ? `${(ratio * 100).toFixed(opt.digits(o.decimals, 0))}%` : formatValue(value, o);
   return (
     <div className="flex h-full flex-col justify-center gap-2 p-6">
       <div className="flex items-baseline justify-between">

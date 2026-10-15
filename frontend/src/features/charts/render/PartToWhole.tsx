@@ -20,7 +20,10 @@ export function PartToWhole({ spec, prep, o, height, onPick, result }: Props) {
   const base = paletteColors(o.palette);
   const total = prep.rows.reduce((a, r) => a + toNumber(r.s0), 0) || 1;
   const minPct = spec.type === 'pie' ? opt.num(o.minSlicePercent, 0) : 0;
-  const slices = prep.rows.map((r) => ({ name: String(r.x), value: toNumber(r.s0) }));
+  // one slice per name: rows repeating a name (ungrouped query) are added up, never drawn twice
+  const merged = new Map<string, number>();
+  for (const r of prep.rows) merged.set(String(r.x), (merged.get(String(r.x)) ?? 0) + toNumber(r.s0));
+  const slices = [...merged].map(([name, value]) => ({ name, value }));
   const small = slices.filter((s) => (s.value / total) * 100 < minPct);
   const kept = minPct > 0 && small.length > 1 ? [...slices.filter((s) => !small.includes(s)), { name: 'Other', value: small.reduce((a, s) => a + s.value, 0) }] : slices;   // tiny slices fold into "Other"
   // treemap "colour by growth": the previous value of each tile comes from the chosen column of the query result

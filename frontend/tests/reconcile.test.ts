@@ -29,3 +29,8 @@ test('percentage tolerance: within 10% of the larger value counts as a match', (
   const s = reconcile([{ k: 'a', x: 100, y: 95 }, { k: 'b', x: 100, y: 80 }], 'k', ['x', 'y'], 0, 10);
   assert.deepEqual(s.rows.map((r) => [r.key, r.ok]), [['b', false], ['a', true]]);
 });
+
+test('repeated keys are added up per source', () => {
+  const s = reconcile([{ k: 'a', x: 1, y: 2 }, { k: 'a', x: 3, y: null }], 'k', ['x', 'y']);
+  assert.deepEqual(s.rows.map((r) => [r.key, r.values]), [['a', [4, 2]]]);
+});

@@ -8,12 +8,18 @@ const num = (v: unknown) => { const n = typeof v === 'number' ? v : Number(v); r
 
 /** Rows -> current / previous / growth / share, biggest first. `prevCol` names the previous-period column. */
 export function compareRows(rows: Record<string, unknown>[], x: string, y: string, prevCol?: string): Compared[] {
-  const total = rows.reduce((s, r) => s + num(r[y]), 0) || 1;
-  return rows.map((r) => {
-    const cur = num(r[y]);
-    const prev = prevCol && r[prevCol] != null ? num(r[prevCol]) : null;
-    return { name: String(r[x] ?? ''), cur, prev, growth: prev ? (cur - prev) / Math.abs(prev) : null, share: cur / total };
-  }).sort((a, b) => b.cur - a.cur);
+  // the same item on several rows (an ungrouped query) is added up, so each item appears once
+  const byName = new Map<string, { cur: number; prev: number | null }>();
+  for (const r of rows) {
+    const name = String(r[x] ?? '');
+    const e = byName.get(name) ?? { cur: 0, prev: null };
+    e.cur += num(r[y]);
+    if (prevCol && r[prevCol] != null) e.prev = (e.prev ?? 0) + num(r[prevCol]);
+    byName.set(name, e);
+  }
+  const total = [...byName.values()].reduce((s, e) => s + e.cur, 0) || 1;
+  return [...byName].map(([name, { cur, prev }]) => ({ name, cur, prev, growth: prev ? (cur - prev) / Math.abs(prev) : null, share: cur / total }))
+    .sort((a, b) => b.cur - a.cur);
 }
 
 /** Where the "big" and "fast" lines sit. Leave a field out to use the automatic line (average share / overall growth). */
@@ -43,7 +49,7 @@ export function groupRows(rows: Compared[], t: GroupThresholds = {}): { overall:
 /** Indian units: ₹28.86 Cr, ₹25.78 L, below a lakh grouped the Indian way (₹46,624). */
 export function indian(n: number, decimals?: number): string {
   const a = Math.abs(n);
-  const d = decimals ?? 2;
-  const body = a >= 1e7 ? `${(a / 1e7).toFixed(d)} Cr` : a >= 1e5 ? `${(a / 1e5).toFixed(d)} L` : new Intl.NumberFormat('en-IN', { maximumFractionDigits: a < 1000 ? (decimals ?? 2) : 0 }).format(a);
+  const d = Math.min(10, Math.max(0, Math.round(decimals ?? 2)));
+  const body = a >= 1e7 ? `${(a / 1e7).toFixed(d)} Cr` : a >= 1e5 ? `${(a / 1e5).toFixed(d)} L` : new Intl.NumberFormat('en-IN', { maximumFractionDigits: a < 1000 ? d : 0 }).format(a);
   return `${n < 0 ? '-' : ''}₹${body}`;
 }

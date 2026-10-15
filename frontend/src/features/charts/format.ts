@@ -9,21 +9,28 @@ const num = (v: unknown, d: number) => {
   const n = Number(v);
   return Number.isFinite(n) ? n : d;
 };
+/** Decimal places from a user option, always a whole number 0..10 (toFixed / Intl throw outside their range). */
+const digits = (v: unknown, d: number) => Math.min(10, Math.max(0, Math.round(num(v, d))));
 /** Typed readers for the loosely-typed options bag. */
-export const opt = { str, num, bool: (v: unknown, d: boolean) => (typeof v === 'boolean' ? v : d) };
+export const opt = { str, num, digits, bool: (v: unknown, d: boolean) => (typeof v === 'boolean' ? v : d) };
 
 /** Format a number the way the chart's `numberFormat` / `decimals` / `prefix` / `suffix` options ask. */
 export function formatValue(value: unknown, o: Opts = {}): string {
   if (value == null || value === '') return '—';
   const n = typeof value === 'number' ? value : Number(value);
   if (Number.isNaN(n)) return fmt(value);
-  const decimals = o.decimals === undefined || o.decimals === '' ? undefined : num(o.decimals, 0);
+  const decimals = o.decimals === undefined || o.decimals === '' ? undefined : digits(o.decimals, 0);
   const frac = decimals === undefined ? {} : { minimumFractionDigits: decimals, maximumFractionDigits: decimals };
   let out: string;
   switch (o.numberFormat) {
     case 'compact': out = new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: decimals ?? 1 }).format(n); break;
     case 'percent': out = new Intl.NumberFormat('en-US', { style: 'percent', maximumFractionDigits: decimals ?? 1, ...frac }).format(n); break;
-    case 'currency': out = new Intl.NumberFormat('en-US', { style: 'currency', currency: str(o.currency, 'USD'), maximumFractionDigits: decimals ?? 0, ...frac }).format(n); break;
+    case 'currency': {   // an invalid code (typo) must not crash the chart: fall back to the number with the code in front
+      const code = str(o.currency, 'USD').trim().toUpperCase();
+      try { out = new Intl.NumberFormat('en-US', { style: 'currency', currency: code, maximumFractionDigits: decimals ?? 0, ...frac }).format(n); }
+      catch { out = `${code} ${new Intl.NumberFormat('en-US', { maximumFractionDigits: decimals ?? 0, ...frac }).format(n)}`; }
+      break;
+    }
     case 'indian': out = indian(n, decimals); break;
     case 'ratio': out = `${n.toFixed(decimals ?? 1)} : 1`; break;
     case 'decimal': out = new Intl.NumberFormat('en-US', { ...frac }).format(n); break;

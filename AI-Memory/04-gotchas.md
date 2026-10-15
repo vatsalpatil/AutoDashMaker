@@ -109,3 +109,11 @@ Slow deploys can also be the server's network: compare the git-clone speed in th
 2026-10-15: the server could not download nixpkgs archives from GitHub (builds hung at "unpacking ... into the Git cache" even with cache on). Fix = Dockerfiles: frontend/Dockerfile (node:22-alpine build -> caddy:2-alpine serving caddy.conf, PORT 3000) and backend/Dockerfile (python:3.12-slim, WORKDIR /app so data stays /app/data + /app/uploads). Dokploy: Build Type = Dockerfile per app. nixpacks.toml files kept only as a fallback.
 Deletes: never `store.execute("DELETE ...")` on a child table without first `store.get(...)` the parent (scoped to the workspace). Fixed 2026-10-15 for dashboards (widgets) and alerts (alert_runs); use services/lifecycle.py for chart/dashboard deletes.
 Commit gate: run `python Scripts/verify.py; test $? -eq 0 && git commit ...`. Piping verify into grep makes the chain test GREP's exit code, so a red verify still committed once (2026-10-15, edf54e3; re-run was 38/38 green, the failure was a one-off concurrent build).
+
+## Chart test bench (2026-10-15)
+Run the frontend dev server (`.claude/launch.json` "frontend-bench", port 5176) and open http://localhost:5176/dev/charts (dev-only route in main.tsx, outside login).
+It renders every chart type x every option value + empty / one-row data + 25 seeded random combinations per type (~2,800 cases, ~2.5 min) and
+reports crashes, console errors and blank output; results in `window.__matrix`. Cases come from the option schema (src/dev/benchCases.ts), so new
+options are covered automatically. Run it after any chart/option change. Lessons it found: a tickCount < 2 sent Recharts into endless recursion
+AND corrupted its global decimal state, breaking every later chart on the page (LN10 errors) -> clamp numeric options (opt.digits, tickCount);
+invalid currency codes throw in Intl; repeated item names (ungrouped queries) gave duplicate React keys -> elements add them up.

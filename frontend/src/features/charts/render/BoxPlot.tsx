@@ -46,7 +46,7 @@ export function BoxPlot({ spec, result, o, height }: { spec: ChartSpec; result: 
   const sy = (v: number) => pad.t + (1 - (f(v) - f(lo)) / (f(hi) - f(lo) || 1)) * (height - pad.t - pad.b);
   const band = (W - pad.l - pad.r) / list.length;
   const colors = paletteColors(o.palette);
-  const nTicks = Math.max(2, opt.num(o.tickCount, 5));
+  const nTicks = Math.min(20, Math.max(2, Math.round(opt.num(o.tickCount, 5))));
   const ticks = Array.from({ length: nTicks }, (_, i) => lo + ((hi - lo) * i) / (nTicks - 1));
   const compact = { numberFormat: 'compact' };
   const label = opt.str(o.boxLabels, 'median');

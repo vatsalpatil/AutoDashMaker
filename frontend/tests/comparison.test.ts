@@ -34,3 +34,9 @@ test('performance groups with your own lines: big = share >= 50%, fast = growth 
   assert.deepEqual([bigLine, fastLine], [0.5, 0]);
   assert.deepEqual(Object.fromEntries(rows.map((r) => [r.name, groupOf(r)])), { a: 'watch', b: 'rising', c: 'laggards' });
 });
+
+test('the same item on several rows is added up (one entry per item)', () => {
+  const rows = compareRows([{ c: 'UK', y: 10, p: 5 }, { c: 'UK', y: 30, p: 15 }, { c: 'FR', y: 20, p: null }], 'c', 'y', 'p');
+  assert.deepEqual(rows.map((r) => [r.name, r.cur, r.prev]), [['UK', 40, 20], ['FR', 20, null]]);
+  assert.equal(rows[0].growth, 1);
+});

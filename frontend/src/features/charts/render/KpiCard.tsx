@@ -38,7 +38,7 @@ export function KpiCard({ spec, result, o, height }: { spec: ChartSpec; result: 
   const second = opt.str(o.percentColumn, '') || result.columns.find((c) => c !== y && c !== x && last && Number.isFinite(Number(last[c])));
   const base = o.percentOf === 'column' ? toNumber(last?.[second ?? '']) : o.percentOf === 'fixed' ? opt.num(o.percentBase, 0) : 0;
   const pct = (o.percentOf === 'column' || o.percentOf === 'fixed') && base ? (toNumber(value) / base) * 100 : null;
-  const pctText = pct === null ? '' : `${pct.toFixed(opt.num(o.percentDecimals, 1))}%`;
+  const pctText = pct === null ? '' : `${pct.toFixed(opt.digits(o.percentDecimals, 1))}%`;
   const pctLabel = opt.str(o.percentLabel, o.percentOf === 'column' ? `of ${second}` : 'of target');
   const exact = exactValue(value, o);
   const shown = o.percentMain === true && pct !== null ? pctText : formatValue(value, o);
@@ -56,7 +56,7 @@ export function KpiCard({ spec, result, o, height }: { spec: ChartSpec; result: 
         </TooltipTrigger>
         <TooltipContent className="flex flex-col gap-0.5 text-xs">
           <span className="font-medium">Exact value: {exact}</span>
-          {pct !== null && <span>{pct.toFixed(opt.num(o.percentDecimals, 1))}% {pctLabel}{o.percentOf === 'fixed' || base ? ` (${exactValue(base, o)})` : ''}</span>}
+          {pct !== null && <span>{pct.toFixed(opt.digits(o.percentDecimals, 1))}% {pctLabel}{o.percentOf === 'fixed' || base ? ` (${exactValue(base, o)})` : ''}</span>}
           {delta !== null && <span>{delta >= 0 ? '+' : '−'}{Math.abs(delta * 100).toFixed(2)}% vs previous row</span>}
         </TooltipContent>
       </Tooltip>

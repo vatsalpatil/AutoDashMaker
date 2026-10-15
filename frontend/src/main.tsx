@@ -18,9 +18,12 @@ window.addEventListener('vite:preloadError', (e) => { e.preventDefault(); reload
 // /s/<token> is a public share link: no login, no app shell
 const shareToken = /^\/s\/([\w-]+)\/?$/.exec(window.location.pathname)?.[1];
 
+// dev-only chart test bench at /dev/charts (tree-shaken out of production builds)
+const ChartMatrix = import.meta.env.DEV && window.location.pathname === '/dev/charts' ? React.lazy(() => import('@/dev/ChartMatrix')) : null;
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    {shareToken ? <PublicDashboardPage token={shareToken} /> : (
+    {ChartMatrix ? <React.Suspense fallback={null}><ChartMatrix /></React.Suspense> : shareToken ? <PublicDashboardPage token={shareToken} /> : (
       <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <AuthProvider>
           <App />

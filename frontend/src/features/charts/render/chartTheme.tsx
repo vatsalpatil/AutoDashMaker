@@ -57,6 +57,7 @@ export function yScaleProps(o: Opts, baseline: number | 'auto') {
     scale: scale === 'log' ? ('log' as const) : scale === 'sqrt' ? ('sqrt' as const) : ('auto' as const),
     domain: [scale === 'log' && (lo === 'auto' || lo === 0) ? 1 : lo, hi] as [number | 'auto', number | 'auto'],
     allowDataOverflow: true,
-    tickCount: o.tickCount === undefined || o.tickCount === '' ? undefined : opt.num(o.tickCount, 5),
+    // fewer than 2 ticks (or a negative count) sends Recharts into endless recursion and breaks every chart after it
+    tickCount: o.tickCount === undefined || o.tickCount === '' || opt.num(o.tickCount, 5) < 2 ? undefined : Math.min(20, Math.round(opt.num(o.tickCount, 5))),
   };
 }

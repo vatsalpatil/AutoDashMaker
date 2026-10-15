@@ -21,12 +21,19 @@ const num = (v: unknown): number | null => {
 
 /** A key matches when its difference is within `tolerance` (an amount) OR within `tolerancePct` % of its largest value. */
 export function reconcile(rows: Record<string, unknown>[], key: string, sources: string[], tolerance = 0, tolerancePct = 0): ReconSummary {
-  const out: ReconRow[] = rows.map((r) => {
-    const values = sources.map((s) => num(r[s]));
+  // one row per key: repeated keys (an ungrouped query) are added up per source
+  const byKey = new Map<string, (number | null)[]>();
+  for (const r of rows) {
+    const k = String(r[key] ?? '');
+    const prev = byKey.get(k);
+    const vals = sources.map((s) => num(r[s]));
+    byKey.set(k, prev ? prev.map((p, i) => (p === null && vals[i] === null ? null : (p ?? 0) + (vals[i] ?? 0))) : vals);
+  }
+  const out: ReconRow[] = [...byKey].map(([k, values]) => {
     const present = values.map((v) => v ?? 0);
     const diff = Math.max(...present) - Math.min(...present);
     const allowed = Math.max(tolerance, (tolerancePct / 100) * Math.max(...present.map(Math.abs)));
-    return { key: String(r[key] ?? ''), values, diff, missing: values.map((v) => v === null || v === 0), ok: diff <= allowed };
+    return { key: k, values, diff, missing: values.map((v) => v === null || v === 0), ok: diff <= allowed };
   }).sort((a, b) => b.diff - a.diff);
   const mismatchedRows = out.filter((r) => !r.ok);
   const totalDiff = mismatchedRows.reduce((s, r) => s + r.diff, 0);

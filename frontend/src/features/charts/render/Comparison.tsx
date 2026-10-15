@@ -11,7 +11,7 @@ const pct = (o: Opts, key: string) => (o[key] === undefined || o[key] === '' ? u
 export function Growth({ g, o, className }: { g: number | null; o: Opts; className?: string }) {
   if (g === null) return <span className={cn('text-muted-foreground', className)}>—</span>;
   const good = (g >= 0) === (opt.str(o.deltaGood, 'up') === 'up');
-  const d = opt.num(o.growthDecimals, 0);
+  const d = opt.digits(o.growthDecimals, 0);
   return <span className={cn('tabular-nums font-medium', good ? 'text-success' : 'text-destructive', className)}>{g >= 0 ? '+' : ''}{(g * 100).toFixed(d)}%</span>;
 }
 
