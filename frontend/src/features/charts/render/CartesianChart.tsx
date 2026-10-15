@@ -26,6 +26,16 @@ function scaleGap(rows: Record<string, unknown>[], keys: string[]): number {
   return a > 0 && b > 0 ? Math.max(a, b) / Math.min(a, b) : 1;
 }
 
+/** Combo chart on two axes: bars use the bottom ~65%, the line its own top band, so the two never sit on top of each other. */
+function bandDomains(rows: Record<string, unknown>[], keys: string[]) {
+  const vals = (k: string) => rows.map((r) => Number(r[k])).filter(Number.isFinite);
+  const bars = vals(keys[0]), line = vals(keys[1]);
+  if (!bars.length || !line.length) return null;
+  const lo = Math.min(...line), hi = Math.max(...line);
+  const span = hi - lo || Math.abs(hi) * 0.1 || 1;
+  return { left: [0, Math.max(...bars, 0) * 1.55] as [number, number], right: [lo - span * 2.2, hi + span * 0.15] as [number, number] };
+}
+
 function CartesianChartBase({ spec, prep, o, height, compact = false, onPick }: Props) {
   const uid = useUid();
   const type = spec.type;
@@ -58,6 +68,7 @@ function CartesianChartBase({ spec, prep, o, height, compact = false, onPick }: 
   const fill = fillStyleOf(o, type);
   const ring = opt.str(o.dotStyle, 'solid') === 'ring';
   const yScale = yScaleProps(o, baseline);
+  const bands = dual && type === 'composed' && (o.yMin ?? '') === '' && (o.yMax ?? '') === '' ? bandDomains(rows, series.map((s) => s.key)) : null;
   const Chart = type === 'line' ? LineChart : type === 'area' ? AreaChart : type === 'composed' ? ComposedChart : BarChart;
   const axisFor = (i: number) => (horizontal ? undefined : dual && i > 0 ? 'right' : 'left');
   const colorOf = (key: string) => `var(--color-${key})`;
@@ -115,9 +126,10 @@ function CartesianChartBase({ spec, prep, o, height, compact = false, onPick }: 
             <XAxis dataKey="x" hide={o.showXAxis === false} tick={{ ...tick, ...(angle ? { angle, textAnchor: angle < 0 ? 'end' : 'start' } : {}) }}
               tickLine={false} axisLine={false} minTickGap={compact ? 24 : 12} height={angle ? 56 : undefined}
               label={o.xLabel && !compact ? { value: String(o.xLabel), position: 'insideBottom', offset: -2, fontSize: font } : undefined} />
-            <YAxis yAxisId="left" hide={o.showYAxis === false} tick={tick} tickFormatter={fmtAxis} tickLine={false} axisLine={false} width={compact ? 36 : 48} {...yScale}
+            <YAxis yAxisId="left" hide={o.showYAxis === false} tick={tick} tickFormatter={fmtAxis} tickLine={false} axisLine={false} width={compact ? 36 : 48} {...yScale} {...(bands ? { domain: bands.left } : {})}
               label={o.yLabel && !compact ? { value: String(o.yLabel), angle: -90, position: 'insideLeft', fontSize: font } : undefined} />
-            {dual && <YAxis yAxisId="right" orientation="right" tick={tick} tickFormatter={fmtAxis} tickLine={false} axisLine={false} width={compact ? 36 : 48} />}
+            {dual && <YAxis yAxisId="right" orientation="right" tick={tick} tickFormatter={fmtAxis} tickLine={false} axisLine={false} width={compact ? 36 : 48}
+              {...(bands ? { domain: bands.right, allowDataOverflow: true, tickCount: 3 } : {})} />}
           </>
         )}
         {o.showTooltip !== false && <ChartTooltip cursor={o.tooltipCursor === false ? false : undefined} content={valueTooltip(o, config)} />}
