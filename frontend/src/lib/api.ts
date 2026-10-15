@@ -6,7 +6,7 @@ const BASE = '/api';
 /** Anything that changes data (a non-GET, except the read-only batch `/data` calls) tells listeners, so caches never serve stale results. */
 const writeListeners = new Set<() => void>();
 export const onWrite = (fn: () => void) => { writeListeners.add(fn); };
-const isRead = (method: string, path: string) => method === 'GET' || /\/data(\?|$)/.test(path);
+const isRead = (method: string, path: string) => method === 'GET' || /\/data(\?|$)/.test(path) || path.startsWith('/voice/');
 
 async function request<T>(method: string, path: string, body?: unknown, isForm = false, signal?: AbortSignal): Promise<T> {
   const init: RequestInit = { method, headers: {}, signal };
@@ -46,4 +46,6 @@ export const api = {
     fd.append('file', file);
     return request<T>('POST', path, fd, true);
   },
+  /** POST a ready-made FormData (several fields, or a Blob with its own file name). */
+  form: <T>(path: string, fd: FormData) => request<T>('POST', path, fd, true),
 };

@@ -12,3 +12,4 @@ psycopg2-binary
 sqlglot>=25.0.0
 python-dotenv>=1.0.0
 PyJWT[crypto]>=2.8.0
+faster-whisper>=1.0.3

@@ -51,6 +51,7 @@ class Settings(BaseSettings):
     copy_threads: int = 2
     copy_timeout_s: int = 3600
     duckdb_threads: int = 3
+    whisper_model: str = "base"   # voice typing (faster-whisper): tiny | base | small; bigger = better and slower
     duckdb_temp_dir: str = str(DATA_DIR / "tmp")  # spill-to-disk location
     # In-process query-result cache (spec §53); invalidated on any data write
     result_cache_entries: int = 512
