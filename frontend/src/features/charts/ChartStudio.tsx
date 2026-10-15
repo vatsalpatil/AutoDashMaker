@@ -10,8 +10,11 @@ import { OptionsPanel } from './panels/OptionsPanel';
 import { TemplateGallery } from './panels/TemplateGallery';
 import { ChartView } from './render/ChartView';
 import { useChartDraft } from './useChartDraft';
+import { AskAiPanel } from './panels/AskAiPanel';
+import { SuggestionStrip } from './panels/SuggestionStrip';
 import { api } from '@/lib/api';
-import type { ChartType, Dashboard } from '@/lib/types';
+import type { ChartEncoding, ChartType, Dashboard } from '@/lib/types';
+import type { Suggestion } from './suggest';
 
 type Pane = 'data' | 'preview' | 'style';
 
@@ -19,6 +22,10 @@ type Pane = 'data' | 'preview' | 'style';
 export function ChartStudio({ id, startType, target }: { id?: string; startType?: ChartType; target?: { dashboard: string; page: string } }) {
   const nav = useNavigate();
   const d = useChartDraft(id);
+  const pick = (s: Suggestion, encoding: ChartEncoding) => {
+    d.applyTemplate({ id: s.type, name: s.title, description: s.reason, group: 'Suggested', type: s.type as ChartType, options: s.options });
+    d.setEncoding(encoding);
+  };
   const [gallery, setGallery] = useState(false);
   const [pane, setPane] = useState<Pane>('preview');  // which column shows on small screens
   const [height, setHeight] = useState(420);
@@ -77,10 +84,13 @@ export function ChartStudio({ id, startType, target }: { id?: string; startType?
             <input id="studio-height" type="range" min={200} max={760} step={20} value={height} onChange={(e) => setHeight(Number(e.target.value))} className="w-40 accent-[var(--primary)]" />
             {d.result && <span className="ml-auto">{d.result.row_count.toLocaleString()} rows · {d.result.columns.length} columns</span>}
           </div>
+          {d.result && <SuggestionStrip result={d.result} current={d.spec.type}
+            onPick={pick} />}
         </main>
 
         <aside className={`${col('style')} min-h-0 flex-col overflow-hidden border-l bg-card`}>
-          <OptionsPanel type={d.spec.type} columns={d.result?.columns ?? []} options={d.spec.options ?? {}} onChange={d.setOption} onReset={d.resetOptions} />
+          <OptionsPanel type={d.spec.type} columns={d.result?.columns ?? []} options={d.spec.options ?? {}} onChange={d.setOption} onReset={d.resetOptions}
+            extra={{ id: 'ai', label: 'Ask AI', node: <AskAiPanel result={d.result ?? undefined} onPick={pick} /> }} />
         </aside>
       </div>
 

@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from typing import Any
 
 from ..core.store import store
-from ..services import lifecycle
+from ..services import ai as ai_svc, chart_suggest_ai, lifecycle
 from ..services.engine import engine
 from ..services.lineage import chart_lineage
 
@@ -76,6 +76,21 @@ def lineage(chart_id: str):
 def delete_chart(chart_id: str):
     """Delete a chart, the widgets that show it (no broken widgets left behind) and its query if nothing else uses it."""
     return {"ok": True, "widgets_removed": lifecycle.delete_chart(chart_id)}
+
+
+class SuggestIn(BaseModel):
+    columns: list[str]
+    rows: list[dict[str, Any]] = []      # a few rows are enough; only 8 are sent to the model
+    goal: str = ""                         # what the user wants to show (optional)
+
+
+@router.post("/suggest-ai")
+def suggest_ai(body: SuggestIn):
+    """AI picks the best elements for a result (and the user's goal); [] when the reply is unusable."""
+    try:
+        return {"suggestions": chart_suggest_ai.suggest(body.columns, body.rows[:8], body.goal)}
+    except ai_svc.AIError as e:
+        raise HTTPException(503, str(e)[:300]) from e
 
 
 @router.get("/unused/list")
