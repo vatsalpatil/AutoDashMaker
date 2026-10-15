@@ -22,7 +22,8 @@ Plan/*.exe
 Plan/wifi_speaker_config.json
 _backups/
 backend/data/tmp/
-backend/data/models/   # voice-typing Whisper model, downloaded on first use (~145 MB)
+# voice-typing Whisper model, downloaded on first use (~145 MB)
+backend/data/models/
 
 *.duckdb
 *.duckdb.wal
