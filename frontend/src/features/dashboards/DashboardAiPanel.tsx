@@ -6,6 +6,7 @@ import { api } from '@/lib/api';
 import { SessionHistory } from '@/features/ai/history/SessionHistory';
 import { useAiSessions } from '@/features/ai/history/useAiSessions';
 import { AttachImageButton, AttachmentTray, MessageImages } from '@/features/ai/attachments/Attachments';
+import { MicButton } from '@/features/ai/voice/MicButton';
 import { useImageAttachments } from '@/features/ai/attachments/useImageAttachments';
 import { AiRunLog } from './ai/AiRunLog';
 import { useAiRun, type OpLine } from './ai/useAiRun';
@@ -126,7 +127,7 @@ export function DashboardAiPanel({ open, dashboardId, activePage, onClose, onCha
         <div className="border-t p-3">
           <AttachmentTray att={att} className="mb-2" />
           <div onDrop={att.dropProps.onDrop} onDragOver={att.dropProps.onDragOver} className="flex items-end gap-2 rounded-xl border bg-card p-1.5 focus-within:ring-2 focus-within:ring-ring/40">
-            <AttachImageButton att={att} disabled={run.busy} />
+            <MicButton value={text} onChange={setText} disabled={run.busy} /><AttachImageButton att={att} disabled={run.busy} />
             <textarea value={text} rows={2} onChange={(e) => setText(e.target.value)} onPaste={att.dropProps.onPaste} placeholder="e.g. add a bar chart of profit by country after the KPIs"
               onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(text); } }}
               className="min-w-0 flex-1 resize-none bg-transparent px-1.5 py-1 text-sm outline-none placeholder:text-muted-foreground" />

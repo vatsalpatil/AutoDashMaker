@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { ArrowUp, Square } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AttachImageButton, AttachmentTray } from '@/features/ai/attachments/Attachments';
+import { MicButton } from '@/features/ai/voice/MicButton';
 import { useImageAttachments } from '@/features/ai/attachments/useImageAttachments';
 
 /** The chat box at the bottom of the session: grows with the text, Enter sends (Shift+Enter = new line), Stop while the AI works.
@@ -32,7 +33,7 @@ export function Composer({ placeholder, busy, disabled, sendLabel, allowEmpty, o
           onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}
           className="block max-h-52 w-full resize-none bg-transparent px-4 pt-3 text-sm outline-none placeholder:text-muted-foreground" />
         <div className="flex items-center gap-2 px-3 pb-2.5 pt-1">
-          <AttachImageButton att={att} disabled={disabled || busy} />
+          <MicButton value={text} onChange={setText} disabled={disabled || busy} /><AttachImageButton att={att} disabled={disabled || busy} />
           <span className="truncate text-[11px] text-muted-foreground">{hint}</span>
           {busy ? (
             <button type="button" onClick={onStop} aria-label="Stop" className="ml-auto flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs hover:bg-accent">

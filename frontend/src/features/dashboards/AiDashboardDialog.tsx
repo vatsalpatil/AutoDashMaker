@@ -6,6 +6,7 @@ import { Button, Dialog, TextArea } from '@/components/ui/kit';
 import { useApi } from '@/hooks/useApi';
 import type { Dataset } from '@/lib/types';
 import { AttachImageButton, AttachmentTray, MessageImages } from '@/features/ai/attachments/Attachments';
+import { MicButton } from '@/features/ai/voice/MicButton';
 import { useImageAttachments } from '@/features/ai/attachments/useImageAttachments';
 import { AiRunLog } from './ai/AiRunLog';
 import { useAiRun } from './ai/useAiRun';
@@ -63,7 +64,7 @@ export function AiDashboardDialog({ open, onClose }: { open: boolean; onClose: (
             <TextArea label="What should the dashboard show?" value={prompt} onChange={setPrompt} rows={4}
               placeholder="e.g. Sales performance: total revenue and profit KPIs, monthly trend, top 10 products and revenue by country" />
             <div className="flex items-center gap-2" onPaste={att.dropProps.onPaste} onDrop={att.dropProps.onDrop} onDragOver={att.dropProps.onDragOver}>
-              <AttachImageButton att={att} />
+              <MicButton value={prompt} onChange={setPrompt} /><AttachImageButton att={att} />
               <span className="text-xs text-muted-foreground">Attach, paste or drop a screenshot of a dashboard to copy, a sketch or a chart.</span>
             </div>
             <AttachmentTray att={att} />

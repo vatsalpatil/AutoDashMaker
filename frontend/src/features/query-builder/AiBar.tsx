@@ -8,6 +8,7 @@ import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import type { QbSpec } from './qbModel';
 import { AttachImageButton, AttachmentTray } from '@/features/ai/attachments/Attachments';
+import { MicButton } from '@/features/ai/voice/MicButton';
 import { useImageAttachments } from '@/features/ai/attachments/useImageAttachments';
 
 export interface AiResult { status: 'ok' | 'failed' | 'no_provider'; detail?: string; spec?: QbSpec; title?: string; explanation?: string; steps?: string[]; source?: 'rules' | 'ai'; attempts?: number }
@@ -53,7 +54,7 @@ export function AiBar({ spec, onBuilt, onUndo, canUndo }: { spec: QbSpec; onBuil
         <Input value={text} disabled={busy} aria-label="Describe what you want" onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') run(); }} onPaste={att.dropProps.onPaste} className="h-9 flex-1 bg-background"
           placeholder={table ? 'Change this query… e.g. only 2024, add a running total, top 5' : 'Describe what you want… e.g. total revenue by category'} />
-        <AttachImageButton att={att} disabled={busy} />
+        <MicButton value={text} onChange={setText} disabled={busy} /><AttachImageButton att={att} disabled={busy} />
         <Button size="sm" variant="primary" isDisabled={busy || !text.trim()} label={busy ? 'Working…' : table ? 'Update' : 'Build'} onClick={() => run()} />
       </div>
 

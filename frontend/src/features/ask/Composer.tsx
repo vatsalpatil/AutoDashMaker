@@ -3,6 +3,7 @@ import { ArrowUp, Loader2 } from 'lucide-react';
 import { SelectField } from '@/components/common/SelectField';
 import type { Dataset } from '@/lib/types';
 import { AttachImageButton, AttachmentTray } from '@/features/ai/attachments/Attachments';
+import { MicButton } from '@/features/ai/voice/MicButton';
 import { useImageAttachments } from '@/features/ai/attachments/useImageAttachments';
 
 /** Chat input: Enter sends, Shift+Enter adds a line. The scope picker limits the analyst to one table. */
@@ -37,7 +38,7 @@ export function Composer({ datasets, scope, onScope, busy, followUp, onSend }: {
             {datasets.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
           </SelectField>
         </div>
-        <span className="ml-auto" /><AttachImageButton att={att} disabled={busy} />
+        <span className="ml-auto" /><MicButton value={text} onChange={setText} disabled={busy} /><AttachImageButton att={att} disabled={busy} />
         <button type="button" onClick={send} disabled={busy || !text.trim()} aria-label="Send"
           className="grid size-8 place-items-center rounded-full bg-primary text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-40">
           {busy ? <Loader2 className="size-4 animate-spin" /> : <ArrowUp className="size-4" />}

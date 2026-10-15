@@ -1,4 +1,5 @@
 import { AttachImageButton, AttachmentTray } from '@/features/ai/attachments/Attachments';
+import { MicButton } from '@/features/ai/voice/MicButton';
 import { useImageAttachments } from '@/features/ai/attachments/useImageAttachments';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowUp, Bot, MessageSquare, Plus, Square, Table2, Timer } from 'lucide-react';
@@ -117,7 +118,7 @@ export function AgentPanel({ datasets, getContext, actions, activeName, hasSql, 
             className="block max-h-40 w-full resize-none bg-transparent px-3 pt-2 text-sm outline-none" />
           <div className="flex items-center gap-2 px-2 pb-1.5 text-[11px] text-muted-foreground">
             <ModelPicker disabled={a.busy} />
-            <AttachImageButton att={att} disabled={a.busy} className="size-6" />
+            <MicButton value={input} onChange={setInput} disabled={a.busy} className="size-6" /><AttachImageButton att={att} disabled={a.busy} className="size-6" />
             {activeName && <span className="mono rounded bg-muted px-1.5 py-0.5" title="The assistant sees this cell">{activeName}</span>}
             {a.busy && <span className="flex items-center gap-1 tabular-nums"><Timer className="size-3" />{a.elapsed.toFixed(1)} s</span>}
             {a.busy
