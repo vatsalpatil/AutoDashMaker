@@ -1,6 +1,7 @@
 """Analytical query engine: DuckDB execution + result profiling + lineage."""
 from __future__ import annotations
 
+import math
 import re
 import threading
 import time
@@ -26,6 +27,11 @@ _NONDETERMINISTIC = re.compile(
 
 class QueryTimeout(Exception):
     pass
+
+
+def _finite(v: Any) -> Any:
+    """inf / NaN (e.g. x / 0 on DOUBLE) are not valid JSON and crashed the response with a 500: send them as null."""
+    return None if isinstance(v, float) and not math.isfinite(v) else v
 
 
 class QueryEngine:
@@ -213,7 +219,7 @@ class QueryEngine:
             finally:
                 timer.cancel()
         duration = (time.perf_counter() - t0) * 1000
-        records = [dict(zip(cols, r)) for r in rows]
+        records = [dict(zip(cols, map(_finite, r))) for r in rows]
         result = {
             "sql": safe_sql,
             "columns": cols,

@@ -11,6 +11,7 @@ import time
 from typing import Any
 
 from ..core.store import store
+from . import sql_errors
 from .engine import engine
 
 _NUMERIC = re.compile(r"INT|DOUBLE|FLOAT|DECIMAL|REAL|NUMERIC", re.I)
@@ -58,7 +59,7 @@ def evaluate(dataset_id: str | None, expression: str, filters: Any = None) -> di
         res = engine.execute(out["sql"], row_limit=1)
         out["value"] = res["rows"][0]["value"] if res["rows"] else None
     except Exception as e:  # noqa: BLE001 - surfaced to the user as text
-        out["error"] = str(e).splitlines()[0][:200]
+        out["error"] = sql_errors.friendly(str(e)).splitlines()[0][:200]
         return out
     date_col = next((c["name"] for c in _columns(ds["id"]) if _DATE.search(c.get("dtype") or "")), None)
     if date_col:
