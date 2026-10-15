@@ -32,9 +32,14 @@ def _decode(audio: bytes):
     chunks = []
     with av.open(io.BytesIO(audio), mode="r") as container:
         resampler = av.AudioResampler(format="s16", layout="mono", rate=16000)
-        for frame in container.decode(audio=0):
-            for out in resampler.resample(frame):
-                chunks.append(out.to_ndarray().reshape(-1))
+        try:
+            for frame in container.decode(audio=0):
+                for out in resampler.resample(frame):
+                    chunks.append(out.to_ndarray().reshape(-1))
+        except av.error.FFmpegError:
+            if not chunks:   # unreadable from the start: not audio
+                raise
+            # a recording sent while still in progress can end mid-chunk: keep everything decoded up to there
         for out in resampler.resample(None):   # flush
             chunks.append(out.to_ndarray().reshape(-1))
     if not chunks:
