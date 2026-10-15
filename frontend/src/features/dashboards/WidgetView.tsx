@@ -81,7 +81,7 @@ export function WidgetView({
               <GripVertical className="h-4 w-4" />
             </span>
           )}
-          <span className={`truncate font-semibold ${titleCls}`}>{titleOverride ?? chart?.name ?? `Chart #${widget.chart_id}`}</span>
+          <span className={`truncate font-semibold ${titleCls}`}>{titleOverride ?? chart?.name ?? (widget.title || 'Chart')}</span>
         </div>
         <div className="hidden shrink-0 items-center gap-1 group-hover:flex group-focus-within:flex">
           {editing && (

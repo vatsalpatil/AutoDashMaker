@@ -117,3 +117,4 @@ reports crashes, console errors and blank output; results in `window.__matrix`. 
 options are covered automatically. Run it after any chart/option change. Lessons it found: a tickCount < 2 sent Recharts into endless recursion
 AND corrupted its global decimal state, breaking every later chart on the page (LN10 errors) -> clamp numeric options (opt.digits, tickCount);
 invalid currency codes throw in Intl; repeated item names (ungrouped queries) gave duplicate React keys -> elements add them up.
+- **Requests before auth init (2026-10-15):** with Supabase on, any API call made before `initAuth()` resolved went out with no bearer → 401 'Not signed in' on deep-link reloads. `authFetch` now awaits `initAuth()`; don't add raw `fetch` calls to protected APIs.
