@@ -25,9 +25,12 @@ export function useFullscreen<T extends HTMLElement>() {
   const toggle = useCallback(() => {
     if (pseudo) { setPseudo(false); return; }
     if (document.fullscreenElement) { void document.exitFullscreen(); return; }
-    const req = ref.current?.requestFullscreen?.();
-    if (!req) setPseudo(true);
-    else req.catch(() => setPseudo(true));
+    const el = ref.current;
+    const req = el?.requestFullscreen?.();
+    if (!req) { setPseudo(true); return; }
+    req.catch(() => setPseudo(true));
+    // some embedded browsers leave the request pending forever: fall back if nothing happened shortly
+    setTimeout(() => { if (document.fullscreenElement !== el) setPseudo(true); }, 800);
   }, [pseudo]);
   return { ref, active: real || pseudo, pseudo, toggle };
 }
