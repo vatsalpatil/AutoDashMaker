@@ -6,6 +6,7 @@ import { useMeasure } from '@/hooks/useMeasure';
 import type { Widget } from '@/lib/types';
 import { ContentCard, isContent } from './ContentCards';
 import { WidgetView } from './WidgetView';
+import { MobileStack } from './MobileStack';
 import { useResizePush } from './resizePush';
 import { InsertLine, useDropInsert } from './dropInsert';
 import { groupOf, type WidgetGroups } from './widgetGroups';
@@ -67,14 +68,16 @@ export function WidgetGrid({ widgets, layout, editing, onLayoutChange, onAutoFit
       </p>
     );
   }
+  const phone = !editing && width > 0 && width < 640;
   return (
     // measured with a ResizeObserver: the sidebar opening/closing resizes the container without a window resize
-    <AutoHeightContext.Provider value={!editing && onAutoFit ? report : null}>
+    <AutoHeightContext.Provider value={!editing && !phone && onAutoFit ? report : null}>
     <div ref={ref} className="min-w-0">
     <div ref={canvas} className={`relative ${editing ? 'min-h-[60vh]' : ''}`}>
     {editing && width > 0 && <InsertLine hint={ins.hint} colW={width / (12 * gridX)} rowH={92 / gridY} />}
     {editing && width > 0 && <BoxFrames boxes={boxes} layout={layout} colW={width / (12 * gridX)} rowH={92 / gridY} />}
-    {width > 0 && <Responsive
+    {phone && <MobileStack widgets={widgets} layout={layout} cols={12 * gridX} rowPx={92 / gridY} onFullscreen={onFullscreen} />}
+    {width > 0 && !phone && <Responsive
       width={width}
       className="layout"
       layouts={{ lg: gridLayout }}

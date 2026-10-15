@@ -24,9 +24,9 @@ export function QueryBuilder() {
   const baseId = qb.schema.data?.tables.find((t) => t.name === qb.spec.stages[0]?.table)?.id;
 
   return (
-    <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden lg:flex-row"
+    <div className="flex h-full min-h-0 min-w-0 flex-col max-lg:overflow-y-auto lg:flex-row lg:overflow-hidden"
       onKeyDown={(e) => { if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') qb.apply(); }}>
-      <div style={{ width }} className="flex max-h-[55%] min-h-0 min-w-0 shrink-0 flex-col border-b border-border bg-background max-lg:!w-full lg:max-h-none lg:border-b-0 lg:border-e">
+      <div style={{ width }} className="flex min-h-0 min-w-0 shrink-0 flex-col border-b border-border bg-background max-lg:!w-full lg:max-h-none lg:border-b-0 lg:border-e">
         <div className="flex items-center gap-2 border-b px-3 py-2">
           <h1 className="text-sm font-semibold">Query builder</h1>
           <span className="text-xs text-muted-foreground">any table · no SQL needed</span>
@@ -59,7 +59,7 @@ export function QueryBuilder() {
         </div>
       </div>
       <ResizeHandle {...handleProps} label="Resize builder" />
-      <div className="min-h-0 min-w-0 flex-1 p-3">
+      <div className="min-h-0 min-w-0 flex-1 p-3 max-lg:min-h-[85dvh]">
         <ResultPane result={qb.result} sql={qb.sql} spec={qb.appliedSpec} hint={qb.hint} running={qb.running} baseDatasetId={baseId} previewAt={qb.previewAt} />
       </div>
     </div>
