@@ -77,6 +77,8 @@ def get_dashboard(dashboard_id: str):
 
 @router.patch("/{dashboard_id}")
 def update_dashboard(dashboard_id: str, body: DashboardIn):
+    if not store.get("dashboards", dashboard_id):
+        raise HTTPException(404, "dashboard not found")
     store.update("dashboards", dashboard_id,
                  {k: v for k, v in body.model_dump().items() if v is not None})
     return store.get("dashboards", dashboard_id)

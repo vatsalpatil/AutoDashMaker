@@ -41,6 +41,7 @@ export const supabase = () => {
 
 /** fetch() that adds the signed-in user's bearer token (no-op in local mode). */
 export async function authFetch(input: string, init: RequestInit = {}): Promise<Response> {
+  await initAuth().catch(() => undefined);   // a deep link / reload can fire requests before the session is restored
   const token = client ? (await client.auth.getSession()).data.session?.access_token : undefined;
   const headers = new Headers(init.headers);
   if (token) headers.set('Authorization', `Bearer ${token}`);
