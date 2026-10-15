@@ -9,6 +9,7 @@ from typing import Any
 from ..core.security import validate_readonly
 from ..core.store import store
 from . import ai as ai_svc, assist as assist_svc, names
+from .column_kinds import IDLIKE as _IDLIKE, business_first
 from .ai_context import semantic_context, with_notebook_steps, workbench_context
 from .chart_suggest import column_roles, suggest_chart
 from .engine import engine
@@ -30,8 +31,6 @@ SUMMARY_SYSTEM = (
 
 _NUMERIC = re.compile(r"INT|DOUBLE|DECIMAL|FLOAT|REAL|NUMERIC|HUGEINT", re.IGNORECASE)
 _TEMPORAL = re.compile(r"DATE|TIMESTAMP", re.IGNORECASE)
-_IDLIKE = re.compile(r"(^|_)(id|uuid|key|code)$|^(year|month|day|week|day_of_week|quarter|hour)$", re.IGNORECASE)
-_MONEY = re.compile(r"revenue|sales|amount|profit|total|price|cost|quantity|qty", re.IGNORECASE)
 
 
 def starter_questions(dataset_id: str | None = None, limit: int = 6) -> list[str]:
@@ -44,7 +43,7 @@ def starter_questions(dataset_id: str | None = None, limit: int = 6) -> list[str
     for d in datasets[:3]:
         mine = [c for c in cols if c["dataset_id"] == d["id"]]
         measures = [c["name"] for c in mine if _NUMERIC.search(c["dtype"] or "") and not _IDLIKE.search(c["name"])]
-        measures.sort(key=lambda n: not _MONEY.search(n))   # business measures first (stable)
+        measures = business_first(measures)
         dims = [c["name"] for c in mine if "VARCHAR" in (c["dtype"] or "").upper() and not _IDLIKE.search(c["name"])]
         times = [c["name"] for c in mine if _TEMPORAL.search(c["dtype"] or "")]
         t = names.label(d)

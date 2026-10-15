@@ -12,6 +12,7 @@ from typing import Any
 
 from ..core.store import store
 from . import sql_errors
+from .column_kinds import IDLIKE, PER_UNIT, business_first
 from .engine import engine
 
 _NUMERIC = re.compile(r"INT|DOUBLE|FLOAT|DECIMAL|REAL|NUMERIC", re.I)
@@ -88,13 +89,16 @@ def suggestions(max_per_dataset: int = 6) -> dict[str, list[dict[str, Any]]]:
         cols = _columns(ds["id"])
         base = {"dataset_id": ds["id"], "dataset_name": ds["name"]}
         cand = [{"name": "row_count", "label": "Row count", "expression": "COUNT(*)", "description": f"Number of rows in {ds['name']}."}]
+        measures = business_first([c["name"] for c in cols if _NUMERIC.search(c.get("dtype") or "") and not IDLIKE.search(c["name"])])
+        summable = [n for n in measures if not PER_UNIT.search(n)]
+        averaged = [n for n in measures if PER_UNIT.search(n)] + summable
+        cand += [{"name": f"total_{n}", "label": f"Total {n}", "expression": f"SUM({_q(n)})", "description": f"Sum of {n}."} for n in summable[:3]]
+        cand += [{"name": f"avg_{n}", "label": f"Average {n}", "expression": f"AVG({_q(n)})", "description": f"Average {n} per row."} for n in averaged[:1]]
+        ids = [c["name"] for c in cols if _ID.search(c["name"])]
+        cand += [{"name": f"unique_{n}", "label": f"Unique {n}", "expression": f"COUNT(DISTINCT {_q(n)})", "description": f"Distinct {n} values."}
+                 for n in sorted(ids, key=lambda n: "customer" not in n.lower())[:1]]   # one distinct count (customers if any) is enough
         for c in cols:
             n, dtype = c["name"], c.get("dtype") or ""
-            if _NUMERIC.search(dtype) and not _ID.search(n):
-                cand.append({"name": f"total_{n}", "label": f"Total {n}", "expression": f"SUM({_q(n)})", "description": f"Sum of {n}."})
-                cand.append({"name": f"avg_{n}", "label": f"Average {n}", "expression": f"AVG({_q(n)})", "description": f"Average {n} per row."})
-            elif _ID.search(n):
-                cand.append({"name": f"unique_{n}", "label": f"Unique {n}", "expression": f"COUNT(DISTINCT {_q(n)})", "description": f"Distinct {n} values."})
             d = c.get("distinct_count") or 0
             if (_DATE.search(dtype) or (not _NUMERIC.search(dtype) and 2 <= d <= 50)) and (ds["id"], n.lower()) not in have_d:
                 dims.append({**base, "name": n, "label": n.replace("_", " ").title(), "column_name": n,
