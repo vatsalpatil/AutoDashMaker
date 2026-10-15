@@ -9,6 +9,7 @@ import { ChartView } from '@/features/charts/render/ChartView';
 import { autoEncode } from '@/features/charts/templates';
 import type { AnalystResponse, ChartSpec, ChartType } from '@/lib/types';
 import { AnswerActions } from './AnswerActions';
+import { countLabel } from '@/lib/utils';
 
 const CONFIDENCE = {
   verified: ['green', 'Verified'], likely_correct: ['blue', 'Likely correct'], needs_clarification: ['warning', 'Needs clarification'],
@@ -67,7 +68,7 @@ export function AnswerCard({ question, response, onFollowUp }: {
         {response.summary && <p className="flex gap-2 text-[15px] leading-relaxed"><Sparkles className="mt-1 size-4 shrink-0 text-primary" /><span>{response.summary}</span></p>}
         <div className="flex flex-wrap items-center gap-1.5">
           {conf && <Badge variant={conf[0]} label={conf[1]} />}
-          <Badge variant="green" label={`${result.row_count.toLocaleString()} rows`} />
+          <Badge variant="green" label={countLabel(result.row_count, 'row')} />
           <Badge variant="neutral" label={`${result.duration_ms} ms`} />
           {response.provenance?.tables.map((t) => <Badge key={t} variant="blue" label={t} />)}
           {(response.provenance?.warnings ?? []).map((w, i) => <Badge key={i} variant="warning" label={w} />)}

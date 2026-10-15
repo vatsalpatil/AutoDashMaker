@@ -25,3 +25,8 @@ export function fmt(n: unknown): string {
   if (typeof n === 'number') return n.toLocaleString();
   return plainDate(String(n));
 }
+
+/** '1 row', '2,500 rows' */
+export function countLabel(n: number, word: string): string {
+  return `${n.toLocaleString()} ${word}${n === 1 ? '' : 's'}`;
+}

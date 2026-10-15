@@ -6,6 +6,7 @@ import { CodeEditor, type CodeEditorHandle } from '@/components/common/CodeEdito
 import { CellAssist } from './CellAssist';
 import { DataGrid } from '@/components/common/DataGrid';
 import { useGridToolbar } from '@/hooks/useGridToolbar';
+import { countLabel } from '@/lib/utils';
 
 /** One SQL cell of the notebook. `name` doubles as a table name that later cells can query. */
 export interface Cell {
@@ -132,7 +133,7 @@ export function NotebookCell(p: Props) {
               {cell.error && <Badge variant="red" label="error" />}
               {cell.result && (
                 <>
-                  <Badge variant="green" label={`${cell.result.row_count} rows`} />
+                  <Badge variant="green" label={countLabel(cell.result.row_count, 'row')} />
                   <Badge variant="neutral" label={`${cell.result.duration_ms} ms`} />
                   {cell.result.cached && <Badge variant="neutral" label="cached" />}
                   {cell.result.warnings.map((w, i) => <Badge key={i} variant="warning" label={w} />)}

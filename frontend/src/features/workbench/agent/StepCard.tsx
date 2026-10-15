@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Check, ChevronDown, ChevronRight, Columns3, Eye, List, Loader2, Pencil, Play, Plus, TriangleAlert } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, countLabel } from '@/lib/utils';
 import type { Step } from './useAgent';
 
 const ICON: Record<string, typeof Play> = { list_tables: List, describe_table: Columns3, sample_rows: Eye, run_sql: Play, add_cell: Plus, edit_cell: Pencil };
@@ -36,7 +36,7 @@ export function StepCard({ step, running, onApprove, onUndo }: { step: Step; run
           : <Icon className="size-3.5 shrink-0 text-primary" />}
         <span className="font-medium">{TITLE[step.tool] ?? step.tool}</span>
         <span className="min-w-0 flex-1 truncate text-muted-foreground">{step.thought || arg(step)}</span>
-        {step.obs?.row_count != null && <span className="shrink-0 text-muted-foreground">{step.obs.row_count} rows{step.obs.ms != null ? ` · ${Math.round(step.obs.ms)} ms` : ''}</span>}
+        {step.obs?.row_count != null && <span className="shrink-0 text-muted-foreground">{countLabel(step.obs.row_count, 'row')}{step.obs.ms != null ? ` · ${Math.round(step.obs.ms)} ms` : ''}</span>}
         {open ? <ChevronDown className="size-3.5 shrink-0" /> : <ChevronRight className="size-3.5 shrink-0" />}
       </button>
       {open && (

@@ -7,6 +7,7 @@ import type { Dataset } from '@/lib/types';
 import { ErrorBanner } from '@/components/common/ErrorBanner';
 import { Loading } from '@/components/common/Loading';
 import { BlendDialog } from '@/components/BlendDialog';
+import { countLabel } from '@/lib/utils';
 
 export default function DatasetsPage() {
   const [datasets, setDatasets] = useState<Dataset[] | null>(null);
@@ -93,7 +94,7 @@ export default function DatasetsPage() {
                 <div className="font-semibold text-blue-700 dark:text-blue-300">{d.name}</div>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {d.kind && <Badge variant="neutral" label={d.kind} />}
-                  {d.row_count !== undefined && <Badge variant="blue" label={`${d.row_count.toLocaleString()} rows`} />}
+                  {d.row_count !== undefined && <Badge variant="blue" label={countLabel(d.row_count, 'row')} />}
                   {d.columns && <Badge variant="neutral" label={`${d.columns.length} columns`} />}
                   {d.created_at && <Badge variant="neutral" label={new Date(d.created_at).toLocaleDateString()} />}
                 </div>

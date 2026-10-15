@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { ChevronDown, ChevronRight, Trash2 } from 'lucide-react';
 import { api } from '@/lib/api';
 import type { SavedQuery } from '@/lib/types';
-import { timeAgo } from '@/lib/utils';
+import { timeAgo, countLabel } from '@/lib/utils';
 
 function SavedNode({ q, onLoad, onAddStep, onDelete }: {
   q: SavedQuery;
@@ -27,7 +27,7 @@ function SavedNode({ q, onLoad, onAddStep, onDelete }: {
         <span className="min-w-0 flex-1 truncate text-xs font-medium">{q.name}</span>
       </div>
       <div className="flex flex-wrap gap-x-2 px-2 pb-1 text-[10px] text-muted-foreground">
-        {q.row_count != null && <span>{q.row_count.toLocaleString()} rows</span>}
+        {q.row_count != null && <span>{countLabel(q.row_count, 'row')}</span>}
         {q.duration_ms != null && <span>· {Math.round(q.duration_ms)} ms</span>}
         {q.created_at && <span>· {timeAgo(q.created_at)}</span>}
       </div>

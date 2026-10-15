@@ -13,6 +13,7 @@ import { WhyPanel } from '@/components/WhyPanel';
 import { TransformPanel } from '@/components/TransformPanel';
 import { CopyLiveData } from '@/features/sources/CopyLiveData';
 import { QualityPanel } from '@/features/quality/QualityPanel';
+import { countLabel } from '@/lib/utils';
 
 export default function DatasetDetailPage() {
   const { id } = useParams();
@@ -50,7 +51,7 @@ export default function DatasetDetailPage() {
           <h1 className="text-2xl font-bold">{dataset.name}</h1>
           <div className="mt-1 flex gap-2">
             {dataset.kind && <Badge variant="neutral" label={dataset.kind} />}
-            {schema && <Badge variant="blue" label={`${schema.row_count.toLocaleString()} rows`} />}
+            {schema && <Badge variant="blue" label={countLabel(schema.row_count, 'row')} />}
           </div>
         </div>
         <div className="flex items-center gap-2">
