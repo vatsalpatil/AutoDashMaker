@@ -58,7 +58,8 @@ CLARIFY_RULE = ("If the request is genuinely ambiguous (e.g. 'best product' with
 _CLARIFY = re.compile(r"CLARIFY:\s*(.+)", re.IGNORECASE)
 NOT_A_QUERY = "NOT_A_QUERY"
 NOT_A_QUERY_RULE = (
-    f"If the message is only a greeting, thanks or chit-chat, reply with exactly {NOT_A_QUERY}. Any instruction "
+    f"If the message is only a greeting, thanks or chit-chat, or asks about something none of the listed tables "
+    f"could contain (e.g. the weather, news, general knowledge), reply with exactly {NOT_A_QUERY}. Any instruction "
     "to edit, fix, extend, filter, sort, limit or otherwise change the current SQL (\"edit this\", \"only the top 3\", "
     f"\"add a column\") is a valid request: answer it, never {NOT_A_QUERY}."
 )
@@ -243,8 +244,8 @@ def generate_sql(messages: list[dict], provider_id: str | None = None, check=Non
     ]
     sql = extract_sql(chat(retry, provider_id=provider_id, max_tokens=2048))
     if not _parses(sql):
-        raise AIError("The model answered with reasoning instead of a SQL query (common with free "
-                      "'thinking' models). Try again, or pick a non-reasoning model in Settings → AI models.")
+        raise AIError("Couldn't turn that into a query. If it is about your data, try rewording it with a table or "
+                      "column name; if it keeps happening, pick a non-reasoning model in Settings → AI models.")
     return sql
 
 

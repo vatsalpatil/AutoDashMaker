@@ -300,3 +300,4 @@ Format: `YYYY-MM-DD · tool · files · what + why`
 - 2026-10-15 · render/PartToWhole.tsx · Pie/donut ring 70% when labels are outside so top labels are not clipped. Live-tested suggestions list, Use this chart, Ask AI tab, stale-table query: all OK.
 - 2026-10-15 · services/analyst.py · starter questions skip id/key/date-part columns and prefer business measures (was 'Total quantity by order_id').
 - 2026-10-15 · services/analyst.py, chart_suggest.py · Ask: follow-up parser no longer yields a 'UPS:' chip (split on the full FOLLOW-UPS heading, numbered lists ok); top-N (LIMIT) answers chart as bar, not pie.
+- 2026-10-15 · features/ask/AnswerCard.tsx, services/ai.py · Ask: a 'failed' answer rendered nothing (no result → return null); now shows the reason. NOT_A_QUERY rule also covers off-topic questions (weather etc.), clearer 'couldn't turn that into a query' error.

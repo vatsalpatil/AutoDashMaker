@@ -49,7 +49,14 @@ export function AnswerCard({ question, response, onFollowUp }: {
   }
 
   const { result, explanation } = response;
-  if (!result) return null;
+  if (!result) {
+    return (
+      <Card padding={4}>
+        <h3 className="font-semibold text-destructive">No answer this time</h3>
+        <p className="mt-1 text-sm text-muted-foreground">{response.detail || 'Something went wrong. Try rephrasing the question.'}</p>
+      </Card>
+    );
+  }
   const spec = override ?? response.chart ?? { type: 'table' as ChartType, encoding: { x: '', y: '' } };
   const conf = response.confidence ? CONFIDENCE[response.confidence] : null;
   const retype = (t: ChartType) => setOverride({ type: t, encoding: autoEncode(t, result, response.chart?.encoding), options: t === response.chart?.type ? response.chart?.options : {} });
