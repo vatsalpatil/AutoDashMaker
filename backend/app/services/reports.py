@@ -13,6 +13,7 @@ from typing import Any
 import httpx
 
 from ..core.config import settings
+from ..core.netguard import NetworkBlocked, safe_client
 from ..core.store import DEFAULT_WS, store
 from .engine import engine
 from ..core import tenant
@@ -53,8 +54,9 @@ def run_report(report: dict[str, Any]) -> dict[str, Any]:
     _prune(report["id"])
     if report.get("webhook_url"):
         try:
-            httpx.post(report["webhook_url"], json={"report": report["name"], "status": run["status"], "rows": run["row_count"], "text": run["message"]}, timeout=10)
-        except httpx.HTTPError as e:
+            with safe_client(timeout=10) as client:   # hosted mode: never an internal address, redirects included
+                client.post(report["webhook_url"], json={"report": report["name"], "status": run["status"], "rows": run["row_count"], "text": run["message"]})
+        except (httpx.HTTPError, NetworkBlocked) as e:
             log.warning("report webhook failed: %s", e)
     return saved
 

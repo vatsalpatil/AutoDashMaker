@@ -24,6 +24,8 @@ class AlertIn(BaseModel):
 def _check(body: AlertIn):
     if body.operator not in OPERATORS:
         raise HTTPException(400, f"operator must be one of {list(OPERATORS)}")
+    if body.schedule_minutes < 1:
+        raise HTTPException(400, "schedule must be at least 1 minute")
     try:
         validate_readonly(body.metric_sql, 1)
     except UnsafeQueryError as e:
@@ -43,6 +45,8 @@ def create_alert(body: AlertIn):
 
 @router.patch("/{alert_id}")
 def update_alert(alert_id: str, body: AlertIn):
+    if not store.get("alerts", alert_id):
+        raise HTTPException(404, "alert not found")
     _check(body)
     store.update("alerts", alert_id, body.model_dump())
     return store.get("alerts", alert_id)

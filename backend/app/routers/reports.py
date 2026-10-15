@@ -3,6 +3,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
+from ..core.netguard import NetworkBlocked, ensure_public_url
 from ..core.security import UnsafeQueryError, validate_readonly
 from ..core.store import DEFAULT_WS, store
 from ..services.reports import reports_dir, run_report
@@ -23,8 +24,11 @@ def _check(body: ReportIn):
         raise HTTPException(400, "a report needs a name")
     if body.schedule_minutes < 1:
         raise HTTPException(400, "schedule must be at least 1 minute")
-    if body.webhook_url and not body.webhook_url.startswith(("http://", "https://")):
-        raise HTTPException(400, "webhook must be an http(s) URL")
+    if body.webhook_url:
+        try:
+            ensure_public_url(body.webhook_url)
+        except NetworkBlocked as e:
+            raise HTTPException(400, f"webhook: {e}")
     try:
         validate_readonly(body.sql, 1)
     except UnsafeQueryError as e:
