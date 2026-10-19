@@ -19,7 +19,7 @@ from app.core.compression import ApiGZipMiddleware
 from app.core.config import settings
 from app.core.store import store  # noqa: F401  (initializes metadata schema)
 from app.routers import (
-    datasources, datasets, queries, charts, dash_ai, dashboards, quality, ai, studio, semantic,
+    datasources, datasets, dataset_versions, queries, charts, dash_ai, dashboards, quality, ai, studio, semantic,
     alerts, why, transforms, audit, attention, reports, qb, auth, system, metrics, verify, account, shares, voice,
 )
 from app.services.alerts import scheduler_loop
@@ -48,7 +48,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-for r in (datasources, datasets, queries, charts, dash_ai, dashboards, quality, ai, studio,
+for r in (datasources, datasets, dataset_versions, queries, charts, dash_ai, dashboards, quality, ai, studio,
           metrics, semantic, alerts, why, transforms, audit, attention, reports, qb, system, voice):
     app.include_router(r.router, dependencies=[Depends(require_verified)])
 app.include_router(account.router)  # delete my account: signed-in only, needs an emailed code

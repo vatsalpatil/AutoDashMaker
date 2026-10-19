@@ -64,3 +64,6 @@ Both apps now deploy with Dockerfiles (Nixpacks could not fetch nixpkgs from Git
 ## 2026-10-15 live test loop (dashtor.laveyent.com, all tabs, first pass done)
 Fixed + verified live: QB friendly column errors/limits; Ask failed answers visible, follow-up chips, no pie for top-N; Workbench empty-SQL / unknown-table messages; deep-link reload 'Not signed in' (auth race); inf/NaN results no longer 500; source passwords masked in API (SECURITY); report webhook SSRF guard (SECURITY); smarter starter questions + metric suggestions; '1 row'. Details in 05-changelog.
 USER: rotate the TiDB password (was returned to the browser before 25aafde). Free model `openrouter/free` ignores NOT_A_QUERY, so off-topic questions get the generic error.
+
+## 2026-10-19 Lakehouse roadmap
+Research + audit + phased plan: `Plan/data-platform-research-and-roadmap.md` (A trust/Delta, B dbt tests/DAG/incremental, C DuckLake, D governance, E jobs/AI). DONE: A1 dataset versions (dataset page → Versions tab). NEXT: B2 data tests + auto-rollback, then A2/A3, B1 DAG, B3 incremental.

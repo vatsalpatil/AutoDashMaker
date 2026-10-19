@@ -12,7 +12,8 @@ from pathlib import Path
 import duckdb
 
 from ..core import tenant
-from . import quota
+from . import quota, versions
+from .quota import QuotaExceeded
 
 
 def parquet_path(table: str) -> Path:
@@ -41,15 +42,28 @@ def publish(con: duckdb.DuckDBPyConnection, staging: str, table: str) -> None:
     tmp = final.with_name(final.name + ".tmp")
     try:
         con.execute(f"COPY {staging} TO '{_lit(tmp)}' (FORMAT parquet, COMPRESSION zstd)")
-        quota.ensure_fits(tmp.stat().st_size - (final.stat().st_size if final.exists() else 0))
+        new, old = tmp.stat().st_size, (final.stat().st_size if final.exists() else 0)
+        try:
+            quota.ensure_fits(new)  # keeping the old file as a version means the whole new file is extra
+        except QuotaExceeded:
+            versions.prune(table, 0)  # no room for history: drop it and keep only the current data
+            quota.ensure_fits(new - old)
+        else:
+            versions.snapshot(final, table)
         os.replace(tmp, final)
     finally:
         tmp.unlink(missing_ok=True)
         drop_relation(con, staging)
-    drop_relation(con, table)
-    con.execute(f"CREATE VIEW {table} AS SELECT * FROM read_parquet('{_lit(final)}')")
+    point_view(con, table)
 
 
 def remove(table: str) -> None:
     """Delete the dataset's file (after its view has been dropped)."""
     parquet_path(table).unlink(missing_ok=True)
+    versions.remove_all(table)
+
+
+def point_view(con: duckdb.DuckDBPyConnection, table: str) -> None:
+    """(Re)create `table`'s view over its current Parquet file."""
+    drop_relation(con, table)
+    con.execute(f"CREATE VIEW {table} AS SELECT * FROM read_parquet('{_lit(parquet_path(table))}')")
