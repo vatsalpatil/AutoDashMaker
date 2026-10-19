@@ -96,4 +96,8 @@ def refresh_dataset(dataset_id: str) -> dict[str, Any]:
     store.update("datasets", dataset_id, {
         "refreshed_at": datetime.now(timezone.utc), "row_count": rows, "column_count": cols,
     })
+    from .data_tests import check_after_refresh
+    rejected = check_after_refresh(store.get("datasets", dataset_id))
+    if rejected:
+        raise ConnectorError(rejected)
     return store.get("datasets", dataset_id)

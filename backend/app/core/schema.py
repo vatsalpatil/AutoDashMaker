@@ -109,6 +109,11 @@ CREATE TABLE IF NOT EXISTS alerts (
     last_run_at TIMESTAMP, last_value DOUBLE, last_status TEXT DEFAULT 'ok',
     created_at TIMESTAMP
 );
+CREATE TABLE IF NOT EXISTS dataset_tests (
+    id TEXT PRIMARY KEY, workspace_id TEXT, dataset_id TEXT, kind TEXT, column_name TEXT,
+    config TEXT, severity TEXT DEFAULT 'error', last_status TEXT, last_detail TEXT,
+    last_run_at TIMESTAMP, created_at TIMESTAMP, updated_at TIMESTAMP
+);
 CREATE TABLE IF NOT EXISTS alert_runs (
     id TEXT PRIMARY KEY, alert_id TEXT, value DOUBLE, previous_value DOUBLE,
     status TEXT, message TEXT, created_at TIMESTAMP

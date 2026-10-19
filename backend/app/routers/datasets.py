@@ -239,4 +239,5 @@ def delete_dataset(dataset_id: str):
             from ..services.remote import invalidate
             invalidate()
         store.execute("DELETE FROM columns_meta WHERE dataset_id = ?", [dataset_id])
+        store.execute("DELETE FROM dataset_tests WHERE dataset_id = ?", [dataset_id])
     return {"ok": True}

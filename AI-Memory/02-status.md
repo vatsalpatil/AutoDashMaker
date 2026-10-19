@@ -66,4 +66,4 @@ Fixed + verified live: QB friendly column errors/limits; Ask failed answers visi
 USER: rotate the TiDB password (was returned to the browser before 25aafde). Free model `openrouter/free` ignores NOT_A_QUERY, so off-topic questions get the generic error.
 
 ## 2026-10-19 Lakehouse roadmap
-Research + audit + phased plan: `Plan/data-platform-research-and-roadmap.md` (A trust/Delta, B dbt tests/DAG/incremental, C DuckLake, D governance, E jobs/AI). DONE: A1 dataset versions (dataset page → Versions tab). NEXT: B2 data tests + auto-rollback, then A2/A3, B1 DAG, B3 incremental.
+Research + audit + phased plan: `Plan/data-platform-research-and-roadmap.md` (A trust/Delta, B dbt tests/DAG/incremental, C DuckLake, D governance, E jobs/AI). DONE: A1 dataset versions (Versions tab), B2 data tests + auto-rollback (Tests tab; derived datasets have no versions so they only alert). NEXT: A2/A3, B1 DAG, B3 incremental.

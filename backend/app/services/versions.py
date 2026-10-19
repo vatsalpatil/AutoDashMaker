@@ -64,3 +64,22 @@ def restore_file(table: str, version: str, final: Path) -> None:
 
 def remove_all(table: str) -> None:
     shutil.rmtree(_dir(table), ignore_errors=True)
+
+
+def restore(ds: dict, version: str) -> dict:
+    """Roll dataset `ds` back to `version`: swap the file, re-point its view, re-read its columns and row count."""
+    from ..core.store import store
+    from . import columnar
+    from .engine import engine
+    table, dataset_id = ds["physical_name"], ds["id"]
+    path_of(table, version)
+    with engine.writer() as con:
+        restore_file(table, version, columnar.parquet_path(table))
+        columnar.point_view(con, table)
+        info = con.execute(f"PRAGMA table_info('{table}')").fetchall()
+        count = con.execute(f"SELECT count(*) FROM {table}").fetchone()[0]
+    store.execute("DELETE FROM columns_meta WHERE dataset_id = ?", [dataset_id])
+    for r in info:
+        store.insert("columns_meta", {"dataset_id": dataset_id, "name": r[1], "dtype": r[2]})
+    store.update("datasets", dataset_id, {"row_count": count, "column_count": len(info)})
+    return store.get("datasets", dataset_id)

@@ -160,7 +160,7 @@ def run_cell(body: RunCellIn):
     except HTTPException as e:
         # DuckDB says "Table with name X does not exist": if X is a cell further down, say so plainly
         for later in body.cells[body.index + 1:]:
-            if re.search(rf"Table with name {re.escape(later.name)} does not exist", str(e.detail), re.IGNORECASE):
+            if re.search(rf"(Table with name|table) '?{re.escape(later.name)}'? does not exist", str(e.detail), re.IGNORECASE):
                 raise HTTPException(400, f"This cell uses '{later.name}', which is defined further down. "
                                          "Move that cell above this one.") from e
         raise

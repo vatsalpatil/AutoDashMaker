@@ -4,7 +4,6 @@ from fastapi import APIRouter, HTTPException
 
 from ..core.store import store
 from ..services import audit, columnar, versions
-from ..services.engine import engine
 
 router = APIRouter(prefix="/api/datasets", tags=["datasets"])
 
@@ -49,16 +48,7 @@ def preview_version(dataset_id: str, version: str, limit: int = 50):
 @router.post("/{dataset_id}/versions/{version}/restore")
 def restore_version(dataset_id: str, version: str):
     ds = _dataset(dataset_id)
-    table = ds["physical_name"]
     _version_path(ds, version)
-    with engine.writer() as con:
-        versions.restore_file(table, version, columnar.parquet_path(table))
-        columnar.point_view(con, table)
-        info = con.execute(f"PRAGMA table_info('{table}')").fetchall()
-        count = con.execute(f"SELECT count(*) FROM {table}").fetchone()[0]
-    store.execute("DELETE FROM columns_meta WHERE dataset_id = ?", [dataset_id])
-    for r in info:
-        store.insert("columns_meta", {"dataset_id": dataset_id, "name": r[1], "dtype": r[2]})
-    store.update("datasets", dataset_id, {"row_count": count, "column_count": len(info)})
+    out = versions.restore(ds, version)
     audit.record("dataset.restore", entity_type="dataset", entity_id=dataset_id, detail=f"{ds['name']} -> {version}")
-    return store.get("datasets", dataset_id)
+    return out

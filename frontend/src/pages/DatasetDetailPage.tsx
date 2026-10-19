@@ -13,6 +13,7 @@ import { WhyPanel } from '@/components/WhyPanel';
 import { TransformPanel } from '@/components/TransformPanel';
 import { CopyLiveData } from '@/features/sources/CopyLiveData';
 import { VersionsPanel } from '@/features/datasets/VersionsPanel';
+import { TestsPanel } from '@/features/datasets/TestsPanel';
 import { QualityPanel } from '@/features/quality/QualityPanel';
 import { countLabel } from '@/lib/utils';
 
@@ -72,6 +73,7 @@ export default function DatasetDetailPage() {
         <Tab value="quality" label="Quality" />
         <Tab value="why" label="Why?" />
         <Tab value="transform" label="Transform" />
+        <Tab value="tests" label="Tests" />
         {!dataset.remote_table && <Tab value="versions" label="Versions" />}
       </TabList>
 
@@ -88,6 +90,8 @@ export default function DatasetDetailPage() {
       {tab === 'why' && <WhyPanel datasetId={id!} />}
 
       {tab === 'transform' && <TransformPanel baseDataset={dataset} />}
+
+      {tab === 'tests' && <TestsPanel datasetId={id!} columns={schema?.columns.map((c) => c.name) ?? []} />}
 
       {tab === 'versions' && <VersionsPanel datasetId={id!} onRestored={loadDataset} />}
 
