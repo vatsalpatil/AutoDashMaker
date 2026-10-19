@@ -106,6 +106,14 @@ def plan_in_parallel(template: str, context: str, provider_id: str | None, pages
                 notes.append(f"{pages[i]['name']}: could not be planned ({str(e)[:120]})")
             yield {"type": "step", "n": 3, "title": "Planning the dashboard",
                    "detail": f"Planned {len(results)} of {len(pages)} pages at the same time: {', '.join(names)}.", "items": notes[:]}
+    # pages planned in parallel can pick the same dimension (two "Products" tabs): keep the first, drop the repeat
+    seen: set[str] = set()
+    for i in sorted(results):
+        key = pages[i]["name"].strip().lower()
+        if key in seen:
+            notes.append(f"{pages[i]['name']}: dropped, it repeats an earlier page")
+            results[i] = []
+        seen.add(key)
     specs = [w for i in sorted(results) for w in results[i]][:MAX_GENERATED]
     if not specs:
         raise errors[0] if errors else ai_svc.AIError("The model's plan had no widgets. Try again or pick another model in Settings.")

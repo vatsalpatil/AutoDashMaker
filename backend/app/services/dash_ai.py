@@ -143,6 +143,7 @@ def _materialize(spec: dict[str, Any], context: str, provider_id: str | None, re
     chart = {"type": ctype, "encoding": encode(ctype, cols, rows), "options": suggested["options"] if ctype == suggested["type"] else {}}
     if ctype == "kpi":
         chart["options"] = kpi_options(cols, rows)
+        chart["encoding"]["y"] = next((c for c in cols if not _PREV.search(c)), cols[0])   # the big number is the current value, never the prev_* column
     out = {"title": title, "sql": result["sql"], "chart": chart, "columns": cols, "preview": _tidy(rows[:6]), "all_rows": _tidy(rows[:400]), "ms": result.get("duration_ms"), "fixed": fixes}
     if not review:
         return out
@@ -156,7 +157,8 @@ _PREV = re.compile(r"prev|previous|last_|before|prior", re.I)
 def kpi_options(cols: list[str], rows: list[dict]) -> dict[str, Any]:
     """KPI options read from the result's aliases: a 'previous' column -> value vs previous with growth; ratio/pct aliases -> format."""
     main = next((c for c in cols if not _PREV.search(c)), cols[0])
-    opts: dict[str, Any] = {"numberFormat": "ratio" if "ratio" in main.lower() else "compact", "kpiAlign": "left"}
+    # the card header already shows the widget title, so the alias label would only repeat it (and push the delta lines out of the card)
+    opts: dict[str, Any] = {"numberFormat": "ratio" if "ratio" in main.lower() else "compact", "kpiAlign": "left", "showLabel": False}
     if re.search(r"pct|percent|rate|share|margin|growth", main, re.I):
         opts["numberFormat"] = "decimal"
         opts["suffix"] = "%"
@@ -184,7 +186,8 @@ def _layout(widgets: list[dict[str, Any]], start_y: int = 0) -> list[dict[str, i
     kpis = [i for i, w in enumerate(widgets) if w["chart"]["type"] == "kpi"]
     pos: dict[int, dict[str, int]] = {}
     y = start_y
-    for chunk in [kpis[i:i + 4] for i in range(0, len(kpis), 4)]:
+    per_row = -(-len(kpis) // -(-len(kpis) // 4)) if kpis else 4   # balanced rows: 5 -> 3+2, 6 -> 3+3, never a lone full-width KPI
+    for chunk in [kpis[i:i + per_row] for i in range(0, len(kpis), per_row)]:
         for n, i in enumerate(chunk):
             width = 12 // len(chunk)
             pos[i] = {"x": n * width, "y": y, "w": width, "h": 2}

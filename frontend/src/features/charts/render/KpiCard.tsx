@@ -22,13 +22,15 @@ export function ruleColor(v: number, rules: string): string | undefined {
 
 /** Big-number card with optional change-vs-previous-row badge and a sparkline over the rows. */
 export function KpiCard({ spec, result, o, height }: { spec: ChartSpec; result: QueryResult; o: Opts; height: number }) {
-  const { x, y } = spec.encoding;
+  const { x } = spec.encoding;
   const [boxRef, box] = useMeasure();
   const rows = result.rows;
   const last = rows[rows.length - 1];
-  const value = last ? (last[y] ?? last[x]) : null;
   // previous value: a column of the same row (e.g. day_before) when chosen, else the row before
   const prevCol = opt.str(o.previousColumn, '');
+  // never show the previous column as the main number (older AI dashboards did: "PREV VALUE", always 0.0% growth)
+  const y = spec.encoding.y === prevCol ? (result.columns.find((c) => c !== prevCol && c !== x) ?? spec.encoding.y) : spec.encoding.y;
+  const value = last ? (last[y] ?? last[x]) : null;
   const prev = prevCol && last && last[prevCol] != null ? toNumber(last[prevCol]) : rows.length > 1 ? toNumber(rows[rows.length - 2][y]) : null;
   const delta = prev !== null && prev !== 0 ? (toNumber(value) - prev) / Math.abs(prev) : null;
   const good = delta === null ? true : (delta >= 0) === (opt.str(o.deltaGood, 'up') === 'up');
