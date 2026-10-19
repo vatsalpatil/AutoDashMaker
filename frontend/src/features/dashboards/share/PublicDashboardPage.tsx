@@ -20,7 +20,11 @@ export function PublicDashboardPage({ token }: { token: string }) {
   const [page, setPage] = useState(0);
   useEffect(() => {
     Promise.all([get<Shared>(token), get<Parameters<typeof prime>[0]>(`${token}/data`, 'POST')])
-      .then(([dash, data]) => { prime(data); setD(dash); })
+      .then(([dash, data]) => {
+        // static view: draw charts at their final state (animated marks stayed stuck on frame 0 on share links)
+        for (const r of Object.values(data)) if (r.chart?.spec) r.chart.spec.options = { ...r.chart.spec.options, animate: false };
+        prime(data); setD(dash);
+      })
       .catch((e) => setError((e as Error).message));
   }, [token]);
 
