@@ -7,15 +7,28 @@ from __future__ import annotations
 
 TEMPLATES: dict[str, dict] = {
     "auto": {
-        "name": "Best fit (AI decides)",
-        "description": "Overview, Breakdown and Details pages, with the widgets the AI judges best for this data.",
-        "pages": [("overview", "Overview"), ("breakdown", "Breakdown"), ("details", "Details")],
+        "name": "Full report (AI decides)",
+        "description": "Report-center style: KPI strip with previous-period growth, performance groups, one tab per key dimension, time breakdown and details.",
+        "pages": [("overview", "Overview"), ("performance", "Performance"), ("dim1", "Breakdown 1"), ("dim2", "Breakdown 2"),
+                  ("dim3", "Breakdown 3"), ("time", "Time"), ("details", "Details")],
         "blueprint": (
-            "overview: 3-4 KPIs that matter most for THIS data (totals, an average or rate, a record count, and a growth % of the latest complete "
-            "period vs the one before when a date exists), a trend over time when a date exists, and the single most important ranking.\n"
-            "breakdown: 3-4 charts splitting the main measure by the most useful dimensions (bar, pie of at most 8 slices, composed or treemap), "
-            "and one dimension-by-time chart when a date exists. Choose the dimensions and chart types that fit the data.\n"
-            "details: one table of the most informative rows (named columns only, at most 50) and, when it suits the data, one pivot-style table."),
+            "Rank the dimensions by usefulness (few blanks, 3-500 distinct values, e.g. product, region, salesperson): dim1 is the best, dim2 "
+            "the second, dim3 the third. 'Current' and 'previous' mean the latest COMPLETE period in the data and the one before, never the "
+            "clock date. Without a date column skip every current/previous and time widget.\n"
+            "overview: 6-8 KPIs: total of the main measure WITH its previous-period value (columns value, prev_value), units/quantity with "
+            "prev, average per record or per unit, record count, a ratio or margin when two measures allow it (alias ending _ratio or _pct), "
+            "and 2 text KPIs (one row, one text column: the top value of dim1 and of dim2); then a composed monthly trend of the main measure "
+            "and a second measure; a pie share of dim1 (max 8 slices).\n"
+            "performance: a ranked widget of dim1 (item, current period value, previous period value, LIMIT 10); a quadrant of the same three "
+            "columns; a waterfall of what drove the change between the two periods (top 6 item deltas + 'Others'); a bar of period-over-period "
+            "growth % per month.\n"
+            "dim1, dim2, dim3: a page for that dimension (set page_name to it, e.g. Products); if the data has no such dimension return no "
+            "widgets. 4 KPIs (active count of the dimension, a text KPI of its top value, the top value's share of the total in %, average "
+            "per value); a top-10 bar; a treemap share; a pivot of the dimension by YEAR (row field, year, main measure); a table per value "
+            "with every useful total, count, average and share %.\n"
+            "time: a timebreak widget (dim1 item, the DATE column at day or month grain, the main measure, a text detail column), a pivot of "
+            "month by year of the main measure, and a bar of the main measure by weekday.\n"
+            "details: the 50 most informative rows (named columns only) and a pivot of dim1 by dim2."),
     },
     "executive": {
         "name": "Executive overview",
@@ -63,7 +76,7 @@ TEMPLATES: dict[str, dict] = {
             "Pick the 2 most useful dimensions; name pages dim1 and dim2 after them (e.g. Portal, Category).\n"
             "overview: KPIs for gross total, units, average selling price (total / units), a rate (e.g. returns / sold when such columns "
             "exist, else share of the top item) and a ratio KPI; a monthly trend of the main measure; a pie share of the first dimension.\n"
-            "each breakdown page: KPIs (active count of that dimension, top item by value, units, average value per unit); a pivot of the "
+            "dim1, dim2: KPIs (active count of that dimension, top item by value, units, average value per unit); a pivot of the "
             "dimension by YEAR (row field, year as column field, main measure); a top-10 bar of the dimension; a bar of a rate or average per "
             "dimension value; a detail table per dimension value with every useful total.\n"
             "details: the 50 most informative rows."),

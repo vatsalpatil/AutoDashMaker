@@ -15,20 +15,28 @@ from .dash_ai import CHART_TYPES, widgets_of
 from .dash_plan import MAX_GENERATED, ask_json
 from .dash_templates import FORMULAS, NAMING_RULES, SQL_RULES, TEMPLATES
 
-MAX_PARALLEL = 4
-PER_PAGE = 7
+MAX_PARALLEL = 6
+PER_PAGE = 8
 
 PAGE_SYSTEM = (
     "You are a senior BI designer inside a DuckDB analytics app. You design ONE page of a multi-page dashboard. Reply with ONLY one JSON "
     'object, no prose, no markdown: {"widgets": [{"title": string, "type": one of ' + "|".join(CHART_TYPES) + ', "why": one sentence: the '
-    'question this widget answers, "formula": the calculation in plain words, "sql": one read-only DuckDB SELECT}]}. 3 to '
+    'question this widget answers, "formula": the calculation in plain words, "sql": one read-only DuckDB SELECT}], "page_name": optional '
+    '1-2 word page name, only when your brief asks you to name the page}. 0 (only when your brief allows it) or 3 to '
     f"{PER_PAGE} widgets, only for the page you are given. Use ONLY columns that exist in the profile.\n\n" + NAMING_RULES + "\n\n" + SQL_RULES + "\n\n" + FORMULAS)
 
 def _blueprint_for(tpl: dict, page_id: str) -> str:
+    """The page's blueprint line ("id:" or "a, b, c:" shared by several pages), after the template's general lines (no page prefix)."""
+    ids = {i for i, _ in tpl["pages"]}
+    general, own = [], ""
     for line in tpl["blueprint"].split("\n"):
-        if line.startswith(f"{page_id}:"):
-            return line.split(":", 1)[1].strip()
-    return ""
+        head, _, rest = line.partition(":")
+        keys = {k.strip() for k in head.split(",")}
+        if rest and keys <= ids:
+            own = rest.strip() if page_id in keys else own
+        else:
+            general.append(line.strip())
+    return " ".join(general + [own]).strip() if own else ""
 
 
 def _pages(template: str) -> list[dict[str, str]]:
@@ -44,6 +52,8 @@ def _plan_page(context: str, pages: list[dict[str, str]], index: int, provider_i
             + (f"Other pages (do NOT repeat their content):\n{others}\n" if others else "")
             + ("This is the first page: put the KPI widgets first." if index == 0 else "Do not add headline KPIs that the first page already shows."))
     raw = ask_json(PAGE_SYSTEM, user, provider_id, "widgets", step=3, lane=page["id"], label=page["name"])
+    if raw.get("page_name"):
+        page["name"] = str(raw["page_name"])[:30]
     return [dict(w, page=page["id"]) for w in widgets_of(raw)[:PER_PAGE]]
 
 
@@ -72,7 +82,7 @@ def revise_pages(context: str, previous: list[str], feedback: str, template: str
             continue
         seen.add(pid)
         out.append({"id": pid, "name": str(p["name"])[:40], "focus": str(p.get("focus") or "")[:300]})
-    return out[:6] or _pages(template)
+    return out[:8] or _pages(template)
 
 
 def plan_in_parallel(template: str, context: str, provider_id: str | None, pages: list[dict[str, str]] | None = None) -> Iterator[dict[str, Any]]:

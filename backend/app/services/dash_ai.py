@@ -142,12 +142,28 @@ def _materialize(spec: dict[str, Any], context: str, provider_id: str | None, re
     ctype = ctype if ctype in CHART_TYPES else suggested["type"]
     chart = {"type": ctype, "encoding": encode(ctype, cols, rows), "options": suggested["options"] if ctype == suggested["type"] else {}}
     if ctype == "kpi":
-        chart["options"] = {"numberFormat": "compact"}
+        chart["options"] = kpi_options(cols, rows)
     out = {"title": title, "sql": result["sql"], "chart": chart, "columns": cols, "preview": _tidy(rows[:6]), "all_rows": _tidy(rows[:400]), "ms": result.get("duration_ms"), "fixed": fixes}
     if not review:
         return out
     from .dash_critic import polish   # lazy: it calls back into this module
     return polish({**spec, "title": title}, out, context, provider_id)
+
+
+_PREV = re.compile(r"prev|previous|last_|before|prior", re.I)
+
+
+def kpi_options(cols: list[str], rows: list[dict]) -> dict[str, Any]:
+    """KPI options read from the result's aliases: a 'previous' column -> value vs previous with growth; ratio/pct aliases -> format."""
+    main = next((c for c in cols if not _PREV.search(c)), cols[0])
+    opts: dict[str, Any] = {"numberFormat": "ratio" if "ratio" in main.lower() else "compact", "kpiAlign": "left"}
+    if re.search(r"pct|percent|rate|share|margin|growth", main, re.I):
+        opts["numberFormat"] = "decimal"
+        opts["suffix"] = "%"
+    prev = next((c for c in cols if c != main and _PREV.search(c)), None)
+    if prev and rows and isinstance(rows[0].get(prev), (int, float)):
+        opts.update(showPrevious=True, showDelta=True, previousColumn=prev, previousLabel="previous period")
+    return opts
 
 
 def _store_widget(dash_id: str, widget: dict[str, Any], position: dict[str, int], dataset_id: str | None, page: str = "main") -> dict[str, Any]:

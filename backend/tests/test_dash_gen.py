@@ -78,13 +78,13 @@ und = ev1[-1]
 assert [q["id"] for q in und["questions"]] == ["q1"] and und["questions"][0]["options"] == ["amount", "orders"], und["questions"]
 
 # phase 2a: first plan = one model call per page, all at once (the AI chose the pages in a short outline call)
-ev2 = list(dash_plan.plan(ds["id"], "auto", "", und["understanding"], {"Which measure is the main KPI?": "amount"}, "", [], None))
+ev2 = list(dash_plan.plan(ds["id"], "executive", "", und["understanding"], {"Which measure is the main KPI?": "amount"}, "", [], None))
 assert "Your page:" in seen_prompts["widgets"] and "Other pages (do NOT repeat" in seen_prompts["widgets"]
 assert "The user answered" in seen_prompts["widgets"] and "Each row is an order" in seen_prompts["widgets"]
 progress = [e for e in ev2 if e["type"] == "step" and not e.get("done")]
 assert any("at the same time" in e["detail"] for e in progress), [e["detail"] for e in progress]
 planned = ev2[-1]
-assert planned["type"] == "plan" and planned["name"] == "Sales Dashboard", planned["name"]
+assert planned["type"] == "plan" and planned["name"] == "Sales Executive overview", planned["name"]
 assert [p["name"] for p in planned["pages"]] == ["Overview", "Breakdown"], planned["pages"]
 titles = [w["title"] for w in planned["widgets"]]
 assert titles == ["Total Amount", "Monthly Amount Trend", "Top Regions", "Broken"], titles   # page order, names cleaned

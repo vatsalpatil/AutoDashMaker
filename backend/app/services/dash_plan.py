@@ -19,7 +19,7 @@ from .dash_profile import profile
 from .dash_templates import DATA_BASICS, FORMULAS, NAMING_RULES, SQL_RULES, TEMPLATES
 from ..core.store import store
 
-MAX_GENERATED = 18
+MAX_GENERATED = 40
 SEP = chr(10) * 2
 _SMALL = {"a", "an", "and", "by", "for", "in", "of", "on", "or", "per", "the", "to", "vs"}
 
@@ -147,7 +147,7 @@ def clean_pages(raw: Any, template: str) -> list[dict[str, str]]:
     given = [p for p in raw if isinstance(p, dict) and p.get("name")] if isinstance(raw, list) else []
     given = given or [{"id": i, "name": n} for i, n in TEMPLATES[template]["pages"]]
     pages, taken = [], set()
-    for p in given[:5]:
+    for p in given[:8]:
         pid = _slug(str(p.get("id") or p["name"]), taken)
         taken.add(pid)
         pages.append({"id": pid, "name": clean_title(p["name"])})

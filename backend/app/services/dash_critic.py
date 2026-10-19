@@ -25,6 +25,8 @@ def _retype(rows: list[dict], cols: list[str], ctype: str) -> tuple[str | None, 
     """(better chart type or None, why) for a result whose shape does not suit `ctype`."""
     roles, n = column_roles(cols, rows), len(rows)
     measures, dims = roles["measure"], roles["time"] + roles["category"]
+    if ctype == "kpi" and n == 1 and len(cols) <= 2:
+        return None, ""   # a text KPI ("Top product: X") or value + previous
     if ctype not in NO_MEASURE_OK and not measures:
         return "table", "no numeric column to plot, shown as a table"
     if ctype == "kpi" and (n > 1 or len(cols) > 1 and not measures):
