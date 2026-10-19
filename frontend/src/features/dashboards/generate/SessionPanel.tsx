@@ -30,7 +30,7 @@ export function SessionPanel({ s, datasetName }: { s: Session; datasetName?: str
   const perPage = s.plan ? s.plan.pages.map((p) => ({ name: p.name, n: s.plan!.widgets.filter((w) => w.page === p.id).length })) : [];
 
   return (
-    <aside className="hidden w-80 shrink-0 overflow-y-auto border-l bg-card/40 backdrop-blur xl:block" aria-label="Session overview">
+    <aside className="h-full w-full overflow-y-auto bg-card/40 backdrop-blur" aria-label="Session overview">
       <Section icon={<Loader2 className={cn('size-3.5', s.busy && 'animate-spin text-primary')} />} title="Progress">
         <ol className="flex flex-col gap-1">
           {STEP_TITLES.map((t, i) => {

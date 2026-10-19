@@ -24,7 +24,7 @@ export function Composer({ placeholder, busy, disabled, sendLabel, allowEmpty, o
   const send = () => { if (!can) return; onSend(text.trim(), att.take()); setText(''); };
 
   return (
-    <div className="mx-auto w-full max-w-5xl px-4 pb-4 lg:px-8">
+    <div className="w-full px-4 pb-4 lg:px-6">
       {actions && <div className="mb-2 flex flex-wrap gap-1.5">{actions}</div>}
       <div onDrop={att.dropProps.onDrop} onDragOver={att.dropProps.onDragOver} className={cn('rounded-2xl border bg-card shadow-lg transition-shadow focus-within:ring-2 focus-within:ring-primary/30', disabled && 'opacity-70')}>
         <AttachmentTray att={att} className="px-4 pt-3" />

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowDown, Hammer, RotateCcw, SkipForward, Sparkles } from 'lucide-react';
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable';
 import { useApi } from '@/hooks/useApi';
 import { useStickToBottom } from '@/hooks/useStickToBottom';
 import type { Dataset } from '@/lib/types';
@@ -96,10 +97,11 @@ export function GenerateThread({ s, initialDataset }: { s: Session; initialDatas
 
   const ds = datasets.find((d) => d.id === s.setup?.dataset_id);
   return (
-    <div className="flex h-full min-h-0">
-    <div className="relative flex min-w-0 flex-1 flex-col">
+    <ResizablePanelGroup orientation="horizontal" className="h-full min-h-0">
+    <ResizablePanel minSize={380}>
+    <div className="relative flex h-full min-w-0 flex-col">
       <div ref={scroll.ref} className="min-h-0 flex-1 overflow-y-auto">
-        <div ref={scroll.contentRef} className="mx-auto flex w-full max-w-5xl flex-col gap-5 px-4 py-6 lg:px-8">
+        <div ref={scroll.contentRef} className="flex w-full flex-col gap-5 px-4 py-6 lg:px-6">
           <Ai>
             <p className="flex items-center gap-2 text-sm"><Sparkles className="size-4 text-primary" />
               Hi! Pick the data and a style. I’ll study it, ask what matters to you, propose a plan you can edit, then build and check every widget.</p>
@@ -158,7 +160,12 @@ export function GenerateThread({ s, initialDataset }: { s: Session; initialDatas
         <Composer {...composer} busy={s.busy || edit.busy} onStop={() => { s.stop(); edit.stop(); }} onSend={send} actions={actions} />
       </div>
     </div>
-    <SessionPanel s={s} datasetName={ds?.name} />
-    </div>
+    </ResizablePanel>
+    <ResizableHandle withHandle />
+    {/* drag to resize the progress panel; drag fully right to tuck it away */}
+    <ResizablePanel defaultSize="26" minSize={240} maxSize="55" collapsible collapsedSize={0}>
+      <SessionPanel s={s} datasetName={ds?.name} />
+    </ResizablePanel>
+    </ResizablePanelGroup>
   );
 }
