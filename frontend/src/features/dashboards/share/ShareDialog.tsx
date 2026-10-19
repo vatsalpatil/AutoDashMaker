@@ -30,7 +30,7 @@ export function ShareDialog({ dashboardId, open, onClose }: { dashboardId: strin
   const shares = (list.data ?? []).filter((s) => s.active);
   return (
     <Dialog isOpen={open} onOpenChange={(o) => !o && onClose()} className="w-[min(540px,100%)]">
-      <div className="space-y-4 p-5">
+      <div className="min-w-0 space-y-4 p-5">
         <div>
           <h2 className="flex items-center gap-2 text-base font-semibold"><Link2 className="size-4 text-primary" /> Share dashboard</h2>
           <p className="mt-1 text-sm text-muted-foreground">Anyone with the link can <b>view</b> this dashboard and its current numbers, without signing in. They cannot see your queries, other dashboards or raw tables, and cannot change anything.</p>
@@ -49,9 +49,9 @@ export function ShareDialog({ dashboardId, open, onClose }: { dashboardId: strin
           {shares.length === 0 ? <p className="text-sm text-muted-foreground">No active links. This dashboard is private.</p> : (
             <ul className="divide-y rounded-md border">
               {shares.map((s) => (
-                <li key={s.id} className="flex items-center gap-2 px-2 py-1.5 text-xs">
-                  <span className="mono min-w-0 flex-1 truncate" title={shareUrl(s.token)}>{shareUrl(s.token)}</span>
-                  <span className="shrink-0 text-muted-foreground">{s.views} views · {s.expires_at ? `expires ${new Date(s.expires_at).toLocaleDateString()}` : 'never expires'} · {timeAgo(s.created_at)}</span>
+                <li key={s.id} className="flex flex-wrap items-center gap-x-2 gap-y-0.5 px-2 py-1.5 text-xs">
+                  <span className="mono min-w-0 basis-full truncate sm:basis-0 sm:flex-1" title={shareUrl(s.token)}>{shareUrl(s.token)}</span>
+                  <span className="min-w-0 flex-1 text-muted-foreground sm:flex-none">{s.views} views · {s.expires_at ? `expires ${new Date(s.expires_at).toLocaleDateString()}` : 'never expires'} · {timeAgo(s.created_at)}</span>
                   <CopyLink token={s.token} />
                   <button type="button" aria-label="Turn off link" title="Turn off link" onClick={() => revoke(s.id)} className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-destructive"><Trash2 className="size-4" /></button>
                 </li>
