@@ -22,10 +22,13 @@ export function BackofficeApp() {
   const { email, signOut } = useAuth();
   if (me.loading && !me.data) return <Loading />;
   if (me.error) {
+    // only a real "not an admin" answer says so; anything else (502 while the backend redeploys…) offers a retry
+    const denied = /administrators only|^40[13]/i.test(me.error);
     return (
       <div className="grid h-screen place-items-center p-4">
-        <EmptyState title="No backoffice access" description={`${email ?? 'This account'} is not an administrator. ${me.error}`}
-          action={<button className="text-sm underline" onClick={signOut}>Sign out</button>} />
+        <EmptyState title={denied ? 'No backoffice access' : 'Server not reachable'}
+          description={denied ? `${email ?? 'This account'} is not an administrator.` : `The backend did not answer (${me.error}). It may be restarting; try again in a moment.`}
+          action={<button className="text-sm underline" onClick={denied ? signOut : me.reload}>{denied ? 'Sign out' : 'Try again'}</button>} />
       </div>
     );
   }

@@ -333,3 +333,4 @@ Format: `YYYY-MM-DD · tool · files · what + why`
 - 2026-10-20 · generate/streamState.ts, useGenerateSession.ts · keep every model call's full thinking (log) for the session + saved sessions; findLastIndex -> loop (TS lib target).
 - 2026-10-20 · core/admin.py, services/admin/{activity,users,overview}.py, routers/admin.py, schema.py (activity_log, admin_user_flags), auth.py, tenant.py, config.py (ADMIN_EMAILS), Main.py, tests/test_admin.py; frontend backoffice.html, vite.backoffice.config.ts, src/backoffice/*, Dockerfile.backoffice, caddy.backoffice.conf · Backoffice phase 1 (admin panel at dashtorbackoffice.laveyent.com): Overview, Users (suspend/delete), Activity log of every API request.
 - 2026-10-20 · AI-Memory/02-status.md · Backoffice deployed and confirmed live; recorded Dokploy service names.
+- 2026-10-20 · frontend/src/backoffice/BackofficeApp.tsx · a 502/network error no longer shows 'not an administrator'; shows 'Server not reachable' + Try again.
