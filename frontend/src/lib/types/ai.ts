@@ -45,6 +45,8 @@ export interface AiProvider {
   api_key?: string; // masked, e.g. •••abcd
   is_default?: boolean;
   created_at?: string;
+  auto_switch?: boolean | null; // read from the active provider; null = on
+  switch_below?: number | null; // % of the daily limit left
 }
 
 export interface SqlGenResponse {

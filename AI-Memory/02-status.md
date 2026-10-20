@@ -67,3 +67,6 @@ USER: rotate the TiDB password (was returned to the browser before 25aafde). Fre
 
 ## 2026-10-19 Lakehouse roadmap
 Research + audit + phased plan: `Plan/data-platform-research-and-roadmap.md` (A trust/Delta, B dbt tests/DAG/incremental, C DuckLake, D governance, E jobs/AI). DONE: A1 dataset versions (Versions tab), B2 data tests + auto-rollback (Tests tab; derived datasets have no versions so they only alert). NEXT: A2/A3, B1 DAG, B3 incremental.
+
+## 2026-10-20 AI keys
+Multiple keys per provider + auto-switch (rule stored on the active provider row: `auto_switch`, `switch_below` %) done, unit-tested (`tests/test_ai_switch.py`); not yet clicked through on the live site. Usage "left" is still Dashtor's own count unless the provider sends daily-sized rate headers (Groq) — calls made with the same key elsewhere are invisible.

@@ -75,37 +75,76 @@ def _runs_left(pid: str, remaining: int | None) -> list[dict[str, Any]]:
     return [{"feature": r["feature"], "calls_per_run": round(r["per_run"], 1), "runs_left": int(remaining // max(r["per_run"], 1))} for r in rows]
 
 
-def _provider(cfg: dict[str, Any]) -> dict[str, Any]:
+# calls that never reached the provider's quota (rejected by the limit, network errors) do not count against it
+_COUNTED = "(ok OR (status IS NOT NULL AND status <> 429))"
+
+
+def _limits(cfg: dict[str, Any], account: dict | None) -> dict[str, Any]:
     lim = known_limits(cfg)
+    if account and cfg.get("provider") == "openrouter" and lim["source"] == "OpenRouter free tier" and account.get("free_tier") is False:
+        lim.update(rpd=1000, note="Free models: 1,000 requests a day (your account has bought credits), 20 a minute. Resets at 00:00 UTC.")
+    return lim
+
+
+def _left(cfg: dict[str, Any], account: dict | None = None) -> dict[str, Any]:
+    """What is left in the current window for one provider/key: {lim, start, reset, day, remaining, rpd, exact, live, pct}."""
+    lim = _limits(cfg, account)
     start, reset = window_start(lim["tz"]), next_reset(lim["tz"])
-    pid = cfg["id"]
-    day = _sum("provider_id = ? AND created_at >= ?", [pid, start])
-    minute = _sum("provider_id = ? AND created_at >= ?", [pid, now() - timedelta(seconds=60)])["requests"]
+    day = _sum(f"provider_id = ? AND created_at >= ? AND {_COUNTED}", [cfg["id"], start])
+    day["errors"] = _sum("provider_id = ? AND created_at >= ? AND NOT ok", [cfg["id"], start])["requests"]
     snap = cfg.get("rate_headers")
     live = _from_headers(json.loads(snap) if isinstance(snap, str) and snap else {})
+    seen = live.get("seen")
+    if seen and seen < start.isoformat():   # headers from a previous window say nothing about today
+        live = {**live, "remaining_requests": None, "limit_requests": None, "remaining_tokens": None, "limit_tokens": None}
     rpd = lim["rpd"]
     remaining = max(rpd - day["requests"], 0) if rpd else None
-    if live["remaining_requests"] is not None and live["limit_requests"] and live["limit_requests"] >= 100:   # a daily-sized live counter beats our estimate
-        remaining, rpd = live["remaining_requests"], live["limit_requests"]
+    exact = False
+    if live["remaining_requests"] is not None and live["limit_requests"] and live["limit_requests"] >= 100:   # a daily-sized live counter beats our count
+        rpd, exact = live["limit_requests"], True
+        remaining = live["remaining_requests"]
     tpd = lim["tpd"]
-    tokens_used = day["tokens_in"] + day["tokens_out"]
+    tokens_left = max(tpd - day["tokens_in"] - day["tokens_out"], 0) if tpd else None
+    pcts = [100 * remaining / rpd] if rpd and remaining is not None else []
+    if tpd and tokens_left is not None:
+        pcts.append(100 * tokens_left / tpd)
     until = cfg.get("blocked_until")
-    blocked = {"until": until.isoformat() + "Z", "reason": cfg.get("block_reason") or "", "seconds": int((until - now()).total_seconds())} \
-        if until and until > now() else None
+    blocked = bool(until and until > now())
+    return {"lim": lim, "start": start, "reset": reset, "day": day, "remaining": remaining, "rpd": rpd, "tpd": tpd, "tokens_left": tokens_left,
+            "exact": exact, "live": live, "pct": 0 if blocked else (round(min(pcts)) if pcts else None)}
+
+
+def pct_left(cfg: dict[str, Any]) -> int | None:
+    """% left of the tightest known daily limit (requests or tokens); 0 when paused, None when unlimited/unknown."""
+    if not cfg.get("id"):
+        return None
+    acct = _ACCOUNT_CACHE.get(cfg.get("api_key") or "", (0, None))[1]
+    return _left(cfg, acct)["pct"]
+
+
+def _provider(cfg: dict[str, Any]) -> dict[str, Any]:
+    pid = cfg["id"]
+    account = _openrouter_account(cfg) if cfg["provider"] == "openrouter" else None
+    L = _left(cfg, account)
+    lim, day, remaining, rpd = L["lim"], L["day"], L["remaining"], L["rpd"]
+    minute = _sum(f"provider_id = ? AND created_at >= ? AND {_COUNTED}", [pid, now() - timedelta(seconds=60)])["requests"]
+    until = cfg.get("blocked_until")
+    blocked = {"until": until.isoformat() + "Z", "reason": cfg.get("block_reason") or "", "seconds": int((until - now()).total_seconds())}         if until and until > now() else None
     first = store.execute("SELECT MIN(created_at) AS t FROM ai_usage WHERE provider_id = ?", [pid])[0]["t"]
-    exact = live["remaining_requests"] is not None and rpd == live["limit_requests"]
+    key = cfg.get("api_key") or ""
     return {"id": pid, "provider": cfg["provider"], "tracked_since": first.isoformat() + "Z" if first else None,
-            "exact": exact,   # False = counted by Dashtor only (calls from other apps / before tracking are not seen)
-            "label": label_of(cfg), "model": cfg.get("model"), "is_default": bool(cfg.get("is_default")),
-            "limits": {"rpd": rpd, "rpm": lim["rpm"], "tpd": tpd, "source": lim["source"], "note": lim["note"], "tz": lim["tz"],
+            "exact": L["exact"],   # False = counted by Dashtor only (calls from other apps / before tracking are not seen)
+            "label": label_of(cfg), "name": cfg.get("label") or label_of(cfg), "key_hint": ("•••" + key[-4:]) if key else "",
+            "model": cfg.get("model"), "is_default": bool(cfg.get("is_default")),
+            "auto_switch": cfg.get("auto_switch") is not False, "switch_below": cfg.get("switch_below") if cfg.get("switch_below") is not None else 5,
+            "limits": {"rpd": rpd, "rpm": lim["rpm"], "tpd": L["tpd"], "source": lim["source"], "note": lim["note"], "tz": lim["tz"],
                        "mine": {k: cfg.get(f"limit_{k}") for k in ("rpd", "rpm", "tpd")}},
-            "window": {"start": start.isoformat() + "Z", "resets_at": reset.isoformat() + "Z", "seconds_to_reset": int((reset - now()).total_seconds())},
+            "window": {"start": L["start"].isoformat() + "Z", "resets_at": L["reset"].isoformat() + "Z", "seconds_to_reset": int((L["reset"] - now()).total_seconds())},
             "today": day, "last_minute": minute,
-            "remaining": {"requests": remaining, "tokens": max(tpd - tokens_used, 0) if tpd else None,
-                          "pct": round(100 * remaining / rpd) if rpd and remaining is not None else None,
+            "remaining": {"requests": 0 if blocked and remaining is not None else remaining, "tokens": L["tokens_left"], "pct": L["pct"],
                           "minute": max(lim["rpm"] - minute, 0) if lim["rpm"] else None},
-            "live": live, "blocked": blocked, "runs_left": _runs_left(pid, remaining),
-            "account": _openrouter_account(cfg) if cfg["provider"] == "openrouter" else None}
+            "live": L["live"], "blocked": blocked, "runs_left": _runs_left(pid, remaining),
+            "account": account}
 
 
 def report(days: int = 30) -> dict[str, Any]:
@@ -120,7 +159,7 @@ def report(days: int = 30) -> dict[str, Any]:
     w_all, p_all = _where()
     periods["all"] = _sum(w_all, p_all)
     daily = store.execute(f"SELECT CAST(created_at AS DATE) AS day, COUNT(*) AS requests, SUM(tokens_in + tokens_out) AS tokens, "
-                          f"SUM(CASE WHEN ok THEN 0 ELSE 1 END) AS errors FROM ai_usage WHERE {where} GROUP BY 1 ORDER BY 1", params)
+                          f"SUM(CASE WHEN ok THEN 1 ELSE 0 END) AS ok, SUM(CASE WHEN ok THEN 0 ELSE 1 END) AS errors FROM ai_usage WHERE {where} GROUP BY 1 ORDER BY 1", params)
     by_feature = store.execute(f"SELECT feature, COUNT(*) AS requests, SUM(tokens_in + tokens_out) AS tokens FROM ai_usage WHERE {where} "
                                "GROUP BY 1 ORDER BY 2 DESC", params)
     by_model = store.execute(f"SELECT provider, model, COUNT(*) AS requests, SUM(tokens_in + tokens_out) AS tokens, AVG(ms) AS avg_ms FROM ai_usage "

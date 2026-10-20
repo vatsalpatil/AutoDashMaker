@@ -65,6 +65,7 @@ export function ProviderCard({ p, label, expanded, onToggle, onCollapse, onChang
           </button>
           {p.is_default && <Badge variant="success" label="active" />}
           <span className="mr-auto truncate font-mono text-xs text-muted-foreground">{p.model}</span>
+          {!p.is_default && <Button variant="ghost" size="sm" label="Make active" onClick={() => api.post(`/ai/providers/${p.id}/default`).then(onChanged)} />}
           <Button variant="secondary" size="sm" label={stats === 'testing' ? 'Testing…' : 'Test connection'}
             isDisabled={stats === 'testing'} onClick={test} />
           <button onClick={onEdit} className="p-1 text-muted-foreground/70 hover:text-foreground" aria-label={`Edit ${label}`}>

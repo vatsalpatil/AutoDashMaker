@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 export interface UsageSum { requests: number; tokens_in: number; tokens_out: number; errors: number; avg_ms: number }
 export interface Blocked { until: string; reason: string; seconds: number }
 export interface ProviderUsage {
-  id: string; provider: string; label: string; model: string; is_default: boolean; exact: boolean; tracked_since: string | null;
+  id: string; provider: string; label: string; name: string; key_hint: string; auto_switch: boolean; switch_below: number; model: string; is_default: boolean; exact: boolean; tracked_since: string | null;
   limits: { rpd: number | null; rpm: number | null; tpd: number | null; source: string; note: string; tz: string; mine: { rpd: number | null; rpm: number | null; tpd: number | null } };
   window: { start: string; resets_at: string; seconds_to_reset: number };
   today: UsageSum; last_minute: number;
@@ -15,7 +15,7 @@ export interface ProviderUsage {
 }
 export interface UsageReport {
   days: number; periods: Record<'today' | '7d' | '30d' | 'all', UsageSum>; selected: UsageSum;
-  daily: { day: string; requests: number; tokens: number; errors: number }[];
+  daily: { day: string; requests: number; ok: number; tokens: number; errors: number }[];
   by_feature: { feature: string; requests: number; tokens: number }[];
   by_model: { provider: string; model: string; requests: number; tokens: number; avg_ms: number }[];
   recent: { created_at: string; provider: string; model: string; feature: string; ok: boolean; status: number | null; tokens_in: number; tokens_out: number; ms: number; error: string | null }[];

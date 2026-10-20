@@ -53,7 +53,8 @@ export function ProviderUsageCard({ p, onChanged }: { p: ProviderUsage; onChange
     <Card padding={4}>
       <div className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-base font-semibold">{p.label}</span>
+          <span className="text-base font-semibold">{p.name}</span>
+          {p.key_hint && <span className="font-mono text-[11px] text-muted-foreground">{p.key_hint}</span>}
           {p.is_default && <Badge variant="success" label="active" />}
           <span className="truncate font-mono text-xs text-muted-foreground">{p.model}</span>
           <span className="ml-auto text-[11px] text-muted-foreground" title={p.limits.note}>limits: {p.limits.source}</span>
@@ -64,7 +65,7 @@ export function ProviderUsageCard({ p, onChanged }: { p: ProviderUsage; onChange
             <PauseCircle className="size-5 text-warning" />
             <div className="min-w-0 flex-1 text-sm">
               <p className="font-semibold">Limit reached — paused, not broken</p>
-              <p className="text-muted-foreground">Works again in <b className="tabular-nums text-foreground">{duration(pausedFor ?? 0)}</b> ({localTime(p.blocked!.until)}). Until then your other providers take over automatically.</p>
+              <p className="text-muted-foreground">Works again in <b className="tabular-nums text-foreground">{duration(pausedFor ?? 0)}</b> ({localTime(p.blocked!.until)}). Until then your other keys/providers take over automatically.</p>
             </div>
             <Button variant="secondary" size="sm" label="Try now" onClick={() => api.post(`/ai/providers/${p.id}/unblock`).then(onChanged)} />
           </div>
@@ -73,12 +74,12 @@ export function ProviderUsageCard({ p, onChanged }: { p: ProviderUsage; onChange
         <div className="flex flex-wrap items-center gap-5">
           <Ring pct={blocked ? 0 : p.remaining.pct} label={left === null ? '∞' : `${p.exact ? '' : '≈'}${compact(blocked ? 0 : left)}`} sub={left === null ? 'no fixed cap' : p.exact ? 'requests left' : 'left (estimate)'} />
           <div className="flex min-w-[14rem] flex-1 flex-col gap-2.5">
-            <Bar label="Requests today" used={p.today.requests} total={p.limits.rpd} />
+            <Bar label="Requests today (counted against the limit)" used={p.today.requests} total={p.limits.rpd} />
             {p.limits.rpm && <Bar label="This minute" used={p.last_minute} total={p.limits.rpm} />}
             <Bar label="Tokens today" used={p.today.tokens_in + p.today.tokens_out} total={p.limits.tpd} />
             <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
               <span className="flex items-center gap-1"><Clock className="size-3.5" />Resets in <b className="tabular-nums text-foreground">{duration(resetIn ?? 0)}</b></span>
-              {p.today.errors > 0 && <span>{p.today.errors} failed today</span>}
+              {p.today.errors > 0 && <span title="Failed calls rejected by the limit or the network do not use quota">{p.today.errors} failed today</span>}
               {p.today.avg_ms > 0 && <span className="flex items-center gap-1"><Zap className="size-3.5" />{(p.today.avg_ms / 1000).toFixed(1)} s avg</span>}
             </p>
           </div>

@@ -183,5 +183,8 @@ MIGRATIONS = [
     "ALTER TABLE ai_providers ADD COLUMN limit_tpd INTEGER",
     "ALTER TABLE ai_providers ADD COLUMN rate_headers TEXT",
     "ALTER TABLE ai_providers ADD COLUMN blocked_until TIMESTAMP",
-    "ALTER TABLE ai_providers ADD COLUMN block_reason TEXT",  # snapshot before the last Edit-with-AI run (JSON), for one-click undo
+    "ALTER TABLE ai_providers ADD COLUMN block_reason TEXT",
+    # auto-switch (read from the active provider): move to the key/provider with the most left once this one drops below switch_below %
+    "ALTER TABLE ai_providers ADD COLUMN auto_switch BOOLEAN DEFAULT TRUE",
+    "ALTER TABLE ai_providers ADD COLUMN switch_below INTEGER DEFAULT 5",  # snapshot before the last Edit-with-AI run (JSON), for one-click undo
 ]

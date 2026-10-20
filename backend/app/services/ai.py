@@ -174,17 +174,16 @@ def chat(messages: list[dict], provider_id: str | None = None,
             "No AI provider configured. Add one in Settings → AI Providers "
             "(Gemini free tier needs only a free Google AI Studio key)."
         )
-    try:
+    if provider_id or not cfg.get("id"):
         return _call(cfg, messages, max_tokens, timeout)
-    except Exception:
-        if provider_id or not cfg.get("id"):
-            raise
-        for alt in store.list("ai_providers", where="is_default = FALSE", order=None):
-            try:
-                return _call(alt, messages, max_tokens, timeout)
-            except Exception:
-                continue
-        raise
+    from .ai_routing import order
+    err: Exception | None = None
+    for alt in order(cfg):
+        try:
+            return _call(alt, messages, max_tokens, timeout)
+        except Exception as e:
+            err = err or e
+    raise err  # type: ignore[misc]
 
 
 def _call(cfg: dict[str, Any], messages: list[dict], max_tokens: int, timeout: float = 60) -> str:

@@ -193,3 +193,16 @@ def unblock(provider_id: str):
     _get_provider(provider_id)
     store.update("ai_providers", provider_id, {"blocked_until": None, "block_reason": None})
     return {"ok": True}
+
+
+class SwitchIn(BaseModel):
+    auto_switch: bool = True
+    switch_below: int = 5   # % of the daily limit left
+
+
+@router.patch("/providers/{provider_id}/switch")
+def set_switch(provider_id: str, body: SwitchIn):
+    """Auto-switch rule (read from the active provider): move to the key with the most left once this one is below N %."""
+    _get_provider(provider_id)
+    store.update("ai_providers", provider_id, {"auto_switch": body.auto_switch, "switch_below": max(0, min(body.switch_below, 90))})
+    return {"ok": True}

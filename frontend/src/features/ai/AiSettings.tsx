@@ -7,6 +7,7 @@ import { ErrorBanner } from '@/components/common/ErrorBanner';
 import { AddProviderDialog } from './AddProviderDialog';
 import { ProviderCard } from './ProviderCard';
 import { EditProviderDialog } from './EditProviderDialog';
+import { AutoSwitchCard } from './AutoSwitchCard';
 
 export default function AiSettings() {
   const [catalog, setCatalog] = useState<AiCatalogEntry[]>([]);
@@ -23,7 +24,11 @@ export default function AiSettings() {
   useEffect(load, [load]);
 
   const active = providers.find((p) => p.is_default) ?? providers[0];
-  const nameOf = (p: AiProvider) => catalog.find((c) => c.id === p.provider)?.label ?? p.provider;
+  const kindOf = (p: AiProvider) => catalog.find((c) => c.id === p.provider)?.label ?? p.provider;
+  // a custom name ("OpenRouter · key 2", "Work key") wins over the auto label "openrouter (model)"
+  const nameOf = (p: AiProvider) => (p.label && !p.label.startsWith(`${p.provider} (`) ? p.label : kindOf(p));
+  const connected = new Map<string, number>();
+  providers.forEach((p) => connected.set(p.provider, (connected.get(p.provider) ?? 0) + 1));
 
   async function remove(p: AiProvider) {
     if (!confirm(`Disconnect ${nameOf(p)}? Its stored key is deleted.`)) return;
@@ -55,19 +60,18 @@ export default function AiSettings() {
         </div>
       </Card>
 
+      {active && <AutoSwitchCard active={active} count={providers.length} onChanged={load} />}
+
       {providers.map((p) => (
-        <ProviderCard key={p.id} p={p} label={nameOf(p)} expanded={expanded === p.id}
+        <ProviderCard key={p.id} p={p} label={(connected.get(p.provider) ?? 0) > 1 ? `${nameOf(p)} ${p.api_key ?? ''}`.trim() : nameOf(p)} expanded={expanded === p.id}
           onToggle={() => setExpanded(expanded === p.id ? null : p.id)}
           onCollapse={() => setExpanded((cur) => (cur === p.id ? null : cur))} onChanged={load} onEdit={() => setEditing(p)} onRemove={() => remove(p)} />
       ))}
 
-      {providers.length > 1 && (
-        <p className="text-xs text-muted-foreground">If the active model fails (bad key, quota used up, outage), Dashtor automatically retries with your other connected providers.</p>
-      )}
 
       <EditProviderDialog provider={editing} name={editing ? nameOf(editing) : ''} onClose={() => setEditing(null)}
         onSaved={() => { setEditing(null); load(); }} />
-      <AddProviderDialog open={adding} catalog={catalog} connected={new Set(providers.map((p) => p.provider))}
+      <AddProviderDialog open={adding} catalog={catalog} connected={connected}
         isFirst={providers.length === 0} onClose={() => setAdding(false)}
         onConnected={(id) => { setAdding(false); load(); setExpanded(id); }} />
     </div>

@@ -7,9 +7,10 @@ import { AsyncView } from '@/components/common/AsyncView';
 import { useApi } from '@/hooks/useApi';
 import { cn } from '@/lib/utils';
 import { ProviderUsageCard } from './ProviderUsageCard';
+import { PoolSummary } from './PoolSummary';
 import { compact, type UsageReport, type UsageSum } from './usageModel';
 
-const PERIODS = [{ days: 1, label: 'Today' }, { days: 7, label: '7 days' }, { days: 30, label: '30 days' }, { days: 90, label: '90 days' }];
+const PERIODS = [{ days: 1, label: '24 h' }, { days: 7, label: '7 days' }, { days: 30, label: '30 days' }, { days: 90, label: '90 days' }];
 
 function Tile({ icon, label, value, sub }: { icon: React.ReactNode; label: string; value: string; sub?: string }) {
   return (
@@ -42,6 +43,7 @@ export default function AiUsagePanel() {
               <button type="button" onClick={q.reload} className="flex items-center gap-1 text-xs text-primary"><RefreshCw className="size-3.5" />Refresh</button>
             </div>
             {r.providers.length === 0 && <Card padding={4}><p className="text-sm text-muted-foreground">Connect an AI provider in the AI models tab to start tracking.</p></Card>}
+            {r.providers.length > 1 && <PoolSummary providers={r.providers} />}
             {r.providers.map((p) => <ProviderUsageCard key={p.id} p={p} onChanged={q.reload} />)}
 
             <div className="flex flex-wrap items-center gap-1 rounded-lg border bg-card p-1 w-fit" role="tablist" aria-label="Period">
@@ -65,13 +67,13 @@ export default function AiUsagePanel() {
                 </div>
               </div>
               {r.daily.length === 0 ? <p className="py-6 text-center text-sm text-muted-foreground">No AI calls in this period.</p> : (
-                <ChartContainer config={{ [metric]: { label: metric, color: 'var(--primary)' }, errors: { label: 'failed', color: 'var(--destructive)' } }} className="aspect-auto h-48 w-full">
+                <ChartContainer config={{ ok: { label: 'succeeded', color: 'var(--primary)' }, [metric]: { label: metric, color: 'var(--primary)' }, errors: { label: 'failed', color: 'var(--destructive)' } }} className="aspect-auto h-48 w-full">
                   <BarChart data={r.daily} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                     <CartesianGrid vertical={false} strokeDasharray="3 3" />
                     <XAxis dataKey="day" tickLine={false} axisLine={false} tick={{ fontSize: 11 }} tickFormatter={(d: string) => d.slice(5)} />
                     <YAxis tickLine={false} axisLine={false} width={40} tick={{ fontSize: 11 }} tickFormatter={(v: number) => compact(v)} />
                     <ChartTooltip content={<ChartTooltipContent />} />
-                    <Bar dataKey={metric} stackId="a" fill={`var(--color-${metric})`} radius={metric === 'tokens' ? 3 : 0} />
+                    <Bar dataKey={metric === 'requests' ? 'ok' : 'tokens'} name={metric === 'requests' ? 'ok' : 'tokens'} stackId="a" fill={`var(--color-${metric})`} radius={metric === 'tokens' ? 3 : 0} />
                     {metric === 'requests' && <Bar dataKey="errors" stackId="a" fill="var(--color-errors)" radius={[3, 3, 0, 0]} />}
                   </BarChart>
                 </ChartContainer>
