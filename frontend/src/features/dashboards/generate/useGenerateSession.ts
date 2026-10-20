@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from 'react';
 import { streamPost } from '@/lib/sse';
 import type { ReviewCheck } from '../ai/ReviewChecklist';
-import { applyStep, applyThink, stopSteps, type StepEvent, type ThinkEvent } from './streamState';
+import { appendLog, applyStep, applyThink, stopSteps, type StepEvent, type ThinkEntry, type ThinkEvent } from './streamState';
 
 /** `spentMs` = finished time on this step; `startedAt` = when its current run began (unset when not running). */
 export interface GenStep { n: number; title: string; detail: string; items?: string[]; done: boolean; spentMs: number; startedAt?: number }
@@ -35,7 +35,7 @@ const BASE = '/api/dashboards/generate';
 
 /** Everything needed to reopen a session later (saved chat history). */
 export interface SavedGen { phase: Phase; setup: Setup | null; steps: GenStep[]; evidence: Evidence | null; understanding: Understanding | null;
-  answers: Record<string, string>; plan: Plan | null; widgets: GenWidget[]; result: GenResult | null }
+  answers: Record<string, string>; plan: Plan | null; widgets: GenWidget[]; result: GenResult | null; log?: ThinkEntry[] }
 /** A phase that was still running when saved reopens at the point where the user can act again. */
 const SETTLED: Partial<Record<Phase, (v: SavedGen) => Phase>> = {
   understanding: () => 'setup', planning: (v) => (v.plan ? 'plan' : v.understanding ? 'questions' : 'setup'), building: () => 'plan',
@@ -52,6 +52,8 @@ export function useGenerateSession() {
   const [plan, setPlan] = useState<Plan | null>(null);
   const [widgets, setWidgets] = useState<GenWidget[]>([]);
   const [live, setLive] = useState<LiveLanes>({});   // per step and lane: the model's streaming thinking + answer
+  const [log, setLog] = useState<ThinkEntry[]>([]);   // every model call's full thinking, kept for the whole session
+  const runNo = useRef(0);
   const [result, setResult] = useState<GenResult | null>(null);
   const [error, setError] = useState<{ message: string; noProvider: boolean } | null>(null);
   const abort = useRef<AbortController | null>(null);
@@ -63,6 +65,7 @@ export function useGenerateSession() {
       setSteps((st) => applyStep(st, ev, Date.now()));
     } else if (ev.type === 'think') {
       setLive((l) => applyThink(l, ev));
+      setLog((g) => appendLog(g, ev, runNo.current));
     } else if (ev.type === 'profile') { const { type: _t, ...e } = ev; setEvidence(e); }
     else if (ev.type === 'understanding') { const { type: _t, ...u } = ev; setUnderstanding(u); setPhase('questions'); }
     else if (ev.type === 'plan') { const { type: _t, ...p } = ev; setPlan(p); setPhase('plan'); }
@@ -76,6 +79,7 @@ export function useGenerateSession() {
   const run = useCallback(async (path: string, body: unknown, during: Phase, back: Phase) => {
     setError(null);
     setLive({});
+    runNo.current += 1;
     setPhase(during);
     abort.current = new AbortController();
     let failed = false;
@@ -95,7 +99,7 @@ export function useGenerateSession() {
   }, [handle]);
 
   const start = useCallback((s: Setup) => {
-    setSetup(s); setSteps([]); setEvidence(null); setUnderstanding(null); setAnswers({}); setPlan(null); setWidgets([]); setResult(null);
+    setSetup(s); setSteps([]); setEvidence(null); setUnderstanding(null); setAnswers({}); setPlan(null); setWidgets([]); setResult(null); setLog([]);
     // a failed first step unlocks the setup card again, so the user can change the choices or simply retry
     return run(`${BASE}/understand`, s, 'understanding', 'setup').then((failed) => { if (failed) setSetup(null); });
   }, [run]);
@@ -118,15 +122,15 @@ export function useGenerateSession() {
   }, [setup, plan, run]);
 
   const stop = useCallback(() => abort.current?.abort(), []);
-  const snapshot = (): SavedGen => ({ phase, setup, steps, evidence, understanding, answers, plan, widgets, result });
+  const snapshot = (): SavedGen => ({ phase, setup, steps, evidence, understanding, answers, plan, widgets, result, log });
   const restore = useCallback((v: SavedGen) => {
     abort.current?.abort();
     const phaseNow = SETTLED[v.phase]?.(v) ?? v.phase;
     setPhase(phaseNow); setSetup(phaseNow === 'setup' ? null : v.setup); setSteps(stopSteps(v.steps ?? [], Date.now()).map((x) => (x.done ? x : { ...x, detail: x.detail })));
     setEvidence(v.evidence); setUnderstanding(v.understanding); setAnswers(v.answers ?? {}); setPlan(v.plan); setWidgets(v.widgets ?? []);
-    setResult(v.result); setLive({}); setError(null);
+    setResult(v.result); setLive({}); setError(null); setLog(v.log ?? []);
   }, []);
-  const restart = useCallback(() => { abort.current?.abort(); setPhase('setup'); setSetup(null); setSteps([]); setEvidence(null); setUnderstanding(null); setPlan(null); setWidgets([]); setResult(null); setError(null); }, []);
+  const restart = useCallback(() => { abort.current?.abort(); setPhase('setup'); setSetup(null); setSteps([]); setEvidence(null); setUnderstanding(null); setPlan(null); setWidgets([]); setResult(null); setError(null); setLog([]); }, []);
 
-  return { snapshot, restore, phase, setup, steps, live, evidence, understanding, answers, plan, widgets, result, error, busy, start, makePlan, build, stop, restart };
+  return { snapshot, restore, phase, setup, steps, live, log, evidence, understanding, answers, plan, widgets, result, error, busy, start, makePlan, build, stop, restart };
 }

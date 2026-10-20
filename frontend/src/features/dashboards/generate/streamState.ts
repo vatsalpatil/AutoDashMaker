@@ -27,3 +27,21 @@ export function applyThink(l: LiveLanes, ev: ThinkEvent): LiveLanes {
 /** Freeze every running step's timer (the stream stopped or failed). */
 export const stopSteps = (st: GenStep[], now: number): GenStep[] =>
   st.map((x) => (x.done ? x : { ...x, detail: 'Stopped before it finished.', spentMs: x.spentMs + (x.startedAt ? now - x.startedAt : 0), startedAt: undefined }));
+
+/** One model call's full thinking, kept after its step finishes (the "Full thinking" panel and saved sessions). */
+export interface ThinkEntry { id: string; n: number; lane: string; label: string; reasoning: string; answer: string }
+const LOG_CAP = 40000;
+
+/** Log after a `think` event: text joins the lane's latest entry; a reset (a retry or a new run) opens a new entry. */
+export function appendLog(log: ThinkEntry[], ev: ThinkEvent, run: number): ThinkEntry[] {
+  const id = `${run}:${ev.n}:${ev.lane}`;
+  let i = log.length - 1;
+  while (i >= 0 && !log[i].id.startsWith(id)) i--;
+  if (i < 0 || ev.kind === 'reset') {
+    const entry = { id: `${id}:${log.length}`, n: ev.n, lane: ev.lane, label: ev.label, reasoning: '', answer: '' };
+    return ev.kind === 'reset' && i >= 0 && !log[i].reasoning && !log[i].answer ? log : [...log, entry];
+  }
+  const cur = log[i];
+  const next = { ...cur, label: ev.label || cur.label, [ev.kind]: (cur[ev.kind] + ev.text).slice(-LOG_CAP) };
+  return log.map((e, j) => (j === i ? next : e));
+}
