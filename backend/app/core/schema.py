@@ -153,6 +153,13 @@ CREATE TABLE IF NOT EXISTS audit_log (
     entity_type TEXT, entity_id TEXT, detail TEXT,
     status TEXT DEFAULT 'ok', duration_ms DOUBLE, created_at TIMESTAMP, updated_at TIMESTAMP
 );
+CREATE TABLE IF NOT EXISTS activity_log (   -- every API request (backoffice); written by services/admin/activity.py
+    id TEXT PRIMARY KEY, user_id TEXT, email TEXT, method TEXT, path TEXT, status INTEGER, ms DOUBLE,
+    ip TEXT, user_agent TEXT, created_at TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS admin_user_flags (   -- backoffice controls per user (no workspace_id: system-wide)
+    user_id TEXT PRIMARY KEY, suspended BOOLEAN DEFAULT FALSE, reason TEXT, updated_by TEXT, updated_at TIMESTAMP
+);
 """
 
 # Columns added after the first release — applied idempotently on startup.

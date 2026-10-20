@@ -69,6 +69,9 @@ async def require_user(authorization: str | None = Header(default=None)) -> dict
             raise HTTPException(401, "Not signed in")
         user = await run_in_threadpool(verify_token, authorization[7:].strip())  # JWKS fetch may block
         user["workspace_id"] = tenant.workspace_for_user(user["id"])
+        from .admin import is_suspended  # lazy: admin imports this module
+        if is_suspended(user["id"]):
+            raise HTTPException(403, {"code": "suspended", "message": "This account is suspended. Contact support."})
     tenant.set_workspace(user["workspace_id"])
     return user
 

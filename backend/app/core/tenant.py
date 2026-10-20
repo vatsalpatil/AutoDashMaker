@@ -31,6 +31,11 @@ def set_workspace(ws: str) -> None:
     _current.set(_checked(ws))
 
 
+def set_system() -> None:
+    """Pin the current request to every workspace (backoffice only: core/admin.py)."""
+    _current.set(ALL)
+
+
 def is_scoped() -> bool:
     return _current.get() != ALL
 

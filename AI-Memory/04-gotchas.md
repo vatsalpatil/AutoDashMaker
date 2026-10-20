@@ -122,3 +122,7 @@ invalid currency codes throw in Intl; repeated item names (ungrouped queries) ga
 - **Source secrets (2026-10-15):** source configs leave the API masked (`core/secret_fields.mask`); anything that saves or tests a config must run `restore(new, stored)` or it will save/test the literal mask.
 - **faster-whisper + PyAV (2026-10-15):** faster-whisper's `decode_audio` calls `av.open(..., metadata_errors=)`, gone in PyAV 15+; pinning av<15 forces a source build (needs ffmpeg). `services/voice._decode` decodes with PyAV itself and passes samples instead.
 - AI KPI with value+prev_value: encode() may pick the prev column as y; dash_ai._materialize forces y to the non-prev column and KpiCard guards y===previousColumn.
+
+## Backoffice (2026-10-20)
+- `ADMIN_EMAILS` is a pydantic list: set it as JSON in env, `ADMIN_EMAILS=["a@x.com"]`, not a bare email. Empty = nobody gets in when login is on.
+- The users list needs `SUPABASE_SERVICE_KEY` on the backend (Supabase admin API); without it only the local placeholder user shows.

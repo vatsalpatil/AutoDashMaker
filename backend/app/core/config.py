@@ -79,6 +79,7 @@ class Settings(BaseSettings):
     allow_user_python: bool = False   # only consulted when auth_enabled; local mode always allows them
     supabase_service_key: str = ""    # SECRET service-role key: only used to change a user's email after they proved the new address
     supabase_jwt_secret: str = ""     # legacy HS256 projects; empty -> verify via JWKS (asymmetric keys)
+    admin_emails: list[str] = []      # backoffice (/api/admin) access, e.g. ["you@x.com"]; empty = nobody (local mode = everyone)
 
     # Account verification (email + mobile one-time codes). Off by default so a fresh install can never lock anyone out:
     # first configure SMTP / SMS below, then set VERIFICATION_REQUIRED=true (existing users get the grace period).

@@ -70,3 +70,6 @@ Research + audit + phased plan: `Plan/data-platform-research-and-roadmap.md` (A 
 
 ## 2026-10-20 AI keys
 Multiple keys per provider + auto-switch (rule stored on the active provider row: `auto_switch`, `switch_below` %) done, unit-tested (`tests/test_ai_switch.py`); not yet clicked through on the live site. Usage "left" is still Dashtor's own count unless the provider sends daily-sized rate headers (Groq) — calls made with the same key elsewhere are invisible.
+
+## 2026-10-20 Backoffice (admin panel) — phase 1 done
+Separate Dokploy service "Backoffice" (frontend/Dockerfile.backoffice, domain dashtorbackoffice.laveyent.com, env BACKEND_URL) + `/api/admin` on the existing backend. Needs `ADMIN_EMAILS=["you@x.com"]` on the Backend service. Done: Overview, Users (list/detail/suspend/delete), Activity. Next phases: Data (all workspaces' sources/datasets/dashboards: inspect, refresh, delete, restore), AI control (keys, per-user limits, kill switch), System (jobs, logs, flags, maintenance mode, announcements), per-user quota overrides.
