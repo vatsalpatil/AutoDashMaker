@@ -71,9 +71,11 @@ export function DataPage() {
           <Button size="sm" icon={<Download className="size-4" />} label="CSV" onClick={() => downloadCsv(`dashtor-${kind}`, rows)} />
           <Button size="sm" icon={<RefreshCw className="size-4" />} label="Reload" onClick={state.reload} />
         </>} />
+      <div className="max-w-full overflow-x-auto">
       <TabList value={kind} onChange={(v) => { setKind(v as Kind); setQ(''); }}>
         {['datasets', 'dashboards', 'sources', 'shares', 'storage'].map((k) => <Tab key={k} value={k} label={k[0].toUpperCase() + k.slice(1)} />)}
       </TabList>
+      </div>
       {act.error && <ErrorBanner message={act.error} />}
       <AsyncView state={state.loading ? { ...state, data: null } : state}>{() => kind === 'storage' ? (
         <SimpleTable rows={rows} cols={[
