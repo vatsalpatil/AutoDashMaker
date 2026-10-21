@@ -75,7 +75,7 @@ export function DataPage() {
         {['datasets', 'dashboards', 'sources', 'shares', 'storage'].map((k) => <Tab key={k} value={k} label={k[0].toUpperCase() + k.slice(1)} />)}
       </TabList>
       {act.error && <ErrorBanner message={act.error} />}
-      <AsyncView state={state}>{() => kind === 'storage' ? (
+      <AsyncView state={state.loading ? { ...state, data: null } : state}>{() => kind === 'storage' ? (
         <SimpleTable rows={rows} cols={[
           { label: 'Owner', cell: (r) => r.owner }, { label: 'Workspace', cell: (r) => <span className="font-mono text-xs">{r.workspace_id}</span> },
           { label: 'Disk used', cell: (r) => bytes(r.bytes), className: 'text-right tabular-nums' },

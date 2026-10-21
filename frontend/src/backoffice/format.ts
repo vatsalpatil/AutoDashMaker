@@ -1,6 +1,7 @@
 export const num = (n: number | null | undefined) => (n ?? 0).toLocaleString();
 
-export function bytes(n: number) {
+export function bytes(n: number | null | undefined) {
+  if (n == null || Number.isNaN(n)) return '—';
   const u = ['B', 'KB', 'MB', 'GB', 'TB'];
   let i = 0;
   while (n >= 1024 && i < u.length - 1) { n /= 1024; i++; }

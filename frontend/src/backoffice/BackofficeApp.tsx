@@ -1,10 +1,11 @@
-import { NavLink, Navigate, Route, Routes } from 'react-router-dom';
+import { NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { Activity, Bot, Database, LayoutDashboard, LogOut, ScrollText, Server, ShieldCheck, Users } from 'lucide-react';
 import { useApi } from '@/hooks/useApi';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { Loading } from '@/components/common/Loading';
 import { EmptyState } from '@/components/ui/kit';
 import { cn } from '@/lib/utils';
+import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { OverviewPage } from './pages/OverviewPage';
 import { UsersPage } from './pages/UsersPage';
 import { UserDetailPage } from './pages/UserDetailPage';
@@ -28,6 +29,7 @@ const NAV = [
 export function BackofficeApp() {
   const me = useApi<{ email: string }>('/admin/me');
   const { email, signOut } = useAuth();
+  const { pathname } = useLocation();
   if (me.loading && !me.data) return <Loading />;
   if (me.error) {
     // only a real "not an admin" answer says so; anything else (502 while the backend redeploys…) offers a retry
@@ -57,6 +59,7 @@ export function BackofficeApp() {
         </div>
       </aside>
       <main className="min-w-0 flex-1 overflow-auto p-6 max-md:p-4">
+        <ErrorBoundary key={pathname}>
         <Routes>
           <Route path="/" element={<OverviewPage />} />
           <Route path="/users" element={<UsersPage />} />
@@ -68,6 +71,7 @@ export function BackofficeApp() {
           <Route path="/system" element={<SystemPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        </ErrorBoundary>
       </main>
     </div>
   );
