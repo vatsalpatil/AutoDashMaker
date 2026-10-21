@@ -48,6 +48,40 @@ try:
     assert c.get("/api/datasets", headers=ALICE).status_code == 200
     # the admin's own data view stays separate: as a normal user the admin sees only their own workspace
     assert c.get("/api/datasets", headers=BOSS).json() == []
+    # per-user limit: Alice may hold only 1 dataset -> a 2nd upload is refused; clearing it restores the default
+    assert c.put("/api/admin/users/alice/limits", headers=BOSS, json={"max_datasets": 1}).status_code == 200
+    r = c.post("/api/datasets/upload", headers=ALICE, files={"file": ("b.csv", b"a\n1\n")})
+    assert r.status_code >= 400 and "limit" in r.text.lower(), r.text
+    c.put("/api/admin/users/alice/limits", headers=BOSS, json={"max_datasets": None})
+    assert c.get("/api/admin/users/alice", headers=BOSS).status_code in (200, 404)  # no Supabase in tests: user list is local
+
+    # maintenance: users get 503, the admin and /api/notice still work
+    c.put("/api/admin/settings/maintenance", headers=BOSS, json={"on": True, "message": "brb"})
+    r = c.get("/api/datasets", headers=ALICE)
+    assert r.status_code == 503 and r.json()["detail"]["code"] == "maintenance", r.text
+    assert c.get("/api/datasets", headers=BOSS).status_code == 200
+    assert c.get("/api/notice").json()["maintenance"]["message"] == "brb"
+    c.put("/api/admin/settings/maintenance", headers=BOSS, json={"on": False})
+    assert c.get("/api/datasets", headers=ALICE).status_code == 200
+
+    # AI kill switch is enforced before any provider call
+    from app.services.admin import controls
+    c.put("/api/admin/settings/ai", headers=BOSS, json={"enabled": False})
+    try:
+        controls.check_ai()
+        raise AssertionError("AI should be off")
+    except Exception as e:
+        assert getattr(e, "status_code", 0) == 503
+    c.put("/api/admin/settings/ai", headers=BOSS, json={"enabled": True})
+
+    # data across workspaces: the admin sees Alice's dataset with its owner, and can delete it in her workspace
+    ds = c.get("/api/admin/data/datasets", headers=BOSS).json()
+    assert len(ds) == 1 and ds[0]["workspace_id"] == "ws_alice", ds
+    assert c.delete(f"/api/admin/data/datasets/{ds[0]['id']}", headers=BOSS).status_code == 200
+    assert c.get("/api/datasets", headers=ALICE).json() == []
+    for path in ("/api/admin/ai", "/api/admin/system", "/api/admin/logs", "/api/admin/settings", "/api/admin/audit?q=admin"):
+        assert c.get(path, headers=BOSS).status_code == 200, path
+    assert any(a["action"].startswith("admin.") for a in c.get("/api/admin/audit?q=admin", headers=BOSS).json())
     print("test_admin: OK")
 finally:
     shutil.rmtree(TMP, ignore_errors=True)

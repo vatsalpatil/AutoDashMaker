@@ -12,6 +12,7 @@ import type { ActivityRow, AdminUserDetail } from '../types';
 import { StatGrid, StatTile } from '../parts/StatTile';
 import { SimpleTable } from '../parts/SimpleTable';
 import { ActivityTable } from '../parts/ActivityTable';
+import { UserControls } from '../parts/UserControls';
 
 export function UserDetailPage() {
   const { id = '' } = useParams();
@@ -46,6 +47,8 @@ export function UserDetailPage() {
               <Button size="sm" variant="danger" isDisabled={busy} icon={<Trash2 className="size-4" />} label="Delete" onClick={() => confirmDelete(d)} />
             </>} />
           {(s.error || r.error) && <ErrorBanner message={(s.error || r.error)!} />}
+          {d.suspended && d.suspend_reason && <ErrorBanner message={`Suspended: ${d.suspend_reason}`} />}
+          <UserControls key={`${d.quota_mb}-${d.max_datasets}-${d.ai_blocked}`} user={d} onSaved={user.reload} />
           <StatGrid>
             <StatTile label="Joined" value={ago(d.created_at)} hint={d.provider ?? undefined} />
             <StatTile label="Last sign-in" value={ago(d.last_sign_in_at)} />

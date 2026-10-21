@@ -23,6 +23,7 @@ from app.routers import (
     alerts, why, transforms, audit, attention, reports, qb, auth, system, metrics, verify, account, shares, voice, admin,
 )
 from app.services.admin.activity import ActivityMiddleware
+from app.services.admin.controls import MaintenanceMiddleware
 from app.services.alerts import scheduler_loop
 from app.services.refresh import refresh_loop
 from app.services.reports import reports_loop
@@ -41,6 +42,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title=settings.app_name, version="2.0.0", lifespan=lifespan)
 
 app.add_middleware(ApiGZipMiddleware, minimum_size=1024)
+app.add_middleware(MaintenanceMiddleware)  # backoffice maintenance switch: 503 for everyone but admins
 app.add_middleware(ActivityMiddleware)  # backoffice activity log: one row per API request
 app.add_middleware(UsageContext)   # tags each request with a feature + run id for AI usage tracking
 app.add_middleware(
@@ -57,6 +59,7 @@ app.include_router(account.router)  # delete my account: signed-in only, needs a
 app.include_router(verify.router)  # signed-in only, but never blocked by verification itself
 app.include_router(shares.router, dependencies=[Depends(require_verified)])
 app.include_router(shares.public_router)  # public: read-only view of one shared dashboard, by secret token
+app.include_router(admin.public_router)  # public: /api/notice (announcement banner, maintenance)
 app.include_router(admin.router)  # backoffice: ADMIN_EMAILS only (core/admin.py), every workspace
 app.include_router(auth.router)  # public: /api/auth/config; /api/auth/me checks the token itself
 

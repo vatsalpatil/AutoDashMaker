@@ -11,6 +11,7 @@ import { AppSidebar } from './AppSidebar';
 import { Breadcrumbs } from './Breadcrumbs';
 import { isFullBleed } from './nav';
 import { savedSidebarWidth } from './SidebarResizeRail';
+import { NoticeBanner } from './NoticeBanner';
 
 /** Sidebar + top bar + routed content. Full-bleed pages (Ask, Workbench, Chart studio) fill the viewport below the bar. */
 export function AppShell({ children }: { children: ReactNode }) {
@@ -26,6 +27,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <Breadcrumbs />
             <div className="ml-auto flex items-center gap-2"><AiUsagePill /><NotificationBell /></div>
           </header>
+          <NoticeBanner />
           <div className={cn(bleed ? 'min-h-0 flex-1 overflow-hidden' : 'p-4 sm:p-6')}>
             <ErrorBoundary>
               <Suspense fallback={<Loading />}>{children}</Suspense>

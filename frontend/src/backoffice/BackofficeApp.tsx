@@ -1,5 +1,5 @@
 import { NavLink, Navigate, Route, Routes } from 'react-router-dom';
-import { Activity, LayoutDashboard, LogOut, ShieldCheck, Users } from 'lucide-react';
+import { Activity, Bot, Database, LayoutDashboard, LogOut, ScrollText, Server, ShieldCheck, Users } from 'lucide-react';
 import { useApi } from '@/hooks/useApi';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { Loading } from '@/components/common/Loading';
@@ -9,11 +9,19 @@ import { OverviewPage } from './pages/OverviewPage';
 import { UsersPage } from './pages/UsersPage';
 import { UserDetailPage } from './pages/UserDetailPage';
 import { ActivityPage } from './pages/ActivityPage';
+import { DataPage } from './pages/DataPage';
+import { AiPage } from './pages/AiPage';
+import { AuditPage } from './pages/AuditPage';
+import { SystemPage } from './pages/SystemPage';
 
 const NAV = [
   { to: '/', label: 'Overview', icon: LayoutDashboard },
   { to: '/users', label: 'Users', icon: Users },
+  { to: '/data', label: 'Data', icon: Database },
+  { to: '/ai', label: 'AI', icon: Bot },
   { to: '/activity', label: 'Activity', icon: Activity },
+  { to: '/audit', label: 'Audit trail', icon: ScrollText },
+  { to: '/system', label: 'System', icon: Server },
 ];
 
 /** Backoffice shell: checks /admin/me (ADMIN_EMAILS) before showing anything. */
@@ -54,6 +62,10 @@ export function BackofficeApp() {
           <Route path="/users" element={<UsersPage />} />
           <Route path="/users/:id" element={<UserDetailPage />} />
           <Route path="/activity" element={<ActivityPage />} />
+          <Route path="/data" element={<DataPage />} />
+          <Route path="/ai" element={<AiPage />} />
+          <Route path="/audit" element={<AuditPage />} />
+          <Route path="/system" element={<SystemPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>

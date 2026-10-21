@@ -2,7 +2,8 @@
 export interface AdminUser {
   id: string; email: string | null; workspace_id: string; provider: string | null;
   created_at: string | null; last_sign_in_at: string | null; last_active_at: string | null;
-  email_confirmed: boolean; banned_until: string | null; suspended: boolean; ai_calls_30d: number;
+  email_confirmed: boolean; banned_until: string | null; suspended: boolean; suspend_reason: string | null; ai_calls_30d: number;
+  ai_blocked: boolean; quota_mb: number | null; max_datasets: number | null; note: string | null;
   datasets: number; dashboards: number; datasources: number; charts: number; queries: number; alerts: number;
 }
 export interface AdminUserDetail extends AdminUser {

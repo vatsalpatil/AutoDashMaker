@@ -54,7 +54,7 @@ async def upload(file: UploadFile):
 
 def _save_capped(file: UploadFile, dest: Path) -> None:
     """Stream the upload to disk, stopping (and removing the partial file) once it passes the size limit."""
-    cap = settings.max_upload_mb * 1_000_000 if quota.enforced() else None
+    cap = quota._limit("max_upload_mb") * 1_000_000 if quota.enforced() else None
     written = 0
     with dest.open("wb") as f:
         while chunk := file.file.read(1_000_000):
@@ -62,7 +62,7 @@ def _save_capped(file: UploadFile, dest: Path) -> None:
             if cap and written > cap:
                 f.close()
                 dest.unlink(missing_ok=True)
-                raise HTTPException(413, f"File is larger than the {settings.max_upload_mb} MB limit.")
+                raise HTTPException(413, f"File is larger than the {quota._limit('max_upload_mb')} MB limit.")
             f.write(chunk)
 
 

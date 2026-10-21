@@ -1,7 +1,7 @@
 """Backoffice user control: list every account (Supabase + per-workspace usage), suspend, delete."""
 from __future__ import annotations
 
-from datetime import datetime, timezone
+import time
 from pathlib import Path
 
 import httpx
@@ -17,8 +17,11 @@ _COUNTS = ("datasets", "dashboards", "datasources", "charts", "queries", "alerts
 
 def _accounts() -> list[dict]:
     """Every sign-in account from Supabase (admin API, service key). Local mode = the one local user."""
-    if not settings.auth_enabled or not settings.supabase_service_key:
-        return [{"id": "local" if not settings.auth_enabled else "?", "email": "local@localhost", "created_at": None}]
+    if not settings.auth_enabled:
+        return [{"id": "local", "email": "local@localhost", "created_at": None}]
+    if not settings.supabase_service_key:  # no admin API: everyone who has used the app (from the activity log)
+        return store.execute("SELECT user_id AS id, MAX(email) AS email, MIN(created_at) AS created_at FROM activity_log "
+                             "WHERE user_id IS NOT NULL AND user_id <> 'local' GROUP BY 1")
     out = []
     for page in range(1, 51):
         try:
@@ -32,6 +35,19 @@ def _accounts() -> list[dict]:
         if len(users) < 200:
             break
     return out
+
+
+_owners: dict = {"at": 0.0, "map": {}}
+
+
+def owner_map() -> dict[str, str]:
+    """workspace id -> account email (cached 2 min: it costs a Supabase call)."""
+    if time.time() - _owners["at"] > 120:
+        try:
+            _owners.update(at=time.time(), map={_ws(u["id"]): u.get("email") or u["id"] for u in _accounts()})
+        except HTTPException:
+            pass
+    return _owners["map"]
 
 
 def _ws(user_id: str) -> str:
@@ -56,16 +72,21 @@ def _summary(u: dict, counts: dict, last: dict, flags: dict, ai: dict) -> dict:
         "id": u["id"], "email": u.get("email"), "workspace_id": ws, "provider": meta.get("provider"),
         "created_at": u.get("created_at"), "last_sign_in_at": u.get("last_sign_in_at"),
         "email_confirmed": bool(u.get("email_confirmed_at") or u.get("confirmed_at")),
-        "banned_until": u.get("banned_until"), "suspended": bool(flags.get(u["id"])),
+        "banned_until": u.get("banned_until"), **_flag_fields(flags.get(u["id"]) or {}),
         "last_active_at": last.get(u["id"]), "ai_calls_30d": ai.get(ws, 0),
         **{t: counts[t].get(ws, 0) for t in _COUNTS},
     }
 
 
+def _flag_fields(f: dict) -> dict:
+    return {"suspended": bool(f.get("suspended")), "suspend_reason": f.get("reason"), "ai_blocked": bool(f.get("ai_blocked")),
+            "quota_mb": f.get("quota_mb"), "max_datasets": f.get("max_datasets"), "note": f.get("note")}
+
+
 def list_users() -> list[dict]:
     counts = {t: _per_workspace(t) for t in _COUNTS}
     last = {r["user_id"]: r["t"] for r in store.execute("SELECT user_id, MAX(created_at) AS t FROM activity_log GROUP BY 1")}
-    flags = {r["user_id"]: r["suspended"] for r in store.execute("SELECT * FROM admin_user_flags")}
+    flags = {r["user_id"]: r for r in store.execute("SELECT * FROM admin_user_flags")}
     ai = {r["w"]: r["n"] for r in store.execute(
         "SELECT workspace_id AS w, COUNT(*) AS n FROM ai_usage WHERE created_at > now() - INTERVAL 30 DAY GROUP BY 1")}
     return [_summary(u, counts, last, flags, ai) for u in _accounts()]
@@ -91,10 +112,8 @@ def set_suspended(user_id: str, suspended: bool, reason: str, admin_email: str) 
     """Suspend = API refuses the user at once (core/admin.is_suspended) + Supabase ban so they cannot sign in again."""
     if user_id == "local":
         raise HTTPException(400, "The local user cannot be suspended")
-    store.execute("DELETE FROM admin_user_flags WHERE user_id = ?", [user_id])
-    with tenant.all_workspaces():
-        store.insert("admin_user_flags", {"user_id": user_id, "suspended": suspended, "reason": reason[:300],
-                                          "updated_by": admin_email, "updated_at": datetime.now(timezone.utc)})
+    from .controls import set_flags
+    set_flags(user_id, {"suspended": suspended, "reason": reason[:300]}, admin_email)
     if settings.supabase_service_key:
         try:
             httpx.put(f"{gotrue._base()}/admin/users/{user_id}", json={"ban_duration": "876000h" if suspended else "none"},

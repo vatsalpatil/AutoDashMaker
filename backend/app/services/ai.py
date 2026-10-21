@@ -189,6 +189,8 @@ def chat(messages: list[dict], provider_id: str | None = None,
 def _call(cfg: dict[str, Any], messages: list[dict], max_tokens: int, timeout: float = 60) -> str:
     """One provider call, checked against its usage limits first and logged after (tokens, time, errors, rate-limit headers)."""
     from . import ai_limits, ai_vision   # lazy: ai_limits imports the store
+    from .admin.controls import check_ai
+    check_ai()  # backoffice kill switch (global / this user)
     ai_limits.check(cfg)
     messages = ai_vision.apply(messages)
     kind, meta, t0 = cfg["provider"], {}, time.perf_counter()

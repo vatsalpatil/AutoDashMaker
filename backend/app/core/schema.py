@@ -160,6 +160,9 @@ CREATE TABLE IF NOT EXISTS activity_log (   -- every API request (backoffice); w
 CREATE TABLE IF NOT EXISTS admin_user_flags (   -- backoffice controls per user (no workspace_id: system-wide)
     user_id TEXT PRIMARY KEY, suspended BOOLEAN DEFAULT FALSE, reason TEXT, updated_by TEXT, updated_at TIMESTAMP
 );
+CREATE TABLE IF NOT EXISTS system_settings (   -- backoffice runtime switches (services/admin/controls.py), JSON values
+    id TEXT PRIMARY KEY, value TEXT, updated_by TEXT, created_at TIMESTAMP, updated_at TIMESTAMP
+);
 """
 
 # Columns added after the first release — applied idempotently on startup.
@@ -193,5 +196,10 @@ MIGRATIONS = [
     "ALTER TABLE ai_providers ADD COLUMN block_reason TEXT",
     # auto-switch (read from the active provider): move to the key/provider with the most left once this one drops below switch_below %
     "ALTER TABLE ai_providers ADD COLUMN auto_switch BOOLEAN DEFAULT TRUE",
+    # backoffice per-user overrides (NULL = platform default)
+    "ALTER TABLE admin_user_flags ADD COLUMN quota_mb INTEGER",
+    "ALTER TABLE admin_user_flags ADD COLUMN max_datasets INTEGER",
+    "ALTER TABLE admin_user_flags ADD COLUMN ai_blocked BOOLEAN DEFAULT FALSE",
+    "ALTER TABLE admin_user_flags ADD COLUMN note TEXT",
     "ALTER TABLE ai_providers ADD COLUMN switch_below INTEGER DEFAULT 5",  # snapshot before the last Edit-with-AI run (JSON), for one-click undo
 ]
