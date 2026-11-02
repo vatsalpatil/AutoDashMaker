@@ -40,3 +40,6 @@ id_ed25519
 id_ed25519.pub
 oracle_key*
 backend/data/secret.key
+
+# archify diagram work dirs (sources kept in .archify/dashtor/*.json)
+.archify/**/out/

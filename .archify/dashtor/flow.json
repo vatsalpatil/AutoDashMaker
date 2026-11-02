@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "diagram_type": "dataflow",
+  "meta": { "title": "Dashtor Data Pipeline", "output": "out/flow.html", "quality_profile": "showcase", "locale": "en" },
+  "stages": [ { "label": "Sources" }, { "label": "Ingest" }, { "label": "Store" }, { "label": "Query" }, { "label": "Consume" } ],
+  "nodes": [
+    { "id": "files", "type": "external", "label": "Files", "sublabel": "CSV · Excel · JSON", "stage": 0, "row": 0 },
+    { "id": "dbs", "type": "external", "label": "Databases", "sublabel": "Postgres · MySQL", "stage": 0, "row": 2 },
+    { "id": "apis", "type": "external", "label": "APIs / Sheets", "sublabel": "REST · GraphQL", "stage": 0, "row": 4 },
+    { "id": "ingest", "type": "backend", "label": "Connectors", "sublabel": "test · discover · ingest", "stage": 1, "row": 2, "tag": "quota check" },
+    { "id": "parquet", "type": "database", "label": "Parquet datasets", "sublabel": "analytics.duckdb", "stage": 2, "row": 1, "tag": "versions + tests" },
+    { "id": "meta", "type": "database", "label": "Metadata", "sublabel": "datasets · semantic", "stage": 2, "row": 3 },
+    { "id": "guard", "type": "security", "label": "SQL guard", "sublabel": "validate_readonly", "stage": 3, "row": 2, "tag": "SELECT + LIMIT" },
+    { "id": "charts", "type": "frontend", "label": "Charts", "sublabel": "spec + query", "stage": 4, "row": 0 },
+    { "id": "dash", "type": "frontend", "label": "Dashboards", "sublabel": "pages · shares", "stage": 4, "row": 2 },
+    { "id": "ask", "type": "backend", "label": "Ask · Alerts", "sublabel": "AI · reports", "stage": 4, "row": 4 }
+  ],
+  "flows": [
+    { "id": "f1", "from": "files", "to": "ingest", "label": "upload" },
+    { "id": "f2", "from": "dbs", "to": "ingest", "label": "copy or live", "variant": "emphasis" },
+    { "id": "f3", "from": "apis", "to": "ingest", "label": "fetch" },
+    { "id": "f4", "from": "ingest", "to": "parquet", "label": "rows", "variant": "emphasis" },
+    { "id": "f5", "from": "ingest", "to": "meta", "label": "schema + profile" },
+    { "id": "f6", "from": "parquet", "to": "guard", "label": "tables", "variant": "emphasis" },
+    { "id": "f7", "from": "meta", "to": "guard", "label": "metrics + names" },
+    { "id": "f8", "from": "guard", "to": "charts", "label": "results" },
+    { "id": "f9", "from": "guard", "to": "dash", "label": "widget data", "variant": "emphasis" },
+    { "id": "f10", "from": "guard", "to": "ask", "label": "answers" }
+  ],
+  "cards": [
+    { "dot": "emerald", "title": "Path", "items": ["Source, Dataset, Query, Chart, Dashboard", "Auto-refresh re-ingests on a schedule"] },
+    { "dot": "rose", "title": "Trust", "items": ["Every query is read-only validated", "Data tests run after refresh; failures roll back a version"] },
+    { "dot": "amber", "title": "Side systems", "items": ["Quality scores, lineage, freshness", "Alerts and scheduled reports poll every 60s"] }
+  ]
+}

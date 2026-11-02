@@ -1,0 +1,202 @@
+{
+ "schema_version": 2,
+ "diagram_type": "workflow",
+ "meta": {
+  "title": "AI Dashboard Generation",
+  "output": "out/gen.html",
+  "quality_profile": "showcase",
+  "locale": "en"
+ },
+ "lanes": [
+  {
+   "id": "ui",
+   "label": "Browser (chat page)"
+  },
+  {
+   "id": "srv",
+   "label": "Backend (SSE stream)"
+  },
+  {
+   "id": "ext",
+   "label": "AI + Engine"
+  }
+ ],
+ "mainPath": [
+  "pick",
+  "understand",
+  "questions",
+  "plan",
+  "review",
+  "build",
+  "critic",
+  "save",
+  "open"
+ ],
+ "nodes": [
+  {
+   "id": "pick",
+   "lane": "ui",
+   "col": 0,
+   "type": "external",
+   "label": "Pick data",
+   "sublabel": "dataset + template"
+  },
+  {
+   "id": "understand",
+   "lane": "srv",
+   "col": 0,
+   "type": "backend",
+   "label": "Understand",
+   "sublabel": "profile + AI read"
+  },
+  {
+   "id": "questions",
+   "lane": "ui",
+   "col": 1,
+   "type": "frontend",
+   "label": "Answer questions",
+   "sublabel": "user clarifies"
+  },
+  {
+   "id": "plan",
+   "lane": "srv",
+   "col": 1,
+   "type": "backend",
+   "label": "Plan",
+   "sublabel": "1 AI call per page"
+  },
+  {
+   "id": "review",
+   "lane": "ui",
+   "col": 2,
+   "type": "frontend",
+   "label": "Review plan",
+   "sublabel": "untick / revise"
+  },
+  {
+   "id": "build",
+   "lane": "srv",
+   "col": 3,
+   "type": "backend",
+   "label": "Build",
+   "sublabel": "run each widget"
+  },
+  {
+   "id": "critic",
+   "lane": "ext",
+   "col": 3,
+   "type": "security",
+   "label": "Self-review",
+   "sublabel": "fix empty / retype"
+  },
+  {
+   "id": "save",
+   "lane": "srv",
+   "col": 4,
+   "type": "database",
+   "label": "Save",
+   "sublabel": "dashboard + insights"
+  },
+  {
+   "id": "open",
+   "lane": "ui",
+   "col": 5,
+   "type": "frontend",
+   "label": "Open dashboard",
+   "sublabel": "edit by chat"
+  },
+  {
+   "id": "llm",
+   "lane": "ext",
+   "col": 1,
+   "type": "cloud",
+   "label": "LLM",
+   "sublabel": "parallel calls"
+  }
+ ],
+ "edges": [
+  {
+   "id": "e1",
+   "from": "pick",
+   "to": "understand",
+   "label": "start",
+   "variant": "emphasis"
+  },
+  {
+   "id": "e2",
+   "from": "understand",
+   "to": "questions",
+   "label": "questions"
+  },
+  {
+   "id": "e3",
+   "from": "questions",
+   "to": "plan",
+   "label": "answers",
+   "variant": "emphasis"
+  },
+  {
+   "id": "e4",
+   "from": "plan",
+   "to": "review"
+  },
+  {
+   "id": "e5",
+   "from": "review",
+   "to": "build",
+   "label": "approve",
+   "variant": "emphasis"
+  },
+  {
+   "id": "e6",
+   "from": "build",
+   "to": "critic",
+   "label": "validated SQL",
+   "variant": "security"
+  },
+  {
+   "id": "e7",
+   "from": "critic",
+   "to": "save"
+  },
+  {
+   "id": "e8",
+   "from": "save",
+   "to": "open",
+   "variant": "emphasis"
+  },
+  {
+   "id": "e9",
+   "from": "plan",
+   "to": "llm",
+   "label": "prompt",
+   "variant": "dashed"
+  },
+  {
+   "id": "e10",
+   "from": "review",
+   "to": "plan",
+   "label": "revise",
+   "variant": "dashed",
+   "role": "return"
+  }
+ ],
+ "cards": [
+  {
+   "dot": "cyan",
+   "title": "Streaming",
+   "items": [
+    "Each phase streams think/step events over SSE",
+    "Chat sessions are saved (ai_sessions)"
+   ]
+  },
+  {
+   "dot": "rose",
+   "title": "Quality",
+   "items": [
+    "Every widget query is validated and executed",
+    "Critic dedupes and scores the dashboard"
+   ]
+  }
+ ]
+}

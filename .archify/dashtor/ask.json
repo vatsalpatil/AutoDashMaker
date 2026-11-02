@@ -1,0 +1,198 @@
+{
+ "schema_version": 1,
+ "diagram_type": "sequence",
+ "meta": {
+  "title": "Ask a Question: request lifecycle",
+  "output": "out/ask.html",
+  "quality_profile": "showcase",
+  "locale": "en"
+ },
+ "participants": [
+  {
+   "id": "user",
+   "type": "external",
+   "label": "User",
+   "sublabel": "browser"
+  },
+  {
+   "id": "web",
+   "type": "frontend",
+   "label": "Ask page",
+   "sublabel": "React"
+  },
+  {
+   "id": "api",
+   "type": "backend",
+   "label": "/api/ai/chat",
+   "sublabel": "FastAPI"
+  },
+  {
+   "id": "auth",
+   "type": "security",
+   "label": "Supabase",
+   "sublabel": "JWT"
+  },
+  {
+   "id": "llm",
+   "type": "cloud",
+   "label": "AI provider",
+   "sublabel": "LLM"
+  },
+  {
+   "id": "eng",
+   "type": "database",
+   "label": "Engine",
+   "sublabel": "DuckDB"
+  }
+ ],
+ "segments": [
+  {
+   "from": 150,
+   "to": 255,
+   "label": "Request + auth"
+  },
+  {
+   "from": 265,
+   "to": 375,
+   "label": "AI writes SQL"
+  },
+  {
+   "from": 385,
+   "to": 545,
+   "label": "Run + answer"
+  }
+ ],
+ "messages": [
+  {
+   "id": "m1",
+   "from": "user",
+   "to": "web",
+   "y": 160,
+   "label": "type question"
+  },
+  {
+   "id": "m2",
+   "from": "web",
+   "to": "api",
+   "y": 188,
+   "label": "POST + Bearer token",
+   "variant": "emphasis"
+  },
+  {
+   "id": "m3",
+   "from": "api",
+   "to": "auth",
+   "y": 212,
+   "label": "verify JWT",
+   "variant": "security"
+  },
+  {
+   "id": "m4",
+   "from": "auth",
+   "to": "api",
+   "y": 242,
+   "label": "workspace pinned",
+   "variant": "return"
+  },
+  {
+   "id": "m5",
+   "from": "api",
+   "to": "llm",
+   "y": 280,
+   "label": "schema + semantic context",
+   "variant": "emphasis",
+   "note": "ai_context adds tables, metrics, verified queries"
+  },
+  {
+   "id": "m6",
+   "from": "llm",
+   "to": "api",
+   "y": 350,
+   "label": "SQL or clarify",
+   "variant": "return"
+  },
+  {
+   "id": "m7",
+   "from": "api",
+   "to": "eng",
+   "y": 395,
+   "label": "validate_readonly, run",
+   "variant": "security"
+  },
+  {
+   "id": "m8",
+   "from": "eng",
+   "to": "api",
+   "y": 425,
+   "label": "rows (cached)",
+   "variant": "return"
+  },
+  {
+   "id": "m9",
+   "from": "api",
+   "to": "web",
+   "y": 455,
+   "label": "result + chart + summary",
+   "variant": "return",
+   "note": "chart_suggest picks the chart deterministically"
+  },
+  {
+   "id": "m10",
+   "from": "web",
+   "to": "user",
+   "y": 525,
+   "label": "answer card",
+   "variant": "return"
+  }
+ ],
+ "activations": [
+  {
+   "participant": "web",
+   "from": 182,
+   "to": 531,
+   "type": "frontend"
+  },
+  {
+   "participant": "api",
+   "from": 188,
+   "to": 461,
+   "type": "backend"
+  },
+  {
+   "participant": "auth",
+   "from": 207,
+   "to": 248,
+   "type": "security"
+  },
+  {
+   "participant": "llm",
+   "from": 275,
+   "to": 356,
+   "type": "cloud"
+  },
+  {
+   "participant": "eng",
+   "from": 390,
+   "to": 431,
+   "type": "database"
+  }
+ ],
+ "cards": [
+  {
+   "dot": "rose",
+   "title": "Guardrails",
+   "items": [
+    "AI SQL is always validated before it runs",
+    "Temperature 0 for repeatable answers"
+   ]
+  },
+  {
+   "dot": "emerald",
+   "title": "Explainability",
+   "items": [
+    "Why and confidence are rule-based, not LLM",
+    "Follow-up chips come with every answer"
+   ]
+  }
+ ]
+}

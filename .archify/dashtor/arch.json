@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Dashtor System Architecture",
+    "output": "frontend/src/backoffice/architecture/system.html",
+    "quality_profile": "showcase",
+    "locale": "en"
+  },
+  "components": [
+    { "id": "users", "type": "external", "label": "Users", "sublabel": "browser", "pos": [40, 300], "size": [120, 64] },
+    { "id": "spa", "type": "frontend", "label": "Dashtor App", "sublabel": "React 19 SPA · Caddy", "pos": [250, 300], "size": [140, 64] },
+    { "id": "office", "type": "frontend", "label": "Backoffice", "sublabel": "admin SPA · Caddy", "pos": [250, 480], "size": [140, 64], "tag": "ADMIN_EMAILS" },
+    { "id": "api", "type": "backend", "label": "FastAPI routers", "sublabel": "/api · thin HTTP", "pos": [480, 300], "size": [140, 64] },
+    { "id": "auth", "type": "security", "label": "Supabase Auth", "sublabel": "JWT · self-hosted", "pos": [480, 110], "size": [140, 64] },
+    { "id": "svc", "type": "backend", "label": "Services", "sublabel": "ask · dashboards · ingest", "pos": [710, 300], "size": [150, 64] },
+    { "id": "ai", "type": "cloud", "label": "AI providers", "sublabel": "OpenRouter · Gemini · …", "pos": [710, 110], "size": [150, 64] },
+    { "id": "conn", "type": "external", "label": "Data sources", "sublabel": "files · SQL DBs · REST", "pos": [710, 480], "size": [150, 64] },
+    { "id": "engine", "type": "security", "label": "Query engine", "sublabel": "validate_readonly", "pos": [950, 300], "size": [140, 64], "tag": "SELECT only" },
+    { "id": "analytics", "type": "database", "label": "Analytics store", "sublabel": "DuckDB + Parquet", "pos": [950, 480], "size": [140, 64] },
+    { "id": "meta", "type": "database", "label": "Metadata DB", "sublabel": "metadata.duckdb", "pos": [950, 110], "size": [140, 64] }
+  ],
+  "boundaries": [
+    { "kind": "region", "label": "Backend container (one process)", "wraps": ["api", "svc", "engine"] }
+  ],
+  "connections": [
+    { "id": "use", "from": "users", "to": "spa", "label": "HTTPS", "variant": "emphasis" },
+    { "id": "spa-api", "from": "spa", "to": "api", "label": "/api JSON·SSE", "variant": "emphasis" },
+    { "id": "office-api", "from": "office", "to": "api", "label": "/api/admin" },
+    { "id": "jwt", "from": "api", "to": "auth", "label": "verify JWT", "variant": "security" },
+    { "id": "api-svc", "from": "api", "to": "svc", "label": "calls", "variant": "emphasis" },
+    { "id": "llm", "from": "svc", "to": "ai", "label": "LLM calls", "variant": "dashed" },
+    { "id": "ingest", "from": "svc", "to": "conn", "label": "connectors ingest" },
+    { "id": "sql", "from": "svc", "to": "engine", "label": "SQL", "variant": "emphasis" },
+    { "id": "read", "from": "engine", "to": "analytics", "label": "read-only query" },
+    { "id": "crud", "from": "engine", "to": "meta", "label": "store CRUD" }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "Frontend", "items": ["Two Vite builds: public app + separate backoffice bundle", "Only lib/api.ts talks to /api", "Caddy serves static files, proxies /api"] },
+    { "dot": "emerald", "title": "Backend", "items": ["routers → services → core/store + engine", "Single DuckDB writer: one process, threads", "Schedulers: alerts, reports, auto-refresh"] },
+    { "dot": "rose", "title": "Security", "items": ["Every SQL passes core/security.validate_readonly", "Supabase JWT pins one workspace per user", "Secrets encrypted at rest; admin gated by ADMIN_EMAILS"] },
+    { "dot": "amber", "title": "Deploy", "items": ["Dokploy on Oracle VM, Docker builds", "Push to Dashtor_First auto-deploys"] }
+  ]
+}
