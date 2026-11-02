@@ -32,7 +32,7 @@ export function LandingPage({ onEnter }: { onEnter: () => void }) {
           <div className="flex items-center gap-2 text-lg font-semibold"><LogoIcon className="size-7" />{BRAND_NAME}</div>
           <div className="flex items-center gap-2">
             <ThemePicker />
-            <Button variant="secondary" size="sm" className="rounded-full" onClick={onEnter} label="Open the app" />
+            <Button variant="primary" size="sm" className="rounded-full" onClick={onEnter} icon={<ArrowRight className="order-last size-3.5" />} label="Get started" />
           </div>
         </div>
       </header>

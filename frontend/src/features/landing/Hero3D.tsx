@@ -38,7 +38,6 @@ export function Hero3D({ onEnter }: { onEnter: () => void }) {
         </p>
         <div className="lp-rise mt-9 flex justify-center gap-3" style={rise(0.55)}>
           <Button variant="primary" size="lg" className="lp-glow rounded-full px-6" onClick={onEnter} icon={<ArrowRight className="order-last size-4" />} label="Get started" />
-          <Button variant="outline" size="lg" className="rounded-full px-6" onClick={() => document.getElementById('lp-tour')?.scrollIntoView({ behavior: 'smooth' })} label="Take the tour" />
         </div>
 
         <div className="lp-stage lp-rise relative mx-auto mt-16 pb-16" style={rise(0.7)}>
