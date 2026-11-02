@@ -8,7 +8,7 @@ the project's public JWKS at `<SUPABASE_URL>/auth/v1/.well-known/jwks.json` (ES2
 """
 from functools import lru_cache
 
-from fastapi import Depends, Header, HTTPException
+from fastapi import Depends, Header, HTTPException, Request
 from fastapi.concurrency import run_in_threadpool
 
 from app.core import tenant
@@ -56,19 +56,34 @@ def verify_token(token: str) -> dict:
     return {"id": claims["sub"], "email": claims.get("email", ""), "role": claims.get("role", "authenticated"), "email_verified": email_verified}
 
 
-async def require_user(authorization: str | None = Header(default=None)) -> dict:
+def _token_user(request: Request, bearer: str) -> dict:
+    """A personal access token (services/access_tokens.py): the user's own AI acting as them. `read` scope = GET only."""
+    from app.services import access_tokens  # lazy: keeps this module import-light
+    user = access_tokens.resolve(bearer)
+    if not user:
+        raise HTTPException(401, "Invalid or revoked access token")
+    if user["scope"] == "read" and request.method not in ("GET", "HEAD", "OPTIONS") and not request.url.path.endswith(("/run", "/preview")):
+        raise HTTPException(403, "This access token is read-only")
+    return user
+
+
+async def require_user(request: Request, authorization: str | None = Header(default=None)) -> dict:
     """Authenticate the request and pin it to the user's own workspace.
 
     Must be `async`: a sync dependency runs in a worker thread, and its ContextVar change would be lost
     before the endpoint runs.
     """
-    if not settings.auth_enabled:
+    bearer = authorization[7:].strip() if authorization and authorization.lower().startswith("bearer ") else ""
+    if bearer.startswith("dtr_"):
+        user = await run_in_threadpool(_token_user, request, bearer)
+    elif not settings.auth_enabled:
         user = dict(LOCAL_USER, workspace_id=tenant.DEFAULT_WS)  # local mode: the legacy single workspace
     else:
         if not authorization or not authorization.lower().startswith("bearer "):
             raise HTTPException(401, "Not signed in")
         user = await run_in_threadpool(verify_token, authorization[7:].strip())  # JWKS fetch may block
         user["workspace_id"] = tenant.workspace_for_user(user["id"])
+    if settings.auth_enabled:
         from .admin import is_suspended  # lazy: admin imports this module
         if is_suspended(user["id"]):
             raise HTTPException(403, {"code": "suspended", "message": "This account is suspended. Contact support."})

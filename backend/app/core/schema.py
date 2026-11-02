@@ -147,6 +147,11 @@ CREATE TABLE IF NOT EXISTS dashboard_shares (
     revoked BOOLEAN DEFAULT FALSE, views INTEGER DEFAULT 0, last_viewed_at TIMESTAMP,
     created_by TEXT, created_at TIMESTAMP, updated_at TIMESTAMP
 );
+CREATE TABLE IF NOT EXISTS access_tokens (   -- personal tokens for the user's own AI (MCP / REST); only a hash is stored
+    id TEXT PRIMARY KEY, workspace_id TEXT, user_id TEXT, email TEXT, name TEXT,
+    token_hash TEXT UNIQUE, prefix TEXT, scope TEXT DEFAULT 'full',   -- full | read
+    revoked BOOLEAN DEFAULT FALSE, last_used_at TIMESTAMP, created_at TIMESTAMP, updated_at TIMESTAMP
+);
 CREATE TABLE IF NOT EXISTS audit_log (
     id TEXT PRIMARY KEY, workspace_id TEXT, actor TEXT,
     action TEXT,        -- query.run | ai.ask | dataset.ingest | dataset.delete | source.create | ...

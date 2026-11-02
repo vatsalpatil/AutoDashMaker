@@ -63,3 +63,5 @@ TODO from the reference: dashboard-wide Day/Week/Month switch, 2-3 tables side b
 - 2026-11-02 · Landing "GIFs" are muted looping MP4s (autoplay only while visible), not .gif: ~100 KB vs several MB. A narrated tour (Windows TTS voice) was tried and rejected by the user — don't re-add one without a real voice-over.
 - **Hero 3D = the large orb (1800px, title inside) drawn only as thin lines, no fill (user's final choice, 2026-11-02).** Tried contour lines, wire strings, silk strands, glass ribbons — all rejected. Don't redesign it unasked.
 - **Landing screenshots follow the theme by CSS hue-rotate, not per-theme captures** (2026-11-03): one set of violet media, tinted live by useThemedShots in motion.ts. If media is re-recorded in another theme, update SHOT_HUE.
+
+- 2026-11-03 MCP without the SDK: hand-written stateless JSON-RPC (one POST, JSON response) — no new dependency, works behind Caddy /api/*. Tools call the REST API in-process with the user's token instead of services directly, so every guard (read-only SQL, workspace, quotas, audit) applies once. Token in URL path exists because claude.ai/ChatGPT connectors take only a URL (OAuth not built).

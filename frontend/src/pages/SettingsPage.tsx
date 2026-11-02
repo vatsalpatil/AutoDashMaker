@@ -5,12 +5,14 @@ import AiSettings from '@/features/ai/AiSettings';
 import AiUsagePanel from '@/features/ai/usage/AiUsagePanel';
 import { useAuth } from '@/features/auth/AuthProvider';
 import AccountSettings from '@/features/settings/AccountSettings';
+import ConnectAiSettings from '@/features/settings/connect-ai/ConnectAiSettings';
 import ThemeSettings from '@/features/settings/ThemeSettings';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 
 const TABS = [
   { id: 'ai', label: 'AI models' },
   { id: 'usage', label: 'AI usage' },
+  { id: 'connect', label: 'Connect your AI' },
   { id: 'appearance', label: 'Appearance' },
   { id: 'account', label: 'Account' },
 ] as const;
@@ -31,6 +33,7 @@ export default function SettingsPage() {
       <Suspense fallback={<Loading />}>
         {active === 'ai' && <AiSettings />}
         {active === 'usage' && <AiUsagePanel />}
+        {active === 'connect' && <ConnectAiSettings />}
         {active === 'appearance' && <ThemeSettings />}
         {active === 'account' && <AccountSettings />}
       </Suspense>
