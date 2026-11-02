@@ -360,3 +360,4 @@ Format: `YYYY-MM-DD · tool · files · what + why`
 - 2026-11-02 · landing/dataScene.ts · Hero backdrop rebuilt per user spec: 3 translucent glass-like teal ribbon surfaces per side (GPU-computed parametric mesh, finite-difference normals, diffuse+specular+fresnel, mint→chart-2→deep teal), slow drift. No R3F (plain three already installed).
 - 2026-11-02 · landing/{dataScene.ts,Hero3D.tsx} · Reverted hero to the original glassy morphing orb (state of a584d6b) — user prefers it over the line/ribbon experiments. Keep it.
 - 2026-11-02 · landing/Hero3D.tsx · Hero orb back to its first size (760px, as in 2ecea63) at user's request; tried the first three.js chart scene in the hero first — unreadable under the title, dropped.
+- 2026-11-02 · landing/{dataScene.ts,Hero3D.tsx} · Final hero: large orb (1800px, title inside) drawn ONLY as thin glowing lines (no filled surface) — user's pick.

@@ -39,24 +39,27 @@ float snoise(vec3 v){
 }`;
 
 const VERT = /* glsl */ `${NOISE}
-uniform float uTime; varying vec3 vNormal; varying vec3 vView; varying float vNoise;
+uniform float uTime; varying vec3 vNormal; varying vec3 vView; varying float vNoise; varying vec3 vPos;
 void main(){
   float n = snoise(normal * 1.4 + uTime * 0.25) * 0.5 + snoise(normal * 3.0 - uTime * 0.18) * 0.18;
   vNoise = n;
   vec3 p = position + normal * n * 0.42;
+  vPos = position;
   vec4 mv = modelViewMatrix * vec4(p, 1.0);
   vNormal = normalize(normalMatrix * normal); vView = normalize(-mv.xyz);
   gl_Position = projectionMatrix * mv;
 }`;
 
 const FRAG = /* glsl */ `
-uniform vec3 uA; uniform vec3 uB; varying vec3 vNormal; varying vec3 vView; varying float vNoise;
+uniform vec3 uA; uniform vec3 uB; varying vec3 vNormal; varying vec3 vView; varying float vNoise; varying vec3 vPos;
 void main(){
   float fres = pow(1.0 - max(dot(vNormal, vView), 0.0), 2.2);
   vec3 col = mix(uA, uB, smoothstep(-0.4, 0.5, vNoise));
   vec3 rim = mix(uB, vec3(1.0), 0.3) * 1.4;
-  // glassy: see-through centre, glowing iridescent edge
-  gl_FragColor = vec4(mix(col * 0.55, rim, fres), 0.12 + fres * 0.88);
+  // thin-line look: no filled surface, only fine strands wrapping the shape, brightest towards the edge
+  float x = (vPos.y + vNoise * 0.35) * 28.0, d = min(fract(x), 1.0 - fract(x));
+  float line = 1.0 - smoothstep(0.0, fwidth(x) * 1.1, d);   // ~1px wide at any size
+  gl_FragColor = vec4(mix(col, rim, fres), line * (0.25 + 0.75 * fres));
 }`;
 
 /**
