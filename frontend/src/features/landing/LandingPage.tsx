@@ -7,6 +7,7 @@ import { FEATURES, SHOTS } from './landingContent';
 import { Lifecycle } from './Lifecycle';
 import { ProductExplorer } from './ProductExplorer';
 import { ChartStrip } from './ChartStrip';
+import { VideoSection } from './VideoSection';
 import { ThemePicker } from './ThemePicker';
 import { SHOWCASE_POINTS } from './landingInfo';
 import { Hero3D } from './Hero3D';
@@ -38,6 +39,8 @@ export function LandingPage({ onEnter }: { onEnter: () => void }) {
       <Hero3D onEnter={onEnter} />
 
       <ChartStrip />
+
+      <VideoSection />
 
 
       <section className="mx-auto max-w-6xl px-4 py-24">
