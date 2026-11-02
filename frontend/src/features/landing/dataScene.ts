@@ -59,8 +59,11 @@ void main(){
   // thin-line look: no fill, only dense rings that follow the orb's round outline (lines of equal angle to the
   // viewer), rippling with the surface; they fade out towards the middle so the centre stays empty
   float facing = max(dot(vNormal, vView), 0.0);
-  float x = (1.0 - facing + vNoise * 0.06) * 60.0, d = min(fract(x), 1.0 - fract(x));
-  float line = 1.0 - smoothstep(0.0, fwidth(x) * 1.1, d);   // ~1px wide at any size
+  float x = (1.0 - facing) * 110.0 + 0.5,   // +0.5: edge-on areas (facing 0) fall between lines, never a solid band
+    d = min(fract(x), 1.0 - fract(x)), fw = fwidth(x);
+  // ~1px wide at any size; where a fold squeezes several lines into one pixel they would merge into a thick,
+  // broken streak, so fade them out there instead
+  float line = (1.0 - smoothstep(0.0, fw * 1.1, d)) * (1.0 - smoothstep(0.35, 0.7, fw));
   gl_FragColor = vec4(mix(col, rim, fres), line * smoothstep(0.08, 0.55, 1.0 - facing) * (0.35 + 0.65 * fres));
 }`;
 
@@ -75,7 +78,7 @@ export function createDataScene(canvas: HTMLCanvasElement, { still = false } = {
   camera.position.z = 7;
 
   const uniforms = { uTime: { value: 0 }, uA: { value: cssColor('var(--primary)') }, uB: { value: cssColor('var(--chart-2)') } };
-  const orb = new THREE.Mesh(new THREE.IcosahedronGeometry(1.6, 96), new THREE.ShaderMaterial({ uniforms, vertexShader: VERT, fragmentShader: FRAG, transparent: true, depthWrite: false }));
+  const orb = new THREE.Mesh(new THREE.IcosahedronGeometry(1.6, 96), new THREE.ShaderMaterial({ uniforms, vertexShader: VERT, fragmentShader: FRAG, transparent: true }));   // depth on: only the front layer draws, so folds can't stack lines
   scene.add(orb);
 
   const pointer = { x: 0, y: 0 }, tilt = { x: 0, y: 0 };
