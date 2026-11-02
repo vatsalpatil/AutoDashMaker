@@ -14,71 +14,96 @@ function cssColor(expr: string): THREE.Color {
   return new THREE.Color().setRGB(r / 255, g / 255, b / 255, THREE.SRGBColorSpace);
 }
 
-const STRANDS = 90;     // thin lines per ribbon
-const POINTS = 220;     // points along each line
+const LEN = 260, ACROSS = 28;   // grid resolution of each ribbon surface
+const PER_SIDE = 3;            // overlapping ribbons per side, woven with different phases
 
-// Each vertex is (t along the line 0..1, s across the ribbon 0..1, side -1|1); the shape is computed here, so the CPU does nothing per frame.
+// Each vertex carries (t along the ribbon 0..1, s across it 0..1, side -1|1, phase). The surface is computed on the GPU,
+// and its normal comes from two nearby points, so the CPU does nothing per frame.
 const VERT = /* glsl */ `
 uniform float uTime; uniform float uEdge; uniform vec2 uTilt;
-attribute vec3 aRib; varying float vS; varying float vT; varying float vFace;
-void main(){
-  float t = aRib.x, s = aRib.y, side = aRib.z, k = uTime * 0.35 + side * 1.7;
-  float y = mix(-3.6, 3.6, t);
-  // the ribbon's spine sweeps in an S-curve near the screen edge
-  float cx = side * (uEdge - 1.9 + 0.9 * sin(t * 3.4 + k) + 0.3 * sin(t * 7.0 - k * 1.3));
-  // it twists along its length; strands fan out across the width
-  float a = t * 4.0 + k * 1.2, w = 1.5 + 0.6 * sin(t * 3.0 + k);
+attribute vec4 aRib; varying vec3 vN; varying vec3 vView; varying float vS; varying float vT; varying float vPh;
+vec3 ribbon(float t, float s, float side, float ph){
+  float k = uTime * 0.12 + ph * 2.1 + side * 1.3;          // slow, organic drift
+  float y = mix(-4.2, 4.2, t);
+  // spine: an S-curve hugging the screen edge, now and then reaching further in
+  float cx = side * (uEdge - 1.3 - 0.4 * ph + 0.8 * sin(t * 2.6 + k) + 0.35 * sin(t * 5.3 - k * 1.4));
+  float cz = -0.6 * ph + 0.9 * sin(t * 2.1 + k * 0.8);
+  // twists and folds; width swells and narrows along the length
+  float a = t * 3.2 + k * 0.9 + 0.6 * sin(t * 4.0 - k);
+  float w = 0.9 + 1.3 * pow(0.5 + 0.5 * sin(t * 3.4 + k * 1.1 + ph), 1.5);
   float off = (s - 0.5) * w;
-  vec3 p = vec3(cx + off * cos(a), y + off * 0.25 * sin(a * 0.5), off * sin(a));
-  p.xy += uTilt * vec2(0.15, 0.1) * side;
-  vS = s; vT = t; vFace = abs(cos(a));   // facing the viewer = brighter, edge-on = dimmer
-  gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
+  vec3 p = vec3(cx + off * cos(a), y + off * 0.35 * sin(a), cz + off * sin(a));
+  p.xy += uTilt * vec2(0.12, 0.08) * side;
+  return p;
+}
+void main(){
+  vec3 p = ribbon(aRib.x, aRib.y, aRib.z, aRib.w);
+  vec3 dt = ribbon(aRib.x + 0.002, aRib.y, aRib.z, aRib.w) - p;
+  vec3 ds = ribbon(aRib.x, aRib.y + 0.02, aRib.z, aRib.w) - p;
+  vec4 mv = modelViewMatrix * vec4(p, 1.0);
+  vN = normalize(normalMatrix * cross(dt, ds)); vView = normalize(-mv.xyz);
+  vS = aRib.y; vT = aRib.x; vPh = aRib.w;
+  gl_Position = projectionMatrix * mv;
 }`;
 
 const FRAG = /* glsl */ `
-uniform vec3 uA; uniform vec3 uB; varying float vS; varying float vT; varying float vFace;
+uniform vec3 uMint; uniform vec3 uTeal; uniform vec3 uDeep;
+varying vec3 vN; varying vec3 vView; varying float vS; varying float vT; varying float vPh;
 void main(){
-  vec3 col = mix(uA, uB, smoothstep(0.15, 0.85, vS * 0.6 + vT * 0.4 + 0.15 * sin(vT * 12.0)));
-  float edge = smoothstep(0.0, 0.08, vS) * smoothstep(1.0, 0.92, vS);      // soft ribbon borders
-  float fade = smoothstep(0.0, 0.12, vT) * smoothstep(1.0, 0.88, vT);      // fade at top and bottom
-  float glow = 0.25 + 0.75 * pow(1.0 - vFace, 2.0) + 0.2 * vFace;           // bright where the ribbon turns
-  gl_FragColor = vec4(col * (0.6 + glow), (0.12 + 0.5 * glow) * edge * fade);
+  vec3 n = normalize(vN); if (!gl_FrontFacing) n = -n;
+  float facing = max(dot(n, vView), 0.0);
+  float fres = pow(1.0 - facing, 2.5);                               // glassy edge glow
+  vec3 L = normalize(vec3(-0.5, 0.8, 0.6));
+  float diff = 0.35 + 0.65 * max(dot(n, L), 0.0);
+  float spec = pow(max(dot(reflect(-L, n), vView), 0.0), 40.0);     // highlight along the curves
+  // mint → cyan → deep teal along and across the surface
+  float g = clamp(vT * 0.7 + vS * 0.3 + 0.15 * sin(vT * 9.0 + vPh * 2.0), 0.0, 1.0);
+  vec3 col = g < 0.5 ? mix(uMint, uTeal, g * 2.0) : mix(uTeal, uDeep, g * 2.0 - 1.0);
+  float rim = smoothstep(0.0, 0.12, vS) * smoothstep(1.0, 0.88, vS);  // darker, softer ribbon borders
+  vec3 c = col * diff * mix(0.6, 1.25, rim) + col * fres * 1.6 + vec3(spec) * 0.8;
+  float fade = smoothstep(0.0, 0.15, vT) * smoothstep(1.0, 0.85, vT);
+  gl_FragColor = vec4(c, (0.45 + 0.5 * fres + 0.4 * spec) * mix(0.4, 1.0, rim) * fade);
 }`;
 
 function ribbonGeometry() {
   const rib: number[] = [], index: number[] = [];
   for (const side of [-1, 1])
-    for (let i = 0; i < STRANDS; i++) {
-      const base = rib.length / 3;
-      for (let j = 0; j < POINTS; j++) {
-        rib.push(j / (POINTS - 1), i / (STRANDS - 1), side);
-        if (j) index.push(base + j - 1, base + j);
-      }
+    for (let r = 0; r < PER_SIDE; r++) {
+      const base = rib.length / 4;
+      for (let i = 0; i <= LEN; i++)
+        for (let j = 0; j <= ACROSS; j++) rib.push(i / LEN, j / ACROSS, side, r);
+      for (let i = 0; i < LEN; i++)
+        for (let j = 0; j < ACROSS; j++) {
+          const a = base + i * (ACROSS + 1) + j, b = a + ACROSS + 1;
+          index.push(a, b, a + 1, b, b + 1, a + 1);
+        }
     }
   const g = new THREE.BufferGeometry();
-  g.setAttribute('aRib', new THREE.Float32BufferAttribute(rib, 3));
-  g.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(rib.length), 3));   // unused; three needs it
+  g.setAttribute('aRib', new THREE.Float32BufferAttribute(rib, 4));
+  g.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array((rib.length / 4) * 3), 3));   // unused; three needs it
   g.setIndex(index);
   g.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 100);
   return g;
 }
 
 /**
- * Decorative hero backdrop (landing page only): two silk-like ribbons of thin glowing strands twisting down both
- * sides of the headline, in the theme's colours, drifting a little with the mouse. Returns a cleanup function.
+ * Decorative hero backdrop (landing page only): translucent glass-like 3D ribbons twisting and folding down both
+ * sides of the headline in the theme's teal, drifting slowly and a little with the mouse. Returns a cleanup function.
  */
 export function createDataScene(canvas: HTMLCanvasElement, { still = false } = {}) {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'low-power' });
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 50);
-  camera.position.z = 10;
+  camera.position.z = 11;
 
   const uniforms = {
     uTime: { value: 0 }, uEdge: { value: 5 }, uTilt: { value: new THREE.Vector2() },
-    uA: { value: cssColor('var(--primary)') }, uB: { value: cssColor('var(--chart-2)') },
+    uMint: { value: cssColor('color-mix(in oklab, var(--chart-2) 55%, white)') },
+    uTeal: { value: cssColor('var(--chart-2)') },
+    uDeep: { value: cssColor('color-mix(in oklab, var(--chart-2) 70%, black)') },
   };
-  const material = new THREE.ShaderMaterial({ uniforms, vertexShader: VERT, fragmentShader: FRAG, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
-  const ribbons = new THREE.LineSegments(ribbonGeometry(), material);
+  const material = new THREE.ShaderMaterial({ uniforms, vertexShader: VERT, fragmentShader: FRAG, transparent: true, depthWrite: false, side: THREE.DoubleSide });
+  const ribbons = new THREE.Mesh(ribbonGeometry(), material);
   scene.add(ribbons);
 
   const pointer = { x: 0, y: 0 };
