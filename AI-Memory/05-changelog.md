@@ -358,3 +358,4 @@ Format: `YYYY-MM-DD · tool · files · what + why`
 - 2026-11-02 · landing/Lifecycle.tsx · Added a glowing ball that rolls round the life-cycle ring to the active stage (angle only grows, so 8→1 keeps rolling forward).
 - 2026-11-02 · landing/{dataScene.ts,Hero3D.tsx,Lifecycle.tsx} · Hero orb replaced by two twisting silk ribbons of thin strands (shader-driven LineSegments, additive, primary→chart-2) per user reference; life-cycle ball now glides linearly the whole step (no stop-and-jump).
 - 2026-11-02 · landing/dataScene.ts · Hero backdrop rebuilt per user spec: 3 translucent glass-like teal ribbon surfaces per side (GPU-computed parametric mesh, finite-difference normals, diffuse+specular+fresnel, mint→chart-2→deep teal), slow drift. No R3F (plain three already installed).
+- 2026-11-02 · landing/{dataScene.ts,Hero3D.tsx} · Reverted hero to the original glassy morphing orb (state of a584d6b) — user prefers it over the line/ribbon experiments. Keep it.
