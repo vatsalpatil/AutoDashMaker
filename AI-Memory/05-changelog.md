@@ -361,3 +361,4 @@ Format: `YYYY-MM-DD · tool · files · what + why`
 - 2026-11-02 · landing/{dataScene.ts,Hero3D.tsx} · Reverted hero to the original glassy morphing orb (state of a584d6b) — user prefers it over the line/ribbon experiments. Keep it.
 - 2026-11-02 · landing/Hero3D.tsx · Hero orb back to its first size (760px, as in 2ecea63) at user's request; tried the first three.js chart scene in the hero first — unreadable under the title, dropped.
 - 2026-11-02 · landing/{dataScene.ts,Hero3D.tsx} · Final hero: large orb (1800px, title inside) drawn ONLY as thin glowing lines (no filled surface) — user's pick.
+- 2026-11-02 · landing/dataScene.ts · Orb lines: ~2x denser, follow the round outline (bands of equal view angle) instead of horizontal, fade out to an empty centre.

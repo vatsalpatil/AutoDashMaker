@@ -56,10 +56,12 @@ void main(){
   float fres = pow(1.0 - max(dot(vNormal, vView), 0.0), 2.2);
   vec3 col = mix(uA, uB, smoothstep(-0.4, 0.5, vNoise));
   vec3 rim = mix(uB, vec3(1.0), 0.3) * 1.4;
-  // thin-line look: no filled surface, only fine strands wrapping the shape, brightest towards the edge
-  float x = (vPos.y + vNoise * 0.35) * 28.0, d = min(fract(x), 1.0 - fract(x));
+  // thin-line look: no fill, only dense rings that follow the orb's round outline (lines of equal angle to the
+  // viewer), rippling with the surface; they fade out towards the middle so the centre stays empty
+  float facing = max(dot(vNormal, vView), 0.0);
+  float x = (1.0 - facing + vNoise * 0.06) * 60.0, d = min(fract(x), 1.0 - fract(x));
   float line = 1.0 - smoothstep(0.0, fwidth(x) * 1.1, d);   // ~1px wide at any size
-  gl_FragColor = vec4(mix(col, rim, fres), line * (0.25 + 0.75 * fres));
+  gl_FragColor = vec4(mix(col, rim, fres), line * smoothstep(0.08, 0.55, 1.0 - facing) * (0.35 + 0.65 * fres));
 }`;
 
 /**
