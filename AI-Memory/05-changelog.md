@@ -347,3 +347,4 @@ Format: `YYYY-MM-DD · tool · files · what + why`
 - 2026-11-02 · features/landing/Hero3D.tsx · hero orb enlarged so the headline sits inside it.
 - 2026-11-02 · features/landing/VideoSection.tsx, public/videos · removed the narrated tour video (user disliked it); the 4 silent loops stay.
 - 2026-11-02 · features/landing/useLanding.ts, features/auth/{AuthProvider,LoginPage}.tsx, main.tsx · separate URLs: / landing, /login sign-in (with Back link), deep links → /login?next=, sign-out → landing; backoffice no longer gets the landing page.
+- 2026-11-02 · features/landing/{AiDemo.tsx,aiDemoScript.ts,landing.css,LandingPage.tsx} · animated 'Watch the AI work' scene under the hero: question typed, thinking steps, SQL typed, KPIs count up, bars grow, answer typed; loops while visible.

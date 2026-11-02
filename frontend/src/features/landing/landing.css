@@ -57,6 +57,12 @@
 .lp-flow { animation: lp-flow 4s linear infinite; }
 .lp-pulse { filter: drop-shadow(0 0 8px var(--primary)); }
 
+/* ---- AI demo: shimmering "working" text and a scan sweep over the results while the query runs */
+.lp-shimmer-text { background: linear-gradient(90deg, var(--muted-foreground) 30%, var(--primary) 50%, var(--muted-foreground) 70%);
+  background-size: 200% auto; -webkit-background-clip: text; background-clip: text; color: transparent; animation: lp-shine 1.6s linear infinite; }
+.lp-scan { animation: lp-scan 1s linear infinite; }
+@keyframes lp-scan { from { left: -35%; } to { left: 105%; } }
+
 /* ---- glowing CTA */
 .lp-glow { position: relative; }
 .lp-glow::before { content: ''; position: absolute; inset: -3px; border-radius: inherit; z-index: -1; filter: blur(14px); opacity: .7;

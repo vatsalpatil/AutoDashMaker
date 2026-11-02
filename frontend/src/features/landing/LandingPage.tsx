@@ -11,6 +11,7 @@ import { VideoSection } from './VideoSection';
 import { ThemePicker } from './ThemePicker';
 import { SHOWCASE_POINTS } from './landingInfo';
 import { Hero3D } from './Hero3D';
+import { AiDemo } from './AiDemo';
 import { Heading, LandingDetails } from './LandingDetails';
 import { tilt, useLandingMotion } from './motion';
 import './landing.css';
@@ -37,6 +38,8 @@ export function LandingPage({ onEnter }: { onEnter: () => void }) {
       </header>
 
       <Hero3D onEnter={onEnter} />
+
+      <AiDemo />
 
       <ChartStrip />
 
