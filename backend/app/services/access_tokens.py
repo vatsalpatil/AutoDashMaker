@@ -20,6 +20,8 @@ MAX_PER_USER = 20
 SCOPES = ("full", "read")
 _cache: dict[str, tuple[float, dict | None]] = {}   # hash -> (expires, row): resolve() runs on every MCP call
 _TTL = 30.0
+RATE_PER_MIN = 120                                   # MCP calls per token per minute (an AI loop gone wild stops here)
+_calls: dict[str, list[float]] = {}
 
 
 def _hash(token: str) -> str:
@@ -71,6 +73,15 @@ def resolve(token: str) -> dict | None:
             "email_verified": True, "scope": r["scope"], "token_id": r["id"]} if r else None
     _cache[h] = (time.monotonic() + _TTL, user)
     return user
+
+
+def allow(token_id: str) -> bool:
+    """Sliding one-minute window per token; in-process memory like services/throttle.py."""
+    now = time.monotonic()
+    recent = [t for t in _calls.get(token_id, []) if t > now - 60]
+    ok = len(recent) < RATE_PER_MIN
+    _calls[token_id] = recent + [now] if ok else recent
+    return ok
 
 
 def _public(r: dict) -> dict[str, Any]:

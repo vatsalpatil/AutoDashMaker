@@ -15,7 +15,7 @@ Typical flow:
 4. create_dashboard, then add_chart for each insight (give the SQL; chart type/encoding are optional, picked automatically).
    Chart types: bar line area composed scatter pie funnel treemap radar kpi histogram waterfall boxplot gauge progress
    sankey sunburst ranked table. encoding = {x: <column>, y: <column or [columns]>, color?: <column>}.
-5. add_text for notes/headlines, share_dashboard for a public read-only link.
+5. add_text for notes/headlines; update_widget / update_chart to polish; open_in_app or share_dashboard to present.
 Anything else (alerts, reports, semantic metrics, quality, data tests, transforms, query builder...):
 list_api_endpoints(filter) then call_api(method, path, body)."""
 
@@ -92,6 +92,18 @@ TOOLS: list[tuple[str, str, dict, Handler, bool]] = [   # name, description, inp
          "position": {"x": 0, "y": 1000, "w": 12, "h": 3}}), False),   # y past the end: the grid compacts it up to the bottom
     ("remove_widget", "Remove a widget from a dashboard.", S({"dashboard_id": STR, "widget_id": STR}, ("dashboard_id", "widget_id")),
      lambda api, a: api.request("DELETE", f"/api/dashboards/{a['dashboard_id']}/widgets/{a['widget_id']}"), False),
+    ("update_widget", "Move, resize, retitle or restyle a dashboard widget. position {x, y, w, h} on a 12-column grid; "
+     "settings are merged (e.g. colours, legend, number format).",
+     S({"dashboard_id": STR, "widget_id": STR, "title": STR, "position": OBJ, "settings": OBJ, "page": STR}, ("dashboard_id", "widget_id")),
+     lambda api, a: api.request("PATCH", f"/api/dashboards/{a['dashboard_id']}/widgets/{a['widget_id']}",
+                                {k: a[k] for k in ("title", "position", "settings", "page") if a.get(k) is not None}), False),
+    ("update_chart", "Change a chart's name or spec {type, encoding, options} (the chart_id is on the widget).",
+     S({"chart_id": STR, "name": STR, "spec": OBJ}, ("chart_id",)),
+     lambda api, a: api.request("PATCH", f"/api/charts/{a['chart_id']}", {k: a[k] for k in ("name", "spec") if a.get(k)}), False),
+    ("open_in_app", "Links for the user to open a dashboard in Dashtor (view and edit layout).",
+     S({"dashboard_id": STR}, ("dashboard_id",)),
+     lambda api, a: _const({"view": f"{api.public_url}/dashboards/{a['dashboard_id']}",
+                            "edit_layout": f"{api.public_url}/dashboards/{a['dashboard_id']}/layout"}), True),
     ("share_dashboard", "Create a public read-only link to present a dashboard. days: expiry (0 = never).",
      S({"dashboard_id": STR, "days": INT}, ("dashboard_id",)), _share, False),
     ("list_api_endpoints", "Search every Dashtor API endpoint (method, path, summary). filter: words to match, e.g. 'alert'.",

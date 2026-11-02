@@ -11,7 +11,8 @@ from pydantic import BaseModel
 from ..core import tenant
 from ..core.auth import require_verified
 from ..core.config import settings
-from ..services import access_tokens, audit
+from .auth import _client_ip
+from ..services import access_tokens, audit, throttle
 from ..services.mcp import server
 
 router = APIRouter(prefix="/api/access-tokens", tags=["access-tokens"])
@@ -59,10 +60,16 @@ def _public_url(request: Request) -> str:
 
 
 async def _serve(request: Request, token: str):
+    ip_key = f"mcp:ip:{_client_ip(request)}"   # the real caller behind Caddy, not the proxy (else one guesser locks out all)
+    throttle.check(ip_key)   # guessing tokens: 20 wrong ones in 10 min lock the address out
     user = access_tokens.resolve(token)
     if not user:
+        throttle.fail(ip_key)
         return JSONResponse({"error": "invalid_token", "message": "Invalid or revoked Dashtor access token"}, 401,
                             headers={"WWW-Authenticate": "Bearer"})
+    if not access_tokens.allow(user["token_id"]):
+        return JSONResponse({"error": "rate_limited", "message": f"Over {access_tokens.RATE_PER_MIN} calls a minute"}, 429,
+                            headers={"Retry-After": "60"})
     tenant.set_workspace(user["workspace_id"])
     try:
         payload = await request.json()
