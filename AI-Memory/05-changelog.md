@@ -351,3 +351,4 @@ Format: `YYYY-MM-DD · tool · files · what + why`
 - 2026-11-02 · features/landing/{Hero3D,LandingPage}.tsx · removed 'Take the tour'; header button now 'Get started'.
 - 2026-11-02 · landing/{dataScene,Scene3D,aiDemoScript,Hero3D,ChartStrip}, landing.css · Landing lag fix: orb renders a ~900px buffer at 30fps (was up to 3600px DPR2 at 60fps, 96-detail mesh → 40), starts on idle; AI demo re-renders ~20/s not every frame; hero img high priority; no backdrop-blur in marquee, transform-only keyframes.
 - 2026-11-02 · landing/dataScene.ts · Orb looked blurry at 900px buffer: now pixelRatio 1, antialias on, mesh detail 64 (still ~4x cheaper than DPR 2).
+- 2026-11-02 · landing/dataScene.ts · Orb back to full devicePixelRatio (≤2) + mesh 96; 1:1 still looked low quality. Perf kept via 30fps + idle start.

@@ -70,7 +70,7 @@ export function createDataScene(canvas: HTMLCanvasElement, { still = false } = {
   camera.position.z = 7;
 
   const uniforms = { uTime: { value: 0 }, uA: { value: cssColor('var(--primary)') }, uB: { value: cssColor('var(--chart-2)') } };
-  const orb = new THREE.Mesh(new THREE.IcosahedronGeometry(1.6, 64), new THREE.ShaderMaterial({ uniforms, vertexShader: VERT, fragmentShader: FRAG, transparent: true, depthWrite: false }));
+  const orb = new THREE.Mesh(new THREE.IcosahedronGeometry(1.6, 96), new THREE.ShaderMaterial({ uniforms, vertexShader: VERT, fragmentShader: FRAG, transparent: true, depthWrite: false }));
   scene.add(orb);
 
   const pointer = { x: 0, y: 0 }, tilt = { x: 0, y: 0 };
@@ -84,8 +84,8 @@ export function createDataScene(canvas: HTMLCanvasElement, { still = false } = {
 
   const resize = () => {
     const { clientWidth: w, clientHeight: h } = canvas;
-    // 1:1 CSS pixels keeps the orb crisp; skipping devicePixelRatio (up to 2x) still saves ~4x the pixels
-    renderer.setPixelRatio(1);
+    // full screen sharpness (users saw anything lower as blurry); the 30fps cap and idle start keep it light
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setSize(w, h, false);
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
