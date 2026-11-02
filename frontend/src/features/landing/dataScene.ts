@@ -62,8 +62,11 @@ void main(){
   float x = (1.0 - facing) * 110.0 + 0.5,   // +0.5: edge-on areas (facing 0) fall between lines, never a solid band
     d = min(fract(x), 1.0 - fract(x)), fw = fwidth(x);
   // ~1px wide at any size; where a fold squeezes several lines into one pixel they would merge into a thick,
-  // broken streak, so fade them out there instead
-  float line = (1.0 - smoothstep(0.0, fw * 1.1, d)) * (1.0 - smoothstep(0.35, 0.7, fw));
+  // broken streak, so blend them out there...
+  // ...and fill those spots with a soft glow of about the lines' average brightness, so no dark gaps appear
+  float merge = smoothstep(0.35, 0.7, fw);
+  float line = mix(1.0 - smoothstep(0.0, fw * 1.1, d), 0.45, merge);
+  line = max(line, 0.1);   // faint tint between lines keeps the shape reading as one surface
   gl_FragColor = vec4(mix(col, rim, fres), line * smoothstep(0.08, 0.55, 1.0 - facing) * (0.35 + 0.65 * fres));
 }`;
 
