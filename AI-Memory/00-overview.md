@@ -10,7 +10,7 @@ Spec: `Plan/smart-data-platform-requirements.md` (huge; `§N` refs). Feature che
 
 ## Stack
 - Backend: Python, FastAPI, DuckDB (analytics DB + metadata DB), Polars, sqlglot (SQL guard), httpx, pydantic-settings.
-- Frontend: Vite + React 19 + TypeScript, react-router v6, **Tailwind v4**, **shadcn/ui (Base UI flavour, preset `base-nova`) + ReUI registry** (`@reui`), Recharts, react-grid-layout, lucide-react. (Astryx was removed 2026-10-02.)
+- Frontend: Vite + React 19 + TypeScript, react-router v6, three.js (landing page 3D only, lazy), **Tailwind v4**, **shadcn/ui (Base UI flavour, preset `base-nova`) + ReUI registry** (`@reui`), Recharts, react-grid-layout, lucide-react. (Astryx was removed 2026-10-02.)
 - AI providers: Gemini (default), OpenAI, Anthropic, Groq, OpenRouter — keys stored in DB table `ai_providers`, set via Settings page.
 
 ## Run (Windows) - NO bat launchers; the user runs these two commands in the IDE (Antigravity) terminals
