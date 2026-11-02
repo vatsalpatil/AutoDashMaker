@@ -126,3 +126,4 @@ invalid currency codes throw in Intl; repeated item names (ungrouped queries) ga
 ## Backoffice (2026-10-20)
 - `ADMIN_EMAILS` is a pydantic list: set it as JSON in env, `ADMIN_EMAILS=["a@x.com"]`, not a bare email. Empty = nobody gets in when login is on.
 - The users list needs `SUPABASE_SERVICE_KEY` on the backend (Supabase admin API); without it only the local placeholder user shows.
+- Running a 2nd Vite dev server from `frontend/` rewrites the shared `node_modules/.vite/deps` cache → the 1st server's open pages 404 on `chunk-*.js`. Restart with `npm run dev -- --force`. Also: the in-app browser pane throttles CSS transitions when hidden, so landing-page reveals look blank there; check with real headless Chrome instead.

@@ -1,0 +1,75 @@
+/* Landing page motion + 3D. Colours only from theme tokens. Everything stops under prefers-reduced-motion. */
+.lp { --scroll: 0; overflow-x: clip; }
+
+/* ---- background: aurora orbs + 3D perspective grid floor */
+.lp-aurora { position: absolute; border-radius: 9999px; filter: blur(80px); opacity: .55; animation: lp-drift 18s ease-in-out infinite alternate; }
+.lp-floor { position: absolute; inset: auto -50% 0 -50%; height: 70%; perspective: 600px; pointer-events: none;
+  mask-image: linear-gradient(to top, transparent 0%, black 30%, transparent 90%); }
+.lp-floor::before { content: ''; position: absolute; inset: 0; transform: rotateX(68deg); transform-origin: bottom;
+  background-image: linear-gradient(color-mix(in oklab, var(--primary) 35%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in oklab, var(--primary) 35%, transparent) 1px, transparent 1px);
+  background-size: 56px 56px; animation: lp-floor 3s linear infinite; }
+
+/* ---- headline */
+.lp-gradient-text { background: linear-gradient(90deg, var(--primary), color-mix(in oklab, var(--primary) 40%, white), var(--primary));
+  background-size: 200% auto; -webkit-background-clip: text; background-clip: text; color: transparent; animation: lp-shine 5s linear infinite; }
+.lp-rise { opacity: 0; transform: translateY(24px); animation: lp-rise .9s cubic-bezier(.2,.7,.2,1) forwards; animation-delay: var(--d, 0s); }
+
+/* ---- hero 3D stage: screenshot starts tilted back and flattens as you scroll */
+.lp-stage { perspective: 1400px; }
+.lp-hero-shot { transform-style: preserve-3d; transform-origin: center top;
+  transform: rotateX(calc(28deg * (1 - var(--scroll)))) scale(calc(.9 + .1 * var(--scroll)));
+  transition: transform .1s linear; }
+.lp-float { position: absolute; z-index: 2; animation: lp-bob 6s ease-in-out infinite; animation-delay: var(--d, 0s);
+  transform: translateZ(80px); }
+
+/* ---- pointer tilt + spotlight cards */
+.lp-tilt { --rx: 0deg; --ry: 0deg; --mx: 50%; --my: 50%; position: relative; transform: perspective(900px) rotateX(var(--rx)) rotateY(var(--ry));
+  transition: transform .25s ease-out, border-color .25s; transform-style: preserve-3d; }
+.lp-tilt::after { content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: 0; transition: opacity .3s;
+  background: radial-gradient(400px circle at var(--mx) var(--my), color-mix(in oklab, var(--primary) 18%, transparent), transparent 60%); }
+.lp-tilt:hover { border-color: color-mix(in oklab, var(--primary) 50%, var(--border)); }
+.lp-tilt:hover::after { opacity: 1; }
+.lp-tilt .lp-pop { transform: translateZ(40px); }
+
+/* ---- showcase screenshots: angled toward their text, straighten on hover */
+.lp-angle { transform: perspective(1600px) rotateY(var(--a, -10deg)) rotateX(4deg); transition: transform .6s cubic-bezier(.2,.7,.2,1); }
+.lp-angle:hover { transform: perspective(1600px) rotateY(0) rotateX(0) scale(1.02); }
+
+/* ---- scroll reveal */
+[data-reveal] { opacity: 0; transform: translateY(40px) scale(.98); transition: opacity .8s ease, transform .8s cubic-bezier(.2,.7,.2,1); transition-delay: var(--d, 0s); }
+[data-reveal].is-visible { opacity: 1; transform: none; }
+
+/* ---- marquee of chart types */
+.lp-marquee { mask-image: linear-gradient(90deg, transparent, black 15%, black 85%, transparent); }
+.lp-marquee > div { display: flex; width: max-content; gap: 1rem; padding: .5rem 0; animation: lp-marquee 50s linear infinite; }
+.lp-marquee:hover > div { animation-play-state: paused; }
+
+/* ---- mini chart drawing */
+.lp-grow { transform-box: fill-box; transform-origin: bottom; animation: lp-grow 1s cubic-bezier(.2,.7,.2,1) both; animation-delay: var(--d, 0s); }
+.lp-grow-x { transform-box: fill-box; transform-origin: center; animation: lp-grow-x .9s cubic-bezier(.2,.7,.2,1) both; animation-delay: var(--d, 0s); }
+.lp-draw { stroke-dasharray: 300; stroke-dashoffset: 300; animation: lp-dash 2.2s ease forwards; }
+.lp-pop-in { transform-box: fill-box; transform-origin: center; animation: lp-pop .5s ease both; animation-delay: var(--d, 0s); }
+
+/* ---- glowing CTA */
+.lp-glow { position: relative; }
+.lp-glow::before { content: ''; position: absolute; inset: -3px; border-radius: inherit; z-index: -1; filter: blur(14px); opacity: .7;
+  background: linear-gradient(90deg, var(--primary), color-mix(in oklab, var(--primary) 30%, white), var(--primary)); background-size: 200%; animation: lp-shine 3s linear infinite; }
+
+@keyframes lp-drift { to { transform: translate(8%, -6%) scale(1.2); } }
+@keyframes lp-floor { to { background-position: 0 56px; } }
+@keyframes lp-shine { to { background-position: -200% center; } }
+@keyframes lp-rise { to { opacity: 1; transform: none; } }
+@keyframes lp-bob { 0%, 100% { translate: 0 0; } 50% { translate: 0 -14px; } }
+@keyframes lp-grow { from { transform: scaleY(0); } }
+@keyframes lp-grow-x { from { transform: scaleX(0); } }
+@keyframes lp-dash { to { stroke-dashoffset: 0; } }
+@keyframes lp-pop { from { transform: scale(0); } }
+@keyframes lp-marquee { to { transform: translateX(-50%); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .lp *, .lp *::before, .lp *::after { animation: none !important; transition: none !important; }
+  .lp-rise, [data-reveal] { opacity: 1; transform: none; }
+  .lp-hero-shot { transform: none; }
+  .lp-draw { stroke-dashoffset: 0; }
+}

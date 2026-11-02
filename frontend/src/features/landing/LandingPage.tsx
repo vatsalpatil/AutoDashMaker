@@ -1,86 +1,94 @@
-import { ArrowRight } from 'lucide-react';
+import { useRef } from 'react';
+import { ArrowRight, Check } from 'lucide-react';
 import { BRAND_NAME } from '@/lib/brand';
 import { LogoIcon } from '@/components/common/LogoIcon';
 import { Button } from '@/components/ui/kit';
 import { FEATURES, SHOTS, STEPS } from './landingContent';
+import { ChartStrip } from './ChartStrip';
+import { SHOWCASE_POINTS } from './landingInfo';
+import { Hero3D } from './Hero3D';
+import { LandingDetails } from './LandingDetails';
+import { tilt, useLandingMotion } from './motion';
+import './landing.css';
 
-/** Framed screenshot with a soft primary glow. */
-function Shot({ src, alt, className = '' }: { src: string; alt: string; className?: string }) {
-  return (
-    <div className={`relative ${className}`}>
-      <div aria-hidden className="absolute -inset-4 rounded-3xl bg-primary/20 blur-3xl" />
-      <img src={src} alt={alt} loading="lazy" className="relative w-full rounded-xl border bg-card shadow-2xl" />
-    </div>
-  );
-}
+const delay = (i: number) => ({ '--d': `${i * 0.08}s` }) as React.CSSProperties;
 
 /** Brand landing page: the first thing a visitor sees. `onEnter` moves them on to the app (or sign-in). */
 export function LandingPage({ onEnter }: { onEnter: () => void }) {
-  const cta = (label: string) => (
-    <Button variant="primary" size="lg" onClick={onEnter} icon={<ArrowRight className="order-last size-4" />} label={label} />
-  );
+  const root = useRef<HTMLDivElement>(null);
+  useLandingMotion(root);
   return (
-    <div className="min-h-svh bg-background text-foreground">
-      <header className="sticky top-0 z-10 border-b bg-background/80 backdrop-blur">
+    <div ref={root} className="lp min-h-svh bg-background text-foreground">
+      <header className="sticky top-0 z-20 border-b bg-background/70 backdrop-blur-xl">
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
           <div className="flex items-center gap-2 text-lg font-semibold"><LogoIcon className="size-7" />{BRAND_NAME}</div>
-          <Button variant="secondary" size="sm" onClick={onEnter} label="Open the app" />
+          <Button variant="secondary" size="sm" className="rounded-full" onClick={onEnter} label="Open the app" />
         </div>
       </header>
 
-      <section className="mx-auto max-w-6xl px-4 pt-16 pb-10 text-center sm:pt-24">
-        <p className="mx-auto mb-4 w-fit rounded-full border bg-card px-3 py-1 text-xs text-muted-foreground">AI-native analytics</p>
-        <h1 className="mx-auto max-w-3xl text-4xl font-bold tracking-tight sm:text-6xl">
-          Ask your data anything. <span className="text-primary">See the answer.</span>
-        </h1>
-        <p className="mx-auto mt-5 max-w-2xl text-base text-muted-foreground sm:text-lg">
-          {BRAND_NAME} turns raw files and databases into trusted answers, charts and dashboards — in plain English, no SQL required.
-        </p>
-        <div className="mt-8 flex justify-center">{cta('Get started')}</div>
-        <Shot src={SHOTS.hero.src} alt={SHOTS.hero.alt} className="mx-auto mt-14 max-w-5xl" />
-      </section>
+      <Hero3D onEnter={onEnter} />
 
-      <section className="mx-auto max-w-6xl px-4 py-16">
-        <h2 className="text-center text-2xl font-semibold sm:text-3xl">Everything from raw data to decision</h2>
-        <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {FEATURES.map(({ icon: Icon, title, text }) => (
-            <div key={title} className="rounded-xl border bg-card p-5">
-              <Icon className="size-5 text-primary" />
-              <h3 className="mt-3 font-medium">{title}</h3>
-              <p className="mt-1 text-sm text-muted-foreground">{text}</p>
+      <ChartStrip />
+
+      <section className="mx-auto max-w-6xl px-4 py-24">
+        <h2 data-reveal className="text-center text-3xl font-semibold sm:text-4xl">Everything from raw data to decision</h2>
+        <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {FEATURES.map(({ icon: Icon, title, text }, i) => (
+            <div key={title} data-reveal style={delay(i)}>
+              <div className="lp-tilt h-full rounded-2xl border bg-card p-6" {...tilt}>
+                <div className="lp-pop flex size-11 items-center justify-center rounded-xl bg-primary/15 text-primary ring-1 ring-primary/30"><Icon className="size-5" /></div>
+                <h3 className="lp-pop mt-4 font-semibold">{title}</h3>
+                <p className="mt-1.5 text-sm text-muted-foreground">{text}</p>
+              </div>
             </div>
           ))}
         </div>
       </section>
 
-      <section className="mx-auto max-w-6xl space-y-20 px-4 py-16">
-        <h2 className="text-center text-2xl font-semibold sm:text-3xl">See {BRAND_NAME} at work</h2>
+      <section id="lp-tour" className="mx-auto max-w-6xl space-y-28 px-4 py-16">
+        <h2 data-reveal className="text-center text-3xl font-semibold sm:text-4xl">See {BRAND_NAME} at work</h2>
         {SHOTS.showcase.map((s, i) => (
-          <div key={s.src} className="grid items-center gap-8 md:grid-cols-5">
-            <div className={`md:col-span-2 ${i % 2 ? 'md:order-last' : ''}`}>
-              <h3 className="text-xl font-semibold">{s.title}</h3>
-              <p className="mt-2 text-muted-foreground">{s.text}</p>
+          <div key={s.src} className="grid items-center gap-10 md:grid-cols-5">
+            <div data-reveal className={`md:col-span-2 ${i % 2 ? 'md:order-last' : ''}`}>
+              <span className="text-sm font-medium text-primary">0{i + 1}</span>
+              <h3 className="mt-2 text-2xl font-semibold">{s.title}</h3>
+              <p className="mt-3 text-muted-foreground">{s.text}</p>
+              <ul className="mt-5 space-y-2.5 text-sm">
+                {SHOWCASE_POINTS[i]?.map((p) => (
+                  <li key={p} className="flex gap-2.5"><Check className="mt-0.5 size-4 shrink-0 text-primary" />{p}</li>
+                ))}
+              </ul>
             </div>
-            <Shot src={s.src} alt={s.title} className="md:col-span-3" />
+            <div data-reveal style={delay(2)} className="relative md:col-span-3">
+              <div aria-hidden className="absolute -inset-6 rounded-3xl bg-primary/15 blur-3xl" />
+              <img src={s.src} alt={s.title} loading="lazy" className="lp-angle relative mx-auto block h-auto max-h-[calc(100svh-8rem)] w-auto max-w-full rounded-xl border bg-card shadow-2xl"
+                style={{ '--a': i % 2 ? '10deg' : '-10deg' } as React.CSSProperties} />
+            </div>
           </div>
         ))}
       </section>
 
-      <section className="mx-auto max-w-6xl px-4 py-16">
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {STEPS.map((s) => (
-            <div key={s.n} className="rounded-xl border bg-card p-5">
-              <span className="flex size-8 items-center justify-center rounded-full bg-primary/15 text-sm font-semibold text-primary">{s.n}</span>
-              <h3 className="mt-3 font-medium">{s.title}</h3>
+      <section className="mx-auto max-w-6xl px-4 py-24">
+        <div className="relative grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          <div aria-hidden className="absolute top-10 right-[12%] left-[12%] hidden h-px bg-gradient-to-r from-transparent via-primary/60 to-transparent lg:block" />
+          {STEPS.map((s, i) => (
+            <div key={s.n} data-reveal style={delay(i * 2)} className="relative text-center">
+              <span className="relative mx-auto flex size-20 items-center justify-center rounded-2xl border bg-card text-2xl font-bold text-primary shadow-lg ring-1 ring-primary/20">{s.n}</span>
+              <h3 className="mt-4 font-semibold">{s.title}</h3>
               <p className="mt-1 text-sm text-muted-foreground">{s.text}</p>
             </div>
           ))}
         </div>
       </section>
 
-      <section className="mx-auto max-w-4xl px-4 py-20 text-center">
-        <h2 className="text-3xl font-bold sm:text-4xl">Your next answer is one question away.</h2>
-        <div className="mt-8 flex justify-center">{cta(`Start with ${BRAND_NAME}`)}</div>
+      <LandingDetails />
+
+      <section className="relative isolate overflow-hidden px-4 py-28 text-center">
+        <div aria-hidden className="lp-aurora top-1/2 left-1/2 -z-10 size-[30rem] -translate-1/2 bg-primary/30" />
+        <h2 data-reveal className="mx-auto max-w-3xl text-4xl font-bold sm:text-5xl">Your next answer is <span className="lp-gradient-text">one question away.</span></h2>
+        <div data-reveal style={delay(2)} className="mt-10 flex justify-center">
+          <Button variant="primary" size="lg" className="lp-glow rounded-full px-7" onClick={onEnter} icon={<ArrowRight className="order-last size-4" />} label={`Start with ${BRAND_NAME}`} />
+        </div>
       </section>
 
       <footer className="border-t py-6 text-center text-sm text-muted-foreground">© {new Date().getFullYear()} {BRAND_NAME}</footer>
