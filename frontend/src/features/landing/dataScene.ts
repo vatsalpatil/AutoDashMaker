@@ -14,90 +14,72 @@ function cssColor(expr: string): THREE.Color {
   return new THREE.Color().setRGB(r / 255, g / 255, b / 255, THREE.SRGBColorSpace);
 }
 
-const N = 9;          // bars per side
-const GAP = 1.25;     // distance between bar centres
+// 3D simplex noise (Ashima Arts, MIT) used to morph the orb's surface.
+const NOISE = /* glsl */ `
+vec4 permute(vec4 x){return mod(((x*34.0)+1.0)*x,289.0);}
+vec4 taylorInvSqrt(vec4 r){return 1.79284291400159-0.85373472095314*r;}
+float snoise(vec3 v){
+  const vec2 C=vec2(1.0/6.0,1.0/3.0); const vec4 D=vec4(0.0,0.5,1.0,2.0);
+  vec3 i=floor(v+dot(v,C.yyy)); vec3 x0=v-i+dot(i,C.xxx);
+  vec3 g=step(x0.yzx,x0.xyz); vec3 l=1.0-g; vec3 i1=min(g.xyz,l.zxy); vec3 i2=max(g.xyz,l.zxy);
+  vec3 x1=x0-i1+C.xxx; vec3 x2=x0-i2+2.0*C.xxx; vec3 x3=x0-1.0+3.0*C.xxx;
+  i=mod(i,289.0);
+  vec4 p=permute(permute(permute(i.z+vec4(0.0,i1.z,i2.z,1.0))+i.y+vec4(0.0,i1.y,i2.y,1.0))+i.x+vec4(0.0,i1.x,i2.x,1.0));
+  float n_=1.0/7.0; vec3 ns=n_*D.wyz-D.xzx;
+  vec4 j=p-49.0*floor(p*ns.z*ns.z); vec4 x_=floor(j*ns.z); vec4 y_=floor(j-7.0*x_);
+  vec4 x=x_*ns.x+ns.yyyy; vec4 y=y_*ns.x+ns.yyyy; vec4 h=1.0-abs(x)-abs(y);
+  vec4 b0=vec4(x.xy,y.xy); vec4 b1=vec4(x.zw,y.zw);
+  vec4 s0=floor(b0)*2.0+1.0; vec4 s1=floor(b1)*2.0+1.0; vec4 sh=-step(h,vec4(0.0));
+  vec4 a0=b0.xzyw+s0.xzyw*sh.xxyy; vec4 a1=b1.xzyw+s1.xzyw*sh.zzww;
+  vec3 p0=vec3(a0.xy,h.x); vec3 p1=vec3(a0.zw,h.y); vec3 p2=vec3(a1.xy,h.z); vec3 p3=vec3(a1.zw,h.w);
+  vec4 norm=taylorInvSqrt(vec4(dot(p0,p0),dot(p1,p1),dot(p2,p2),dot(p3,p3)));
+  p0*=norm.x; p1*=norm.y; p2*=norm.z; p3*=norm.w;
+  vec4 m=max(0.6-vec4(dot(x0,x0),dot(x1,x1),dot(x2,x2),dot(x3,x3)),0.0); m=m*m;
+  return 42.0*dot(m*m,vec4(dot(p0,x0),dot(p1,x1),dot(p2,x2),dot(p3,x3)));
+}`;
+
+const VERT = /* glsl */ `${NOISE}
+uniform float uTime; varying vec3 vNormal; varying vec3 vView; varying float vNoise;
+void main(){
+  float n = snoise(normal * 1.4 + uTime * 0.25) * 0.5 + snoise(normal * 3.0 - uTime * 0.18) * 0.18;
+  vNoise = n;
+  vec3 p = position + normal * n * 0.42;
+  vec4 mv = modelViewMatrix * vec4(p, 1.0);
+  vNormal = normalize(normalMatrix * normal); vView = normalize(-mv.xyz);
+  gl_Position = projectionMatrix * mv;
+}`;
+
+const FRAG = /* glsl */ `
+uniform vec3 uA; uniform vec3 uB; varying vec3 vNormal; varying vec3 vView; varying float vNoise;
+void main(){
+  float fres = pow(1.0 - max(dot(vNormal, vView), 0.0), 2.2);
+  vec3 col = mix(uA, uB, smoothstep(-0.4, 0.5, vNoise));
+  vec3 rim = mix(uB, vec3(1.0), 0.3) * 1.4;
+  // glassy: see-through centre, glowing iridescent edge
+  gl_FragColor = vec4(mix(col * 0.55, rim, fres), 0.12 + fres * 0.88);
+}`;
 
 /**
- * Landing-page WebGL scene: a 3D bar chart whose bars rise in a wave, a glowing wireframe "data core" above it,
- * orbiting data points and a particle field. Colours follow the theme. Returns a cleanup function.
+ * Decorative hero centrepiece (landing page only): one glowing orb whose surface morphs slowly like liquid,
+ * in the theme's colours, turning a little with the mouse. Returns a cleanup function.
  */
 export function createDataScene(canvas: HTMLCanvasElement, { still = false } = {}) {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 200);
+  const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 50);
+  camera.position.z = 7;
 
-  const primary = cssColor('var(--primary)');
-  const accent = cssColor('var(--chart-2)');
-  const dark = primary.clone().multiplyScalar(0.12);
+  const uniforms = { uTime: { value: 0 }, uA: { value: cssColor('var(--primary)') }, uB: { value: cssColor('var(--chart-2)') } };
+  const orb = new THREE.Mesh(new THREE.IcosahedronGeometry(1.6, 96), new THREE.ShaderMaterial({ uniforms, vertexShader: VERT, fragmentShader: FRAG, transparent: true, depthWrite: false }));
+  scene.add(orb);
 
-  scene.add(new THREE.AmbientLight(0xffffff, 0.25));
-  const sun = new THREE.DirectionalLight(0xffffff, 1.4);
-  sun.position.set(8, 14, 6);
-  scene.add(sun);
-  const glow = new THREE.PointLight(primary, 60, 30);
-  glow.position.set(0, 7, 0);
-  scene.add(glow);
-
-  // ---- bar chart (one instanced mesh, coloured by height)
-  const bars = new THREE.InstancedMesh(new THREE.BoxGeometry(0.9, 1, 0.9), new THREE.MeshStandardMaterial({ roughness: 0.35, metalness: 0.2 }), N * N);
-  const plate = new THREE.Mesh(new THREE.BoxGeometry(N * GAP + 0.6, 0.15, N * GAP + 0.6), new THREE.MeshStandardMaterial({ color: dark, roughness: 0.8 }));
-  plate.position.y = -0.08;
-  const grid = new THREE.GridHelper(N * GAP + 0.6, N, primary, primary);
-  (grid.material as THREE.Material).opacity = 0.25;
-  (grid.material as THREE.Material).transparent = true;
-  grid.position.y = 0.001;
-  const chart = new THREE.Group();
-  chart.add(plate, grid, bars);
-  scene.add(chart);
-
-  // ---- floating data core
-  const core = new THREE.Group();
-  core.add(new THREE.Mesh(new THREE.IcosahedronGeometry(1.6, 1), new THREE.MeshBasicMaterial({ color: primary, wireframe: true, transparent: true, opacity: 0.55 })));
-  core.add(new THREE.Mesh(new THREE.IcosahedronGeometry(0.75, 3), new THREE.MeshStandardMaterial({ color: primary, emissive: primary, emissiveIntensity: 1.2 })));
-  core.position.y = 7.5;
-  scene.add(core);
-
-  // ---- orbiting data points
-  const orbit = new THREE.Group();
-  const dotGeo = new THREE.SphereGeometry(0.16, 16, 16);
-  for (let i = 0; i < 14; i++) {
-    const dot = new THREE.Mesh(dotGeo, new THREE.MeshBasicMaterial({ color: i % 3 ? primary : accent }));
-    const a = (i / 14) * Math.PI * 2;
-    dot.position.set(Math.cos(a) * 3.2, Math.sin(a * 3) * 0.35, Math.sin(a) * 3.2);
-    orbit.add(dot);
-  }
-  orbit.position.y = 7.5;
-  orbit.rotation.x = 0.35;
-  scene.add(orbit);
-
-  // ---- particle field
-  const pts = new Float32Array(600 * 3);
-  for (let i = 0; i < pts.length; i++) pts[i] = (Math.random() - 0.5) * (i % 3 === 1 ? 24 : 34) + (i % 3 === 1 ? 6 : 0);
-  const particles = new THREE.Points(new THREE.BufferGeometry().setAttribute('position', new THREE.BufferAttribute(pts, 3)),
-    new THREE.PointsMaterial({ color: primary, size: 0.07, transparent: true, opacity: 0.7 }));
-  scene.add(particles);
-
-  const m = new THREE.Matrix4(), c = new THREE.Color(), pointer = { x: 0, y: 0 };
-  const half = ((N - 1) * GAP) / 2;
+  const pointer = { x: 0, y: 0 }, tilt = { x: 0, y: 0 };
   function update(t: number) {
-    for (let x = 0; x < N; x++) for (let z = 0; z < N; z++) {
-      const hill = 3.2 * Math.exp(-((x - 5.5) ** 2 + (z - 3) ** 2) / 10);
-      const wave = 0.9 + 0.8 * Math.sin(t * 1.6 - (x + z) * 0.55);
-      const h = Math.max(0.15, hill + wave + ((x * 7 + z * 3) % 4) * 0.25);
-      m.makeScale(1, h, 1).setPosition(x * GAP - half, h / 2, z * GAP - half);
-      bars.setMatrixAt(x * N + z, m);
-      bars.setColorAt(x * N + z, c.copy(dark).lerp(primary, Math.min(h / 4.5, 1)).lerp(accent, Math.max(0, h - 4.2) / 3));
-    }
-    bars.instanceMatrix.needsUpdate = true;
-    bars.instanceColor!.needsUpdate = true;
-    chart.rotation.y = t * 0.12;
-    core.rotation.set(t * 0.3, t * 0.45, 0);
-    core.position.y = 7.5 + Math.sin(t * 1.2) * 0.35;
-    orbit.rotation.y = -t * 0.5;
-    particles.rotation.y = t * 0.03;
-    camera.position.set(17 + pointer.x * 2.5, 13 + pointer.y * 2, 17);
-    camera.lookAt(0, 3.4, 0);
+    uniforms.uTime.value = t;
+    tilt.x += (pointer.y * 0.5 - tilt.x) * 0.04;     // ease towards the mouse
+    tilt.y += (pointer.x * 0.7 - tilt.y) * 0.04;
+    orb.rotation.set(tilt.x, t * 0.12 + tilt.y, 0);
     renderer.render(scene, camera);
   }
 
@@ -131,11 +113,8 @@ export function createDataScene(canvas: HTMLCanvasElement, { still = false } = {
     window.removeEventListener('pointermove', onPointer);
     ro.disconnect();
     io.disconnect();
-    scene.traverse((o) => {
-      const mesh = o as THREE.Mesh;
-      mesh.geometry?.dispose();
-      (Array.isArray(mesh.material) ? mesh.material : mesh.material ? [mesh.material] : []).forEach((mat) => mat.dispose());
-    });
+    orb.geometry.dispose();
+    (orb.material as THREE.Material).dispose();
     renderer.dispose();
   };
 }

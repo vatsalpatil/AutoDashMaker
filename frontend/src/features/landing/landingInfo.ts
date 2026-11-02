@@ -1,4 +1,4 @@
-import { Bell, BriefcaseBusiness, Code2, Eye, FileCheck2, History, KeyRound, LineChart, Lock, Smartphone, Users, type LucideIcon } from 'lucide-react';
+import { Bell, BriefcaseBusiness, Code2, Eye, FileCheck2, History, KeyRound, LineChart, Lock, Smartphone, Users, Zap, type LucideIcon } from 'lucide-react';
 
 /** Bullet points shown under each showcase screenshot (same order as SHOTS.showcase). */
 export const SHOWCASE_POINTS: string[][] = [
@@ -27,6 +27,7 @@ export const TRUST: { icon: LucideIcon; title: string; text: string }[] = [
   { icon: History, title: 'Full audit trail', text: 'Every query, edit and share is recorded in the activity log.' },
   { icon: KeyRound, title: 'Your choice of AI', text: 'Use Gemini, OpenAI, Anthropic, Groq or OpenRouter with your own keys.' },
   { icon: Bell, title: 'Alerts that watch for you', text: 'Get notified when a metric crosses a threshold or data goes stale.' },
+  { icon: Zap, title: 'Fast by default', text: 'An in-process DuckDB engine and a result cache keep pages quick, even on big tables.' },
   { icon: Smartphone, title: 'Works everywhere', text: 'Responsive on phone, tablet and desktop, with light and dark themes.' },
 ];
 

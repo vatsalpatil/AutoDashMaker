@@ -188,6 +188,8 @@ export const FAMILIES: { id: string; name: string; light: string; dark: string }
   { id: 'midnight', name: 'Midnight', light: 'light-midnight', dark: 'dark-midnight' },
 ];
 
+/** Colour `i` of a preset's preview swatch (for theme pickers). */
+export const swatchOf = (id: string, i: number) => PRESETS.find((p) => p.id === id)?.swatch[i] ?? '#888';
 export const familyOf = (presetId: string) => FAMILIES.find((f) => f.light === presetId || f.dark === presetId);
 export const isDarkNow = (mode: ThemeMode) => (mode === 'system' ? prefersDark() : mode === 'dark');
 

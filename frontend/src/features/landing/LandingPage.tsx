@@ -1,15 +1,13 @@
 import { useRef } from 'react';
-import { ArrowRight, Check, Moon, Sun } from 'lucide-react';
+import { ArrowRight, Check } from 'lucide-react';
 import { BRAND_NAME } from '@/lib/brand';
-import { toggleDarkMode } from '@/lib/theme';
-import { useIsDark } from '@/hooks/useIsDark';
 import { LogoIcon } from '@/components/common/LogoIcon';
 import { Button } from '@/components/ui/kit';
 import { FEATURES, SHOTS } from './landingContent';
 import { Lifecycle } from './Lifecycle';
 import { ProductExplorer } from './ProductExplorer';
 import { ChartStrip } from './ChartStrip';
-import { Section3D } from './Section3D';
+import { ThemePicker } from './ThemePicker';
 import { SHOWCASE_POINTS } from './landingInfo';
 import { Hero3D } from './Hero3D';
 import { Heading, LandingDetails } from './LandingDetails';
@@ -25,16 +23,13 @@ const delay = (i: number) => ({ '--d': `${i * 0.08}s` }) as React.CSSProperties;
 export function LandingPage({ onEnter }: { onEnter: () => void }) {
   const root = useRef<HTMLDivElement>(null);
   useLandingMotion(root);
-  const dark = useIsDark();
   return (
     <div ref={root} className="lp min-h-svh bg-background text-foreground">
       <header className="sticky top-0 z-20 border-b bg-background/70 backdrop-blur-xl">
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
           <div className="flex items-center gap-2 text-lg font-semibold"><LogoIcon className="size-7" />{BRAND_NAME}</div>
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" className="size-9 rounded-full p-0" onClick={() => toggleDarkMode()}
-              aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'} title={dark ? 'Light mode' : 'Dark mode'}
-              icon={dark ? <Sun className="size-4" /> : <Moon className="size-4" />} />
+            <ThemePicker />
             <Button variant="secondary" size="sm" className="rounded-full" onClick={onEnter} label="Open the app" />
           </div>
         </div>
@@ -44,7 +39,6 @@ export function LandingPage({ onEnter }: { onEnter: () => void }) {
 
       <ChartStrip />
 
-      <Section3D />
 
       <section className="mx-auto max-w-6xl px-4 py-24">
         <h2 data-reveal className="text-center text-3xl font-semibold sm:text-4xl">Everything from raw data to decision</h2>

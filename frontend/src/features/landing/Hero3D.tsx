@@ -2,6 +2,7 @@ import { ArrowRight, ShieldCheck, Sparkles, TrendingUp } from 'lucide-react';
 import { BRAND_NAME } from '@/lib/brand';
 import { Button } from '@/components/ui/kit';
 import { SHOTS } from './landingContent';
+import { Scene3D } from './Scene3D';
 
 /** Small glassy card that floats in front of the hero screenshot (3D depth via translateZ). */
 function Chip({ className, delay, children }: { className: string; delay: string; children: React.ReactNode }) {
@@ -12,17 +13,16 @@ function Chip({ className, delay, children }: { className: string; delay: string
   );
 }
 
-/** Hero: aurora + 3D grid floor, staggered headline, tilted screenshot that flattens on scroll, floating chips. */
+/** Hero: a morphing 3D orb behind the headline, staggered headline, tilted screenshot that flattens on scroll, floating chips. */
 export function Hero3D({ onEnter }: { onEnter: () => void }) {
   const rise = (d: number) => ({ '--d': `${d}s` }) as React.CSSProperties;
   return (
     <section className="relative isolate overflow-hidden">
-      <div aria-hidden className="absolute inset-0 -z-10">
-        <div className="lp-aurora -top-32 left-[10%] size-[28rem] bg-primary/40" />
-        <div className="lp-aurora top-20 right-[5%] size-[22rem] bg-chart-2/30" style={{ animationDelay: '-6s' }} />
-        <div className="lp-aurora top-[45%] left-[40%] size-[26rem] bg-chart-4/20" style={{ animationDelay: '-12s' }} />
-        <div className="lp-floor" />
+      {/* one decorative 3D orb behind the headline (three.js, see dataScene.ts) */}
+      <div aria-hidden className="pointer-events-none absolute top-0 left-1/2 -z-10 aspect-square w-[min(760px,130vw)] -translate-x-1/2 -translate-y-[4%] opacity-75">
+        <Scene3D />
       </div>
+      <div aria-hidden className="absolute inset-x-0 top-[38%] -z-10 h-[40%] bg-gradient-to-b from-transparent via-background/80 to-background" />
 
       <div className="mx-auto max-w-6xl px-4 pt-16 text-center sm:pt-24">
         <p className="lp-rise mx-auto mb-5 flex w-fit items-center gap-2 rounded-full border bg-card/60 px-3 py-1 text-xs text-muted-foreground backdrop-blur" style={rise(0)}>
@@ -44,7 +44,7 @@ export function Hero3D({ onEnter }: { onEnter: () => void }) {
         <div className="lp-stage lp-rise relative mx-auto mt-16 pb-16" style={rise(0.7)}>
           {/* sized by the screen's height too, so the whole screenshot is always visible */}
           <div className="lp-hero-shot relative mx-auto w-fit">
-            <div aria-hidden className="absolute -inset-6 rounded-3xl bg-primary/25 blur-3xl" />
+            <div aria-hidden className="absolute -inset-4 rounded-3xl bg-primary/15 blur-3xl" />
             <img src={SHOTS.hero.src} alt={SHOTS.hero.alt} className="relative block h-auto max-h-[calc(100svh-6rem)] w-auto max-w-full rounded-xl border bg-card shadow-2xl" />
             <Chip className="-left-10 top-24 text-left" delay="0s">
               <div className="text-xs text-muted-foreground">Revenue</div>

@@ -8,8 +8,8 @@ import {
   FONT_MAX,
   FONT_MIN,
   FAMILIES,
-  PRESETS,
   familyOf,
+  swatchOf,
   applyPrefs,
   loadPrefs,
   savePrefs,
@@ -167,4 +167,3 @@ function Dots({ colors }: { colors: string[] }) {
   );
 }
 
-const swatchOf = (id: string, i: number) => PRESETS.find((p) => p.id === id)?.swatch[i] ?? '#888';
