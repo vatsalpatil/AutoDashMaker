@@ -13,7 +13,8 @@
 /* ---- headline */
 .lp-gradient-text { background: linear-gradient(90deg, var(--primary), color-mix(in oklab, var(--primary) 40%, white), var(--primary));
   background-size: 200% auto; -webkit-background-clip: text; background-clip: text; color: transparent; animation: lp-shine 5s linear infinite; }
-.lp-rise { opacity: 0; transform: translateY(24px); animation: lp-rise .9s cubic-bezier(.2,.7,.2,1) forwards; animation-delay: var(--d, 0s); }
+/* fill 'backwards' (not 'forwards'): once done the animation lets go, so text renders crisp instead of as a GPU layer */
+.lp-rise { animation: lp-rise .9s cubic-bezier(.2,.7,.2,1) backwards; animation-delay: var(--d, 0s); }
 
 /* ---- hero 3D stage: screenshot starts tilted back and flattens as you scroll */
 .lp-stage { perspective: 1400px; }
@@ -71,7 +72,7 @@
 @keyframes lp-drift { to { transform: translate(8%, -6%) scale(1.2); } }
 @keyframes lp-floor { to { background-position: 0 56px; } }
 @keyframes lp-shine { to { background-position: -200% center; } }
-@keyframes lp-rise { to { opacity: 1; transform: none; } }
+@keyframes lp-rise { from { opacity: 0; transform: translateY(24px); } }
 @keyframes lp-bob { 0%, 100% { translate: 0 0; } 50% { translate: 0 -14px; } }
 @keyframes lp-grow { from { transform: scaleY(0); } }
 @keyframes lp-grow-x { from { transform: scaleX(0); } }

@@ -19,10 +19,10 @@ export function Hero3D({ onEnter }: { onEnter: () => void }) {
   return (
     <section className="relative isolate overflow-hidden">
       {/* one decorative 3D orb behind the headline (three.js, see dataScene.ts) */}
-      <div aria-hidden className="pointer-events-none absolute top-0 left-1/2 -z-10 aspect-square w-[min(1800px,230vw)] -translate-x-1/2 -translate-y-[35%] opacity-75">
+      <div aria-hidden className="pointer-events-none absolute top-0 left-1/2 -z-10 aspect-square w-[min(1800px,230vw)] -translate-x-1/2 -translate-y-[35%]">
         <Scene3D />
       </div>
-      <div aria-hidden className="absolute inset-x-0 top-[38%] -z-10 h-[40%] bg-gradient-to-b from-transparent via-background/80 to-background" />
+      <div aria-hidden className="absolute inset-x-0 top-[55%] -z-10 h-[30%] bg-gradient-to-b from-transparent via-background/60 to-background" />
 
       <div className="mx-auto max-w-6xl px-4 pt-16 text-center sm:pt-24">
         <p className="lp-rise mx-auto mb-5 flex w-fit items-center gap-2 rounded-full border bg-card/60 px-3 py-1 text-xs text-muted-foreground backdrop-blur" style={rise(0)}>

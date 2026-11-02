@@ -55,8 +55,11 @@ void main(){
   float fres = pow(1.0 - max(dot(vNormal, vView), 0.0), 2.2);
   vec3 col = mix(uA, uB, smoothstep(-0.4, 0.5, vNoise));
   vec3 rim = mix(uB, vec3(1.0), 0.3) * 1.4;
-  // glassy: see-through centre, glowing iridescent edge
-  gl_FragColor = vec4(mix(col * 0.55, rim, fres), 0.12 + fres * 0.88);
+  // lit surface so the shape reads clearly, plus thin contour lines that stay crisp at any size
+  float light = 0.45 + 0.55 * max(dot(vNormal, normalize(vec3(-0.4, 0.6, 0.7))), 0.0);
+  float line = 1.0 - smoothstep(0.0, fwidth(vNoise * 18.0) * 1.2, abs(fract(vNoise * 18.0) - 0.5) * 2.0 - 0.9);
+  vec3 c = mix(col * light, rim, fres) + uB * line * 0.35;
+  gl_FragColor = vec4(c, 0.35 + fres * 0.65);
 }`;
 
 /**
