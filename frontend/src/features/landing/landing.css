@@ -56,6 +56,9 @@
 .lp-swap { animation: lp-swap .55s cubic-bezier(.2,.7,.2,1) both; }
 .lp-progress { animation: lp-progress 6s linear forwards; }
 .lp-flow { animation: lp-flow 4s linear infinite; }
+/* life-cycle progress arc: grows from --from to --to over one stage, in step with the ball */
+.lp-arc { animation: lp-arc var(--ms) linear forwards; }
+@keyframes lp-arc { from { stroke-dasharray: var(--from) 100; } to { stroke-dasharray: var(--to) 100; } }
 .lp-pulse { filter: drop-shadow(0 0 8px var(--primary)); }
 
 /* ---- AI demo: shimmering "working" text and a scan sweep over the results while the query runs */

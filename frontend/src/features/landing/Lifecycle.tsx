@@ -37,7 +37,10 @@ export function Lifecycle() {
           <circle cx="200" cy="200" r="164" fill="none" stroke="var(--primary)" strokeWidth="2" strokeDasharray="6 10" className="lp-flow" opacity=".7" />
           {/* progress arc: grows to the active stage, synced with the highlight */}
           <circle cx="200" cy="200" r="164" fill="none" stroke="var(--primary)" strokeWidth="4" strokeLinecap="round" pathLength="100"
-            strokeDasharray={`${(active / N) * 100 + 0.01} 100`} transform="rotate(-90 200 200)" className="lp-pulse transition-[stroke-dasharray] duration-700" />
+            transform="rotate(-90 200 200)" key={`${active}-${playing}`}
+            // playing: grows steadily with the ball (restarted each stage via key); paused: holds at the active stage
+            className={playing ? 'lp-pulse lp-arc' : 'lp-pulse'}
+            style={{ strokeDasharray: `${(active / N) * 100 + 0.01} 100`, '--from': `${(active / N) * 100 + 0.01}`, '--to': `${((active + 1) / N) * 100}`, '--ms': `${STEP_MS}ms` } as React.CSSProperties} />
           {/* glowing ball travelling round the ring without stopping */}
           <g style={playing
             // playing: glide at a steady speed towards the next stage, arriving just as it lights up

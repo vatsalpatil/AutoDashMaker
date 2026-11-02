@@ -363,3 +363,4 @@ Format: `YYYY-MM-DD · tool · files · what + why`
 - 2026-11-02 · landing/{dataScene.ts,Hero3D.tsx} · Final hero: large orb (1800px, title inside) drawn ONLY as thin glowing lines (no filled surface) — user's pick.
 - 2026-11-02 · landing/dataScene.ts · Orb lines: ~2x denser, follow the round outline (bands of equal view angle) instead of horizontal, fade out to an empty centre.
 - 2026-11-02 · landing/dataScene.ts · Orb lines ~2x denser (110 rings); fixed bold broken streaks/solid patches: no noise in the line pattern, depth write on (front layer only), +0.5 offset so edge-on areas fall between lines, fade where lines merge sub-pixel.
+- 2026-11-02 · landing/{Lifecycle.tsx,landing.css} · Life-cycle progress arc now grows linearly with the ball each stage (lp-arc keyframes from --from to --to, restarted via key), restarts from empty at stage 1.
