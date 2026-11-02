@@ -43,3 +43,6 @@ backend/data/secret.key
 
 # archify diagram work dirs (sources kept in .archify/dashtor/*.json)
 .archify/**/out/
+# installed agent skills (18 MB; reinstall from skills-lock.json: npx skills add tt-a1i/archify@archify)
+.agents/
+.claude/skills/
