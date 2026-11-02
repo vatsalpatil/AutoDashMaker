@@ -17,7 +17,7 @@ const TITLES: Record<Mode, string> = {
  * Existing user: Sign in -> Home.
  * Nobody is signed in by sign-up itself: the email must be confirmed first.
  */
-export function LoginPage({ notice = null }: { notice?: string | null }) {
+export function LoginPage({ notice = null, onBack }: { notice?: string | null; onBack?: () => void }) {
   const [mode, setMode] = useState<Mode>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -70,6 +70,9 @@ export function LoginPage({ notice = null }: { notice?: string | null }) {
 
   return (
     <div className="grid min-h-svh place-items-center bg-background p-4">
+      {onBack && (
+        <button type="button" onClick={onBack} className="fixed top-4 left-4 text-sm text-muted-foreground hover:text-foreground">← Back to {BRAND_NAME}</button>
+      )}
       <Card className="w-full max-w-sm space-y-4 p-6">
         <div className="flex items-center gap-3">
           <LogoIcon className="size-11 shrink-0" />

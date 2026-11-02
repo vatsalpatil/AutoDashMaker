@@ -1,20 +1,39 @@
-import { useState } from 'react';
+import { createElement, type ReactNode } from 'react';
+import { Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { LoginPage } from '@/features/auth/LoginPage';
+import { LandingPage } from './LandingPage';
 
 const KEY = 'dashtor.entered';
-const read = () => { try { return sessionStorage.getItem(KEY) === '1'; } catch { return false; } };
+const entered = () => { try { return sessionStorage.getItem(KEY) === '1'; } catch { return false; } };
+const markEntered = () => { try { sessionStorage.setItem(KEY, '1'); } catch { /* storage blocked: landing simply shows again */ } };
 
 /**
- * Visitors arriving at the site root see the landing page first (once per browser tab session);
- * deep links (/dashboards/…) go straight to the app. `/welcome` always shows it.
+ * URL rules for the public pages of the main app (the backoffice does not use them):
+ *   /welcome            landing page, always
+ *   signed out, /       landing page          → "Get started" goes to /login
+ *   signed out, /login  sign-in page          → after sign-in, back to ?next= or /
+ *   signed out, other   → /login?next=<that page>
+ *   signed in,  /login  → ?next= or /
+ *   local mode (no login): landing at / once per tab session, then the app.
+ * Returns the page to show, or null to show the app.
  */
-export function useLanding(): [boolean, () => void] {
-  const path = window.location.pathname;
-  const [show, setShow] = useState(path === '/welcome' || (path === '/' && !read()));
-  const enter = () => {
-    try { sessionStorage.setItem(KEY, '1'); } catch { /* storage blocked: landing simply shows again next visit */ }
-    if (window.location.pathname === '/welcome') window.history.replaceState(null, '', '/');
-    window.scrollTo(0, 0);
-    setShow(false);
-  };
-  return [show, enter];
+export function usePublicPage({ active, enabled, signedIn, notice }: { active: boolean; enabled: boolean; signedIn: boolean; notice: string | null }): ReactNode {
+  const { pathname, search } = useLocation();
+  const navigate = useNavigate();
+  if (!active) return null;
+  const next = new URLSearchParams(search).get('next');
+  const safeNext = next?.startsWith('/') && !next.startsWith('//') ? next : '/';
+  const go = (to: string) => () => { markEntered(); window.scrollTo(0, 0); navigate(to); };
+
+  if (pathname === '/welcome') return createElement(LandingPage, { onEnter: go(enabled && !signedIn ? '/login' : '/') });
+
+  if (enabled && !signedIn) {
+    if (notice || pathname === '/login') return createElement(LoginPage, { notice, onBack: () => navigate('/') });
+    if (pathname === '/') return createElement(LandingPage, { onEnter: go('/login') });
+    return createElement(Navigate, { to: `/login?next=${encodeURIComponent(pathname + search)}`, replace: true });
+  }
+
+  if (pathname === '/login') return createElement(Navigate, { to: safeNext, replace: true });
+  if (!enabled && pathname === '/' && !entered()) return createElement(LandingPage, { onEnter: go('/') });
+  return null;
 }

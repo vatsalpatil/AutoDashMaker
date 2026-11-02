@@ -346,3 +346,4 @@ Format: `YYYY-MM-DD · tool · files · what + why`
 - 2026-11-02 · public/videos/**, features/landing/VideoSection.tsx · narrated 1:48 product tour (headless-Chrome screencast + Windows TTS voice, ffmpeg) and 4 silent loop clips (~50-200 KB each, play only on screen) on the landing page.
 - 2026-11-02 · features/landing/Hero3D.tsx · hero orb enlarged so the headline sits inside it.
 - 2026-11-02 · features/landing/VideoSection.tsx, public/videos · removed the narrated tour video (user disliked it); the 4 silent loops stay.
+- 2026-11-02 · features/landing/useLanding.ts, features/auth/{AuthProvider,LoginPage}.tsx, main.tsx · separate URLs: / landing, /login sign-in (with Back link), deep links → /login?next=, sign-out → landing; backoffice no longer gets the landing page.
