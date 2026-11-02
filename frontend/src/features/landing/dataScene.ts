@@ -64,13 +64,13 @@ void main(){
  * in the theme's colours, turning a little with the mouse. Returns a cleanup function.
  */
 export function createDataScene(canvas: HTMLCanvasElement, { still = false } = {}) {
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, alpha: true, powerPreference: 'low-power' });
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'low-power' });
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 50);
   camera.position.z = 7;
 
   const uniforms = { uTime: { value: 0 }, uA: { value: cssColor('var(--primary)') }, uB: { value: cssColor('var(--chart-2)') } };
-  const orb = new THREE.Mesh(new THREE.IcosahedronGeometry(1.6, 40), new THREE.ShaderMaterial({ uniforms, vertexShader: VERT, fragmentShader: FRAG, transparent: true, depthWrite: false }));
+  const orb = new THREE.Mesh(new THREE.IcosahedronGeometry(1.6, 64), new THREE.ShaderMaterial({ uniforms, vertexShader: VERT, fragmentShader: FRAG, transparent: true, depthWrite: false }));
   scene.add(orb);
 
   const pointer = { x: 0, y: 0 }, tilt = { x: 0, y: 0 };
@@ -84,8 +84,8 @@ export function createDataScene(canvas: HTMLCanvasElement, { still = false } = {
 
   const resize = () => {
     const { clientWidth: w, clientHeight: h } = canvas;
-    // soft, blurred decoration: a ~900px backing buffer upscaled by CSS looks the same and is ~10x cheaper
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 900 / Math.max(w, 1)));
+    // 1:1 CSS pixels keeps the orb crisp; skipping devicePixelRatio (up to 2x) still saves ~4x the pixels
+    renderer.setPixelRatio(1);
     renderer.setSize(w, h, false);
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
