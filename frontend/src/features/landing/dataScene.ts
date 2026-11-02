@@ -14,86 +14,91 @@ function cssColor(expr: string): THREE.Color {
   return new THREE.Color().setRGB(r / 255, g / 255, b / 255, THREE.SRGBColorSpace);
 }
 
-// 3D simplex noise (Ashima Arts, MIT) used to morph the orb's surface.
-const NOISE = /* glsl */ `
-vec4 permute(vec4 x){return mod(((x*34.0)+1.0)*x,289.0);}
-vec4 taylorInvSqrt(vec4 r){return 1.79284291400159-0.85373472095314*r;}
-float snoise(vec3 v){
-  const vec2 C=vec2(1.0/6.0,1.0/3.0); const vec4 D=vec4(0.0,0.5,1.0,2.0);
-  vec3 i=floor(v+dot(v,C.yyy)); vec3 x0=v-i+dot(i,C.xxx);
-  vec3 g=step(x0.yzx,x0.xyz); vec3 l=1.0-g; vec3 i1=min(g.xyz,l.zxy); vec3 i2=max(g.xyz,l.zxy);
-  vec3 x1=x0-i1+C.xxx; vec3 x2=x0-i2+2.0*C.xxx; vec3 x3=x0-1.0+3.0*C.xxx;
-  i=mod(i,289.0);
-  vec4 p=permute(permute(permute(i.z+vec4(0.0,i1.z,i2.z,1.0))+i.y+vec4(0.0,i1.y,i2.y,1.0))+i.x+vec4(0.0,i1.x,i2.x,1.0));
-  float n_=1.0/7.0; vec3 ns=n_*D.wyz-D.xzx;
-  vec4 j=p-49.0*floor(p*ns.z*ns.z); vec4 x_=floor(j*ns.z); vec4 y_=floor(j-7.0*x_);
-  vec4 x=x_*ns.x+ns.yyyy; vec4 y=y_*ns.x+ns.yyyy; vec4 h=1.0-abs(x)-abs(y);
-  vec4 b0=vec4(x.xy,y.xy); vec4 b1=vec4(x.zw,y.zw);
-  vec4 s0=floor(b0)*2.0+1.0; vec4 s1=floor(b1)*2.0+1.0; vec4 sh=-step(h,vec4(0.0));
-  vec4 a0=b0.xzyw+s0.xzyw*sh.xxyy; vec4 a1=b1.xzyw+s1.xzyw*sh.zzww;
-  vec3 p0=vec3(a0.xy,h.x); vec3 p1=vec3(a0.zw,h.y); vec3 p2=vec3(a1.xy,h.z); vec3 p3=vec3(a1.zw,h.w);
-  vec4 norm=taylorInvSqrt(vec4(dot(p0,p0),dot(p1,p1),dot(p2,p2),dot(p3,p3)));
-  p0*=norm.x; p1*=norm.y; p2*=norm.z; p3*=norm.w;
-  vec4 m=max(0.6-vec4(dot(x0,x0),dot(x1,x1),dot(x2,x2),dot(x3,x3)),0.0); m=m*m;
-  return 42.0*dot(m*m,vec4(dot(p0,x0),dot(p1,x1),dot(p2,x2),dot(p3,x3)));
-}`;
+const STRANDS = 90;     // thin lines per ribbon
+const POINTS = 220;     // points along each line
 
-const VERT = /* glsl */ `${NOISE}
-uniform float uTime; varying vec3 vNormal; varying vec3 vView; varying float vNoise; varying vec3 vPos;
+// Each vertex is (t along the line 0..1, s across the ribbon 0..1, side -1|1); the shape is computed here, so the CPU does nothing per frame.
+const VERT = /* glsl */ `
+uniform float uTime; uniform float uEdge; uniform vec2 uTilt;
+attribute vec3 aRib; varying float vS; varying float vT; varying float vFace;
 void main(){
-  float n = snoise(normal * 1.4 + uTime * 0.25) * 0.5 + snoise(normal * 3.0 - uTime * 0.18) * 0.18;
-  vNoise = n;
-  vec3 p = position + normal * n * 0.42;
-  vPos = position;
-  vec4 mv = modelViewMatrix * vec4(p, 1.0);
-  vNormal = normalize(normalMatrix * normal); vView = normalize(-mv.xyz);
-  gl_Position = projectionMatrix * mv;
+  float t = aRib.x, s = aRib.y, side = aRib.z, k = uTime * 0.35 + side * 1.7;
+  float y = mix(-3.6, 3.6, t);
+  // the ribbon's spine sweeps in an S-curve near the screen edge
+  float cx = side * (uEdge - 1.9 + 0.9 * sin(t * 3.4 + k) + 0.3 * sin(t * 7.0 - k * 1.3));
+  // it twists along its length; strands fan out across the width
+  float a = t * 4.0 + k * 1.2, w = 1.5 + 0.6 * sin(t * 3.0 + k);
+  float off = (s - 0.5) * w;
+  vec3 p = vec3(cx + off * cos(a), y + off * 0.25 * sin(a * 0.5), off * sin(a));
+  p.xy += uTilt * vec2(0.15, 0.1) * side;
+  vS = s; vT = t; vFace = abs(cos(a));   // facing the viewer = brighter, edge-on = dimmer
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
 }`;
 
 const FRAG = /* glsl */ `
-uniform vec3 uA; uniform vec3 uB; varying vec3 vNormal; varying vec3 vView; varying float vNoise; varying vec3 vPos;
+uniform vec3 uA; uniform vec3 uB; varying float vS; varying float vT; varying float vFace;
 void main(){
-  float fres = pow(1.0 - max(dot(vNormal, vView), 0.0), 2.2);
-  vec3 col = mix(uA, uB, smoothstep(-0.4, 0.5, vNoise));
-  vec3 rim = mix(uB, vec3(1.0), 0.3) * 1.4;
-  // wire strings: thin lines wrapping round the orb, bent by the same noise so they flow with the surface
-  float x = (vPos.y + vNoise * 0.3) * 6.0, d = min(fract(x), 1.0 - fract(x));
-  float line = 1.0 - smoothstep(0.0, fwidth(x) * 1.2, d);   // ~1px wide whatever the zoom
-  // glassy: see-through centre, glowing iridescent edge
-  vec3 c = mix(mix(col * 0.55, rim, fres), rim, line);
-  gl_FragColor = vec4(c, max(0.12 + fres * 0.88, line * 0.6));
+  vec3 col = mix(uA, uB, smoothstep(0.15, 0.85, vS * 0.6 + vT * 0.4 + 0.15 * sin(vT * 12.0)));
+  float edge = smoothstep(0.0, 0.08, vS) * smoothstep(1.0, 0.92, vS);      // soft ribbon borders
+  float fade = smoothstep(0.0, 0.12, vT) * smoothstep(1.0, 0.88, vT);      // fade at top and bottom
+  float glow = 0.25 + 0.75 * pow(1.0 - vFace, 2.0) + 0.2 * vFace;           // bright where the ribbon turns
+  gl_FragColor = vec4(col * (0.6 + glow), (0.12 + 0.5 * glow) * edge * fade);
 }`;
 
+function ribbonGeometry() {
+  const rib: number[] = [], index: number[] = [];
+  for (const side of [-1, 1])
+    for (let i = 0; i < STRANDS; i++) {
+      const base = rib.length / 3;
+      for (let j = 0; j < POINTS; j++) {
+        rib.push(j / (POINTS - 1), i / (STRANDS - 1), side);
+        if (j) index.push(base + j - 1, base + j);
+      }
+    }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('aRib', new THREE.Float32BufferAttribute(rib, 3));
+  g.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(rib.length), 3));   // unused; three needs it
+  g.setIndex(index);
+  g.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 100);
+  return g;
+}
+
 /**
- * Decorative hero centrepiece (landing page only): one glowing orb whose surface morphs slowly like liquid,
- * in the theme's colours, turning a little with the mouse. Returns a cleanup function.
+ * Decorative hero backdrop (landing page only): two silk-like ribbons of thin glowing strands twisting down both
+ * sides of the headline, in the theme's colours, drifting a little with the mouse. Returns a cleanup function.
  */
 export function createDataScene(canvas: HTMLCanvasElement, { still = false } = {}) {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'low-power' });
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 50);
-  camera.position.z = 7;
+  camera.position.z = 10;
 
-  const uniforms = { uTime: { value: 0 }, uA: { value: cssColor('var(--primary)') }, uB: { value: cssColor('var(--chart-2)') } };
-  const orb = new THREE.Mesh(new THREE.IcosahedronGeometry(1.6, 96), new THREE.ShaderMaterial({ uniforms, vertexShader: VERT, fragmentShader: FRAG, transparent: true, depthWrite: false }));
-  scene.add(orb);
+  const uniforms = {
+    uTime: { value: 0 }, uEdge: { value: 5 }, uTilt: { value: new THREE.Vector2() },
+    uA: { value: cssColor('var(--primary)') }, uB: { value: cssColor('var(--chart-2)') },
+  };
+  const material = new THREE.ShaderMaterial({ uniforms, vertexShader: VERT, fragmentShader: FRAG, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
+  const ribbons = new THREE.LineSegments(ribbonGeometry(), material);
+  scene.add(ribbons);
 
-  const pointer = { x: 0, y: 0 }, tilt = { x: 0, y: 0 };
+  const pointer = { x: 0, y: 0 };
   function update(t: number) {
     uniforms.uTime.value = t;
-    tilt.x += (pointer.y * 0.5 - tilt.x) * 0.04;     // ease towards the mouse
-    tilt.y += (pointer.x * 0.7 - tilt.y) * 0.04;
-    orb.rotation.set(tilt.x, t * 0.12 + tilt.y, 0);
+    const tilt = uniforms.uTilt.value;
+    tilt.x += (pointer.x - tilt.x) * 0.04;     // ease towards the mouse
+    tilt.y += (-pointer.y - tilt.y) * 0.04;
     renderer.render(scene, camera);
   }
 
   const resize = () => {
     const { clientWidth: w, clientHeight: h } = canvas;
-    // full screen sharpness (users saw anything lower as blurry); the 30fps cap and idle start keep it light
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setSize(w, h, false);
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
+    // half the visible width at z=0, so the ribbons hug the screen edges at any size (narrow screens: pushed further out)
+    const half = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * camera.position.z * camera.aspect;
+    uniforms.uEdge.value = camera.aspect < 1 ? half + 0.4 : half;
   };
   const onPointer = (e: PointerEvent) => {
     pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
@@ -111,7 +116,7 @@ export function createDataScene(canvas: HTMLCanvasElement, { still = false } = {
   if (still) update(2);
   else {
     window.addEventListener('pointermove', onPointer, { passive: true });
-    let last = 0;   // ~30 fps is plenty for a slow morph and halves the GPU work
+    let last = 0;   // ~30 fps is plenty for a slow drift and halves the GPU work
     renderer.setAnimationLoop((now) => { if (visible && now - last > 32) { last = now; update(clock.getElapsedTime()); } });
   }
 
@@ -120,8 +125,8 @@ export function createDataScene(canvas: HTMLCanvasElement, { still = false } = {
     window.removeEventListener('pointermove', onPointer);
     ro.disconnect();
     io.disconnect();
-    orb.geometry.dispose();
-    (orb.material as THREE.Material).dispose();
+    ribbons.geometry.dispose();
+    material.dispose();
     renderer.dispose();
   };
 }

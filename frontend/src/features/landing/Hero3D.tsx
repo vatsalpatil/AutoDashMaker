@@ -13,13 +13,13 @@ function Chip({ className, delay, children }: { className: string; delay: string
   );
 }
 
-/** Hero: a morphing 3D orb behind the headline, staggered headline, tilted screenshot that flattens on scroll, floating chips. */
+/** Hero: twisting 3D silk ribbons beside the headline, staggered headline, tilted screenshot that flattens on scroll, floating chips. */
 export function Hero3D({ onEnter }: { onEnter: () => void }) {
   const rise = (d: number) => ({ '--d': `${d}s` }) as React.CSSProperties;
   return (
     <section className="relative isolate overflow-hidden">
-      {/* one decorative 3D orb behind the headline (three.js, see dataScene.ts) */}
-      <div aria-hidden className="pointer-events-none absolute top-0 left-1/2 -z-10 aspect-square w-[min(1800px,230vw)] -translate-x-1/2 -translate-y-[35%]">
+      {/* silk ribbons down both sides of the headline (three.js, see dataScene.ts) */}
+      <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[min(100svh,1000px)]">
         <Scene3D />
       </div>
       <div aria-hidden className="absolute inset-x-0 top-[55%] -z-10 h-[30%] bg-gradient-to-b from-transparent via-background/60 to-background" />

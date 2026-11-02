@@ -356,3 +356,4 @@ Format: `YYYY-MM-DD · tool · files · what + why`
 - 2026-11-02 · landing/dataScene.ts · Orb: theme colours only (primary + lighter primary, no chart-2), empty glassy centre restored, thin 1px contour lines (line-art 3D look).
 - 2026-11-02 · landing/dataScene.ts · Orb back to the look the user approved (primary + chart-2, glassy) plus wire-string lines: thin bands along y bent by the surface noise.
 - 2026-11-02 · landing/Lifecycle.tsx · Added a glowing ball that rolls round the life-cycle ring to the active stage (angle only grows, so 8→1 keeps rolling forward).
+- 2026-11-02 · landing/{dataScene.ts,Hero3D.tsx,Lifecycle.tsx} · Hero orb replaced by two twisting silk ribbons of thin strands (shader-driven LineSegments, additive, primary→chart-2) per user reference; life-cycle ball now glides linearly the whole step (no stop-and-jump).

@@ -38,8 +38,11 @@ export function Lifecycle() {
           {/* progress arc: grows to the active stage, synced with the highlight */}
           <circle cx="200" cy="200" r="164" fill="none" stroke="var(--primary)" strokeWidth="4" strokeLinecap="round" pathLength="100"
             strokeDasharray={`${(active / N) * 100 + 0.01} 100`} transform="rotate(-90 200 200)" className="lp-pulse transition-[stroke-dasharray] duration-700" />
-          {/* glowing ball rolling round the ring to the active stage */}
-          <g style={{ transform: `rotate(${ball.current.deg}deg)`, transformOrigin: '200px 200px', transition: 'transform 900ms cubic-bezier(.6,0,.3,1)' }}>
+          {/* glowing ball travelling round the ring without stopping */}
+          <g style={playing
+            // playing: glide at a steady speed towards the next stage, arriving just as it lights up
+            ? { transform: `rotate(${ball.current.deg + 360 / N}deg)`, transformOrigin: '200px 200px', transition: `transform ${STEP_MS}ms linear` }
+            : { transform: `rotate(${ball.current.deg}deg)`, transformOrigin: '200px 200px', transition: 'transform 600ms ease-out' }}>
             <circle cx="200" cy="36" r="14" fill="var(--primary)" opacity=".25" className="animate-ping" style={{ transformOrigin: '200px 36px' }} />
             <circle cx="200" cy="36" r="7" fill="var(--primary)" className="lp-pulse" />
             <circle cx="200" cy="36" r="3" fill="var(--primary-foreground)" />
