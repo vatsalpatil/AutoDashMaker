@@ -20,7 +20,7 @@ const MINI: { name: string; svg: React.ReactNode }[] = [
 
 function Card({ name, svg }: (typeof MINI)[number]) {
   return (
-    <div className="w-44 shrink-0 rounded-xl border bg-card/80 p-3 shadow-lg backdrop-blur transition hover:-translate-y-1 hover:border-primary/50">
+    <div className="w-44 shrink-0 rounded-xl border bg-card p-3 shadow-lg transition hover:-translate-y-1 hover:border-primary/50">
       <svg viewBox="0 0 120 68" className="h-20 w-full">{svg}</svg>
       <div className="mt-2 text-sm font-medium">{name}</div>
     </div>

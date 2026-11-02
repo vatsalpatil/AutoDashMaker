@@ -37,10 +37,12 @@ export function useLoopClock(ref: RefObject<HTMLElement | null>, length: number)
     const el = ref.current;
     const io = new IntersectionObserver(([e]) => { visible.current = e.isIntersecting; }, { threshold: 0.25 });
     if (el) io.observe(el);
-    let frame = 0, last = performance.now(), acc = 0;
+    let frame = 0, last = performance.now(), acc = 0, shown = 0;
     const tick = (now: number) => {
-      if (visible.current) { acc = (acc + now - last) % length; setT(acc); }
+      if (visible.current) acc = (acc + now - last) % length;
       last = now;
+      // re-render ~20x a second, not every frame: typing and bars still look smooth
+      if (visible.current && Math.abs(acc - shown) > 50) { shown = acc; setT(acc); }
       frame = requestAnimationFrame(tick);
     };
     frame = requestAnimationFrame(tick);

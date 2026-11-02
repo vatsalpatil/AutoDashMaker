@@ -23,10 +23,12 @@ export function Scene3D({ className = '' }: { className?: string }) {
     const io = new IntersectionObserver(([e]) => {
       if (!e.isIntersecting) return;
       io.disconnect();
-      import('./dataScene').then(({ createDataScene }) => {
+      // wait until the browser is idle, so the orb never delays the first paint
+      const idle = window.requestIdleCallback ?? ((cb: () => void, _o?: object) => setTimeout(cb, 300));
+      idle(() => void import('./dataScene').then(({ createDataScene }) => {
         if (cancelled) return;
         try { cleanup = createDataScene(el, { still: window.matchMedia('(prefers-reduced-motion: reduce)').matches }); } catch { setFailed(true); }
-      });
+      }), { timeout: 1500 });
     }, { rootMargin: '300px' });
     io.observe(el);
     return () => { cancelled = true; io.disconnect(); cleanup?.(); };
