@@ -21,7 +21,7 @@ function Loop({ id }: { id: string }) {
     return () => io.disconnect();
   }, []);
   return <video ref={ref} src={`/videos/loops/${id}.mp4`} poster={`/videos/loops/${id}.jpg`} muted loop playsInline preload="none"
-    className="aspect-[1280/800] w-full rounded-t-2xl bg-card object-cover" aria-hidden />;
+    className="lp-shot aspect-[1280/800] w-full rounded-t-2xl bg-card object-cover" aria-hidden />;
 }
 
 /** "Watch it work": short silent clips recorded in the app, one task each. */

@@ -63,7 +63,7 @@ export function ProductExplorer() {
               <Icon className="relative size-24 text-primary drop-shadow-[0_0_30px_var(--primary)]" style={{ animation: 'lp-bob 6s ease-in-out infinite' }} />
             </div>
           )}
-          {m.shot && <img src={m.shot} alt={`${m.name} screen`} loading="lazy" className="lp-swap max-h-[48svh] w-full rounded-xl border object-cover object-top-left shadow-xl" style={{ animationDelay: '.2s' }} />}
+          {m.shot && <img src={m.shot} alt={`${m.name} screen`} loading="lazy" className="lp-shot lp-swap max-h-[48svh] w-full rounded-xl border object-cover object-top-left shadow-xl" style={{ animationDelay: '.2s' }} />}
         </div>
       </div>
     </section>

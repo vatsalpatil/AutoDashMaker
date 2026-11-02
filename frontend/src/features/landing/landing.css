@@ -55,6 +55,8 @@
 /* ---- explorer + life cycle */
 .lp-swap { animation: lp-swap .55s cubic-bezier(.2,.7,.2,1) both; }
 .lp-progress { animation: lp-progress 6s linear forwards; }
+/* app screenshots/clips were recorded in violet; motion.ts useThemedShots tints them to the current theme */
+.lp-shot { filter: var(--shot-filter, none); }
 .lp-flow { animation: lp-flow 4s linear infinite; }
 /* life-cycle progress arc: grows from --from to --to over one stage, in step with the ball */
 .lp-arc { animation: lp-arc var(--ms) linear forwards; }

@@ -365,3 +365,4 @@ Format: `YYYY-MM-DD · tool · files · what + why`
 - 2026-11-02 · landing/dataScene.ts · Orb lines ~2x denser (110 rings); fixed bold broken streaks/solid patches: no noise in the line pattern, depth write on (front layer only), +0.5 offset so edge-on areas fall between lines, fade where lines merge sub-pixel.
 - 2026-11-02 · landing/{Lifecycle.tsx,landing.css} · Life-cycle progress arc now grows linearly with the ball each stage (lp-arc keyframes from --from to --to, restarted via key), restarts from empty at stage 1.
 - 2026-11-02 · landing/dataScene.ts · Orb: dark gaps where lines merged now filled with a soft average-brightness glow, plus a faint tint between all lines.
+- 2026-11-03 · landing/{motion.ts,LandingPage,Hero3D,ProductExplorer,VideoSection}.tsx, landing.css · Screenshots/clips (recorded in violet) now hue-rotate to the selected colour theme: useThemedShots sets --shot-filter (primary hue − 234), .lp-shot applies it; grey accents desaturate.

@@ -44,7 +44,7 @@ export function Hero3D({ onEnter }: { onEnter: () => void }) {
           {/* sized by the screen's height too, so the whole screenshot is always visible */}
           <div className="lp-hero-shot relative mx-auto w-fit">
             <div aria-hidden className="absolute -inset-4 rounded-3xl bg-primary/15 blur-3xl" />
-            <img src={SHOTS.hero.src} fetchPriority="high" decoding="async" alt={SHOTS.hero.alt} className="relative block h-auto max-h-[calc(100svh-6rem)] w-auto max-w-full rounded-xl border bg-card shadow-2xl" />
+            <img src={SHOTS.hero.src} fetchPriority="high" decoding="async" alt={SHOTS.hero.alt} className="lp-shot relative block h-auto max-h-[calc(100svh-6rem)] w-auto max-w-full rounded-xl border bg-card shadow-2xl" />
             <Chip className="-left-10 top-24 text-left" delay="0s">
               <div className="text-xs text-muted-foreground">Revenue</div>
               <div className="flex items-center gap-2 text-xl font-semibold">$8.6M <span className="flex items-center text-xs text-emerald-500"><TrendingUp className="size-3" />12%</span></div>

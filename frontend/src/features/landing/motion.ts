@@ -56,3 +56,36 @@ export const tilt = {
     e.currentTarget.style.setProperty('--ry', '0deg');
   },
 };
+
+/** Hue of the violet the screenshots and clips were recorded in (HSL degrees). */
+const SHOT_HUE = 234;   // the default theme's --primary, measured
+
+/** HSL hue (degrees) and saturation (0..1) of a CSS colour as the browser renders it. */
+function hueOf(expr: string): [number, number] {
+  const probe = document.createElement('span');
+  probe.style.color = expr;
+  document.body.appendChild(probe);
+  const [r, g, b] = (getComputedStyle(probe).color.match(/[\d.]+/g) ?? ['0', '0', '0']).slice(0, 3).map((n) => Number(n) / 255);
+  probe.remove();
+  const max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min;
+  if (!d) return [0, 0];
+  const h = max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  return [(h * 60 + 360) % 360, d / (1 - Math.abs(max + min - 1))];
+}
+
+/**
+ * Tints the app screenshots and clips (recorded in violet) to the current colour theme: sets `--shot-filter` on
+ * `root`, used by `.lp-shot`. Grey accents get a desaturated look. Re-runs when the theme changes.
+ */
+export function useThemedShots(root: RefObject<HTMLElement | null>) {
+  useEffect(() => {
+    const apply = () => {
+      const [h, s] = hueOf('var(--primary)');
+      root.current?.style.setProperty('--shot-filter', s < 0.15 ? 'saturate(0.25)' : `hue-rotate(${Math.round(h - SHOT_HUE)}deg)`);
+    };
+    apply();
+    const mo = new MutationObserver(apply);
+    mo.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'style', 'data-theme'] });
+    return () => mo.disconnect();
+  }, [root]);
+}

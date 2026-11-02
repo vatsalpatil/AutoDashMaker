@@ -13,7 +13,7 @@ import { SHOWCASE_POINTS } from './landingInfo';
 import { Hero3D } from './Hero3D';
 import { AiDemo } from './AiDemo';
 import { Heading, LandingDetails } from './LandingDetails';
-import { tilt, useLandingMotion } from './motion';
+import { tilt, useLandingMotion, useThemedShots } from './motion';
 import './landing.css';
 
 /** Facts about the demo workspace the screenshots were taken from. */
@@ -25,6 +25,7 @@ const delay = (i: number) => ({ '--d': `${i * 0.08}s` }) as React.CSSProperties;
 export function LandingPage({ onEnter }: { onEnter: () => void }) {
   const root = useRef<HTMLDivElement>(null);
   useLandingMotion(root);
+  useThemedShots(root);
   return (
     <div ref={root} className="lp min-h-svh bg-background text-foreground">
       <header className="sticky top-0 z-20 border-b bg-background/70 backdrop-blur-xl">
@@ -89,7 +90,7 @@ export function LandingPage({ onEnter }: { onEnter: () => void }) {
             </div>
             <div data-reveal style={delay(2)} className="relative md:col-span-3">
               <div aria-hidden className="absolute -inset-6 rounded-3xl bg-primary/15 blur-3xl" />
-              <img src={s.src} alt={s.title} loading="lazy" className="lp-angle relative mx-auto block h-auto max-h-[calc(100svh-8rem)] w-auto max-w-full rounded-xl border bg-card shadow-2xl"
+              <img src={s.src} alt={s.title} loading="lazy" className="lp-shot lp-angle relative mx-auto block h-auto max-h-[calc(100svh-8rem)] w-auto max-w-full rounded-xl border bg-card shadow-2xl"
                 style={{ '--a': i % 2 ? '10deg' : '-10deg' } as React.CSSProperties} />
             </div>
           </div>
