@@ -354,3 +354,4 @@ Format: `YYYY-MM-DD · tool · files · what + why`
 - 2026-11-02 · landing/dataScene.ts · Orb back to full devicePixelRatio (≤2) + mesh 96; 1:1 still looked low quality. Perf kept via 30fps + idle start.
 - 2026-11-02 · landing/{dataScene.ts,Hero3D.tsx,landing.css} · Orb looked unclear (88% transparent, 75% faded, gradient over it): now lit surface + crisp fwidth contour lines, full opacity, lighter fade. lp-rise uses fill 'backwards' so headline isn't left as a blurry GPU layer.
 - 2026-11-02 · landing/dataScene.ts · Orb: theme colours only (primary + lighter primary, no chart-2), empty glassy centre restored, thin 1px contour lines (line-art 3D look).
+- 2026-11-02 · landing/dataScene.ts · Orb back to the look the user approved (primary + chart-2, glassy) plus wire-string lines: thin bands along y bent by the surface noise.

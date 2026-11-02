@@ -39,27 +39,29 @@ float snoise(vec3 v){
 }`;
 
 const VERT = /* glsl */ `${NOISE}
-uniform float uTime; varying vec3 vNormal; varying vec3 vView; varying float vNoise;
+uniform float uTime; varying vec3 vNormal; varying vec3 vView; varying float vNoise; varying vec3 vPos;
 void main(){
   float n = snoise(normal * 1.4 + uTime * 0.25) * 0.5 + snoise(normal * 3.0 - uTime * 0.18) * 0.18;
   vNoise = n;
   vec3 p = position + normal * n * 0.42;
+  vPos = position;
   vec4 mv = modelViewMatrix * vec4(p, 1.0);
   vNormal = normalize(normalMatrix * normal); vView = normalize(-mv.xyz);
   gl_Position = projectionMatrix * mv;
 }`;
 
 const FRAG = /* glsl */ `
-uniform vec3 uA; uniform vec3 uB; varying vec3 vNormal; varying vec3 vView; varying float vNoise;
+uniform vec3 uA; uniform vec3 uB; varying vec3 vNormal; varying vec3 vView; varying float vNoise; varying vec3 vPos;
 void main(){
   float fres = pow(1.0 - max(dot(vNormal, vView), 0.0), 2.2);
   vec3 col = mix(uA, uB, smoothstep(-0.4, 0.5, vNoise));
   vec3 rim = mix(uB, vec3(1.0), 0.3) * 1.4;
-  // empty glassy centre, glowing edge, and thin crisp contour lines wrapping the surface
-  float x = vNoise * 9.0, d = min(fract(x), 1.0 - fract(x));
+  // wire strings: thin lines wrapping round the orb, bent by the same noise so they flow with the surface
+  float x = (vPos.y + vNoise * 0.3) * 6.0, d = min(fract(x), 1.0 - fract(x));
   float line = 1.0 - smoothstep(0.0, fwidth(x) * 1.2, d);   // ~1px wide whatever the zoom
-  vec3 c = mix(mix(col * 0.55, rim, fres), uB * 1.3, line * 0.8);
-  gl_FragColor = vec4(c, max(0.06 + fres * 0.9, line * 0.55));
+  // glassy: see-through centre, glowing iridescent edge
+  vec3 c = mix(mix(col * 0.55, rim, fres), rim, line);
+  gl_FragColor = vec4(c, max(0.12 + fres * 0.88, line * 0.6));
 }`;
 
 /**
@@ -72,7 +74,7 @@ export function createDataScene(canvas: HTMLCanvasElement, { still = false } = {
   const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 50);
   camera.position.z = 7;
 
-  const uniforms = { uTime: { value: 0 }, uA: { value: cssColor('var(--primary)') }, uB: { value: cssColor('color-mix(in oklab, var(--primary) 55%, white)') } };
+  const uniforms = { uTime: { value: 0 }, uA: { value: cssColor('var(--primary)') }, uB: { value: cssColor('var(--chart-2)') } };
   const orb = new THREE.Mesh(new THREE.IcosahedronGeometry(1.6, 96), new THREE.ShaderMaterial({ uniforms, vertexShader: VERT, fragmentShader: FRAG, transparent: true, depthWrite: false }));
   scene.add(orb);
 
