@@ -19,10 +19,3 @@ export const FEATURES: { icon: LucideIcon; title: string; text: string }[] = [
   { icon: LayoutDashboard, title: 'Dashboards in minutes', text: 'Drag-and-drop layouts, filters, pages, presenting, PDF export and share links.' },
   { icon: ShieldCheck, title: 'Data you can trust', text: 'Quality scores, tests, lineage, alerts and an audit trail for every change.' },
 ];
-
-export const STEPS = [
-  { n: '1', title: 'Connect', text: 'Upload a file or connect a source.' },
-  { n: '2', title: 'Ask', text: 'Question your data in plain words or SQL.' },
-  { n: '3', title: 'Visualise', text: 'Turn answers into charts in one click.' },
-  { n: '4', title: 'Share', text: 'Publish dashboards your team can explore.' },
-];

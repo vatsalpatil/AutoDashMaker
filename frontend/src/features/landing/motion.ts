@@ -1,4 +1,20 @@
-import { useEffect, type PointerEvent, type RefObject } from 'react';
+import { useEffect, useState, type PointerEvent, type RefObject } from 'react';
+
+/** Index that advances every `ms` through `n` items. Picking one holds it for `holdMs`, then auto-play carries on from there;
+ *  picking the item that is already showing resumes at once. Returns [index, pick, playing]. */
+export function useCycle(n: number, ms: number, holdMs = 8000): [number, (i: number) => void, boolean] {
+  const [state, setState] = useState({ i: 0, auto: true, pick: 0 });
+  useEffect(() => {
+    if (state.auto) {
+      const t = setInterval(() => setState((s) => ({ ...s, i: (s.i + 1) % n })), ms);
+      return () => clearInterval(t);
+    }
+    const t = setTimeout(() => setState((s) => ({ ...s, auto: true })), holdMs);
+    return () => clearTimeout(t);
+  }, [state.auto, state.pick, n, ms, holdMs]);
+  const pick = (i: number) => setState((s) => (s.i === i && !s.auto ? { ...s, auto: true } : { i, auto: false, pick: s.pick + 1 }));
+  return [state.i, pick, state.auto];
+}
 
 /**
  * Landing-page motion, CSS-driven:

@@ -4,7 +4,7 @@ import { tilt } from './motion';
 
 const delay = (i: number) => ({ '--d': `${i * 0.08}s` }) as React.CSSProperties;
 
-function Heading({ eyebrow, title, text }: { eyebrow: string; title: string; text: string }) {
+export function Heading({ eyebrow, title, text }: { eyebrow: string; title: string; text: string }) {
   return (
     <div data-reveal className="mx-auto max-w-2xl text-center">
       <p className="text-sm font-medium tracking-wide text-primary uppercase">{eyebrow}</p>

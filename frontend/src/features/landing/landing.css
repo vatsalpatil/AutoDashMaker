@@ -51,6 +51,12 @@
 .lp-draw { stroke-dasharray: 300; stroke-dashoffset: 300; animation: lp-dash 2.2s ease forwards; }
 .lp-pop-in { transform-box: fill-box; transform-origin: center; animation: lp-pop .5s ease both; animation-delay: var(--d, 0s); }
 
+/* ---- explorer + life cycle */
+.lp-swap { animation: lp-swap .55s cubic-bezier(.2,.7,.2,1) both; }
+.lp-progress { animation: lp-progress 6s linear forwards; }
+.lp-flow { animation: lp-flow 4s linear infinite; }
+.lp-pulse { filter: drop-shadow(0 0 8px var(--primary)); }
+
 /* ---- glowing CTA */
 .lp-glow { position: relative; }
 .lp-glow::before { content: ''; position: absolute; inset: -3px; border-radius: inherit; z-index: -1; filter: blur(14px); opacity: .7;
@@ -65,6 +71,9 @@
 @keyframes lp-grow-x { from { transform: scaleX(0); } }
 @keyframes lp-dash { to { stroke-dashoffset: 0; } }
 @keyframes lp-pop { from { transform: scale(0); } }
+@keyframes lp-swap { from { opacity: 0; transform: translateY(14px); filter: blur(4px); } }
+@keyframes lp-progress { from { width: 0; } to { width: 100%; } }
+@keyframes lp-flow { to { stroke-dashoffset: -160; } }
 @keyframes lp-marquee { to { transform: translateX(-50%); } }
 
 @media (prefers-reduced-motion: reduce) {

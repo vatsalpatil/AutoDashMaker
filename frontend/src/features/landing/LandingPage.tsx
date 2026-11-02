@@ -3,13 +3,18 @@ import { ArrowRight, Check } from 'lucide-react';
 import { BRAND_NAME } from '@/lib/brand';
 import { LogoIcon } from '@/components/common/LogoIcon';
 import { Button } from '@/components/ui/kit';
-import { FEATURES, SHOTS, STEPS } from './landingContent';
+import { FEATURES, SHOTS } from './landingContent';
+import { Lifecycle } from './Lifecycle';
+import { ProductExplorer } from './ProductExplorer';
 import { ChartStrip } from './ChartStrip';
 import { SHOWCASE_POINTS } from './landingInfo';
 import { Hero3D } from './Hero3D';
-import { LandingDetails } from './LandingDetails';
+import { Heading, LandingDetails } from './LandingDetails';
 import { tilt, useLandingMotion } from './motion';
 import './landing.css';
+
+/** Facts about the demo workspace the screenshots were taken from. */
+const DEMO_STATS = [['1 CSV file', 'uploaded'], ['1,500', 'rows profiled'], ['6', 'columns typed automatically'], ['8', 'charts built'], ['1', 'dashboard with KPIs, trends and breakdowns']];
 
 const delay = (i: number) => ({ '--d': `${i * 0.08}s` }) as React.CSSProperties;
 
@@ -45,8 +50,20 @@ export function LandingPage({ onEnter }: { onEnter: () => void }) {
         </div>
       </section>
 
-      <section id="lp-tour" className="mx-auto max-w-6xl space-y-28 px-4 py-16">
-        <h2 data-reveal className="text-center text-3xl font-semibold sm:text-4xl">See {BRAND_NAME} at work</h2>
+      <Lifecycle />
+
+      <ProductExplorer />
+
+      <section className="mx-auto max-w-6xl space-y-28 px-4 py-16">
+        <div>
+          <Heading eyebrow="Real screens, real data" title={`See ${BRAND_NAME} at work`}
+            text="Every picture below is a real screen from the app, not a mock-up. We uploaded one sales file and went from raw rows to a finished dashboard in a few minutes." />
+          <div data-reveal className="mt-8 flex flex-wrap justify-center gap-3">
+            {DEMO_STATS.map(([n, l]) => (
+              <span key={l} className="rounded-full border bg-card px-4 py-2 text-sm"><b className="text-primary">{n}</b> <span className="text-muted-foreground">{l}</span></span>
+            ))}
+          </div>
+        </div>
         {SHOTS.showcase.map((s, i) => (
           <div key={s.src} className="grid items-center gap-10 md:grid-cols-5">
             <div data-reveal className={`md:col-span-2 ${i % 2 ? 'md:order-last' : ''}`}>
@@ -66,19 +83,6 @@ export function LandingPage({ onEnter }: { onEnter: () => void }) {
             </div>
           </div>
         ))}
-      </section>
-
-      <section className="mx-auto max-w-6xl px-4 py-24">
-        <div className="relative grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          <div aria-hidden className="absolute top-10 right-[12%] left-[12%] hidden h-px bg-gradient-to-r from-transparent via-primary/60 to-transparent lg:block" />
-          {STEPS.map((s, i) => (
-            <div key={s.n} data-reveal style={delay(i * 2)} className="relative text-center">
-              <span className="relative mx-auto flex size-20 items-center justify-center rounded-2xl border bg-card text-2xl font-bold text-primary shadow-lg ring-1 ring-primary/20">{s.n}</span>
-              <h3 className="mt-4 font-semibold">{s.title}</h3>
-              <p className="mt-1 text-sm text-muted-foreground">{s.text}</p>
-            </div>
-          ))}
-        </div>
       </section>
 
       <LandingDetails />
