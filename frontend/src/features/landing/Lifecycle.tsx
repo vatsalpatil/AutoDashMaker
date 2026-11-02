@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { Play, RefreshCw } from 'lucide-react';
 import { LIFECYCLE } from './modulesContent';
 import { useCycle } from './motion';
@@ -14,6 +15,12 @@ const at = (i: number) => {
 export function Lifecycle() {
   const [active, pick, playing] = useCycle(N, STEP_MS);
   const s = LIFECYCLE[active];
+  // the ball's angle only ever grows, so going from the last stage back to the first keeps it rolling forwards
+  const ball = useRef({ last: 0, deg: 0 });
+  if (active !== ball.current.last) {
+    ball.current.deg += (((active - ball.current.last) % N + N) % N) * (360 / N);
+    ball.current.last = active;
+  }
   return (
     <section className="relative isolate overflow-hidden border-y bg-card/30 py-24">
       <div aria-hidden className="lp-aurora top-1/3 left-1/2 -z-10 size-[34rem] -translate-x-1/2 bg-primary/20" />
@@ -31,6 +38,12 @@ export function Lifecycle() {
           {/* progress arc: grows to the active stage, synced with the highlight */}
           <circle cx="200" cy="200" r="164" fill="none" stroke="var(--primary)" strokeWidth="4" strokeLinecap="round" pathLength="100"
             strokeDasharray={`${(active / N) * 100 + 0.01} 100`} transform="rotate(-90 200 200)" className="lp-pulse transition-[stroke-dasharray] duration-700" />
+          {/* glowing ball rolling round the ring to the active stage */}
+          <g style={{ transform: `rotate(${ball.current.deg}deg)`, transformOrigin: '200px 200px', transition: 'transform 900ms cubic-bezier(.6,0,.3,1)' }}>
+            <circle cx="200" cy="36" r="14" fill="var(--primary)" opacity=".25" className="animate-ping" style={{ transformOrigin: '200px 36px' }} />
+            <circle cx="200" cy="36" r="7" fill="var(--primary)" className="lp-pulse" />
+            <circle cx="200" cy="36" r="3" fill="var(--primary-foreground)" />
+          </g>
         </svg>
         {LIFECYCLE.map((x, i) => (
           <button key={x.title} onClick={() => pick(i)} style={at(i)}
