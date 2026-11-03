@@ -55,8 +55,8 @@ def revoke_token(token_id: str, user: dict = Depends(_session_user)):
     return {"ok": True}
 
 
-def _public_url(request: Request) -> str:
-    return settings.app_url or (settings.cors_origins[0] if settings.cors_origins else str(request.base_url))
+def public_url(request: Request) -> str:
+    return (settings.app_url or (settings.cors_origins[0] if settings.cors_origins else str(request.base_url))).rstrip("/")
 
 
 async def _serve(request: Request, token: str):
@@ -64,9 +64,10 @@ async def _serve(request: Request, token: str):
     throttle.check(ip_key)   # guessing tokens: 20 wrong ones in 10 min lock the address out
     user = access_tokens.resolve(token)
     if not user:
-        throttle.fail(ip_key)
+        if token:   # no token at all = an OAuth client discovering how to sign in, not a guess
+            throttle.fail(ip_key)
         return JSONResponse({"error": "invalid_token", "message": "Invalid or revoked Dashtor access token"}, 401,
-                            headers={"WWW-Authenticate": "Bearer"})
+                            headers={"WWW-Authenticate": f'Bearer resource_metadata="{public_url(request)}/.well-known/oauth-protected-resource/api/mcp"'})
     if not access_tokens.allow(user["token_id"]):
         return JSONResponse({"error": "rate_limited", "message": f"Over {access_tokens.RATE_PER_MIN} calls a minute"}, 429,
                             headers={"Retry-After": "60"})
@@ -75,7 +76,7 @@ async def _serve(request: Request, token: str):
         payload = await request.json()
     except ValueError:
         return JSONResponse({"jsonrpc": "2.0", "id": None, "error": {"code": -32700, "message": "Parse error"}}, 400)
-    api = server.Api(request.app, token, _public_url(request))
+    api = server.Api(request.app, token, public_url(request))
     try:
         msgs = payload if isinstance(payload, list) else [payload]
         out = [r for m in msgs if isinstance(m, dict) and (r := await server.handle(m, api, user["scope"] == "read"))]

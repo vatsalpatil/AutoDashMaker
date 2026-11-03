@@ -66,7 +66,7 @@ export default function ConnectAiSettings() {
             <Button key={x.id} size="sm" variant={x.id === client ? 'primary' : 'outline'} label={x.name} onClick={() => setClient(x.id)} />
           ))}
         </div>
-        <ol className="mb-3 list-inside list-decimal space-y-1 text-sm">{c.steps.map((s) => <li key={s}>{s}</li>)}</ol>
+        <ol className="mb-3 list-inside list-decimal space-y-1 text-sm">{c.steps.map((s) => <li key={s}>{fill(s, vars)}</li>)}</ol>
         {c.snippet && <Snippet text={fill(c.snippet, vars)} />}
         {!fresh && <p className="mt-2 text-xs text-muted-foreground">Create a token above to fill it in automatically.</p>}
         <p className="mt-3 text-xs text-muted-foreground">

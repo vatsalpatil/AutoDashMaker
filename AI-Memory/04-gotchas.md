@@ -130,3 +130,5 @@ invalid currency codes throw in Intl; repeated item names (ungrouped queries) ga
 - Landing page: the user rejected busy backdrops (grid floors, particle waves, light bars) and any copy implying the product is "3D". 3D is decoration only; keep it to one calm element.
 - **Landing perf:** the hero orb canvas is ~1800px wide — never render it at devicePixelRatio (16x the pixels). User needs full DPR (≤2) sharpness — 900px and 1:1 buffers both looked blurry; save cost via the 30fps cap + idle start in dataScene.ts, and don't setState every rAF in demos (throttle, see useLoopClock).
 - **Hero orb line shader:** bold/broken streaks come from (a) noise in the line coordinate (closed islands), (b) stacked transparent layers at folds (keep depthWrite on), (c) clamped facing=0 regions landing exactly on a line (keep the +0.5 offset). Screen-space dFdx normals look faceted on this mesh — don't use them.
+
+- MCP OAuth: issuer/links use `APP_URL` (else first CORS origin). If prod APP_URL is wrong or empty, AI apps get metadata pointing at the wrong host and OAuth fails. OAuth codes live in process memory: a backend restart mid-connect means the user clicks Connect again.

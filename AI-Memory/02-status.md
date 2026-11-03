@@ -19,7 +19,7 @@ Chart studio (12 types, 70+ schema-driven options, 24 templates, pivot, live pre
 Visual Query Builder at `/builder` (plan §102) with AI: describe-to-build, edit by chatting (instant rules for simple wording, model for the rest), formula writer/fixer, plain-English explain, undo. Next: pivot, union, save/share builder questions, join match-rate preview, 'suggest next step' chips from the result.
 
 ## Added 2026-11-03
-- Bring-your-own-AI (MCP): users connect Claude/ChatGPT/Cursor/Kimi/DeepSeek/Grok to their workspace with an access token; no Dashtor AI cost. Not yet: OAuth for MCP (claude.ai/ChatGPT accept the token-in-URL form instead), MCP resources/prompts.
+- Bring-your-own-AI (MCP): users connect Claude/ChatGPT/Cursor/Kimi/DeepSeek/Grok to their workspace with an access token; no Dashtor AI cost. OAuth sign-in for MCP done (claude.ai/ChatGPT 'Connect' → consent page). Not yet: refresh tokens/expiry, MCP resources/prompts; never tried from a real claude.ai/ChatGPT account.
 
 ## In progress
 - Dashboard editor polish (drag/resize, widget toolbar, fullscreen, sections) — largely working per PROGRESS.md.

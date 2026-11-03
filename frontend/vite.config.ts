@@ -24,7 +24,7 @@ export default defineConfig(({ mode }) => {
     server: {
       port: 5174,
       // changeOrigin: remote hosts (Cloudflare/Traefik) route by Host header
-      proxy: { '/api': { target: apiTarget, changeOrigin: true } },
+      proxy: { '/api': { target: apiTarget, changeOrigin: true }, '/.well-known/oauth': { target: apiTarget, changeOrigin: true }, '/.well-known/openid': { target: apiTarget, changeOrigin: true } },
     },
   };
 });

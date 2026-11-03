@@ -20,7 +20,7 @@ from app.core.config import settings
 from app.core.store import store  # noqa: F401  (initializes metadata schema)
 from app.routers import (
     datasources, datasets, dataset_versions, data_tests, queries, charts, dash_ai, dashboards, quality, ai, studio, semantic,
-    alerts, why, transforms, audit, attention, reports, qb, auth, system, metrics, verify, account, shares, voice, admin, mcp,
+    alerts, why, transforms, audit, attention, reports, qb, auth, system, metrics, verify, account, shares, voice, admin, mcp, oauth,
 )
 from app.services.admin.activity import ActivityMiddleware
 from app.services.admin.controls import MaintenanceMiddleware
@@ -63,6 +63,7 @@ app.include_router(admin.public_router)  # public: /api/notice (announcement ban
 app.include_router(admin.router)  # backoffice: ADMIN_EMAILS only (core/admin.py), every workspace
 app.include_router(mcp.router)  # access tokens for the user's own AI (session only)
 app.include_router(mcp.mcp_router)  # MCP server: token auth inside
+app.include_router(oauth.router)  # OAuth for MCP clients: discovery, register, authorize, token (+ signed-in approve)
 app.include_router(auth.router)  # public: /api/auth/config; /api/auth/me checks the token itself
 
 

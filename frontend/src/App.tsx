@@ -23,6 +23,7 @@ const QualityPage = lazy(() => import('@/pages/QualityPage'));
 const ActivityPage = lazy(() => import('@/pages/ActivityPage'));
 const GuidePage = lazy(() => import('@/pages/GuidePage'));
 const SettingsPage = lazy(() => import('@/pages/SettingsPage'));
+const ConsentPage = lazy(() => import('@/features/oauth/ConsentPage'));
 
 // Pages that hold unsaved work stay mounted while you visit other tabs (see KeepAlive).
 const KEPT = {
@@ -35,6 +36,7 @@ export default function App() {
       <KeepAlive pages={KEPT} />
       <Routes>
         <Route path="/" element={<HomePage />} />
+        <Route path="/oauth/consent" element={<ConsentPage />} />
         <Route path="/ask" element={null} />
         <Route path="/sources" element={null} />
         <Route path="/sources/studio" element={<ApiStudioPage />} />

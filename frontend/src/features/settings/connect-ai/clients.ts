@@ -10,13 +10,13 @@ export interface AiClient {
 export const CLIENTS: AiClient[] = [
   {
     id: 'claude', name: 'Claude (claude.ai / desktop)',
-    steps: ['Settings → Connectors → Add custom connector.', 'Name it Dashtor and paste the connector URL below.', 'In a chat, enable the Dashtor connector and ask e.g. "build me a sales dashboard".'],
-    snippet: '{url}',
+    steps: ['Settings → Connectors → Add custom connector.', 'Name it Dashtor and paste the URL below, then click Connect.', 'Sign in to Dashtor and press Allow. No token needed.', 'In a chat, enable the Dashtor connector and ask e.g. "build me a sales dashboard".'],
+    snippet: '{base}',
   },
   {
     id: 'chatgpt', name: 'ChatGPT',
-    steps: ['Settings → Apps & Connectors → Advanced → turn on Developer mode.', 'Create connector → paste the URL below, authentication: none (the token is in the URL).', 'Start a chat, pick Developer mode and the Dashtor connector.'],
-    snippet: '{url}',
+    steps: ['Settings → Apps & Connectors → Advanced → turn on Developer mode.', 'Create connector → paste the URL below, authentication: OAuth.', 'Sign in to Dashtor and press Allow. No token needed.', 'Start a chat, pick Developer mode and the Dashtor connector.'],
+    snippet: '{base}',
   },
   {
     id: 'claude-code', name: 'Claude Code (CLI)',
@@ -30,7 +30,7 @@ export const CLIENTS: AiClient[] = [
   },
   {
     id: 'other', name: 'Kimi, DeepSeek, Grok, Gemini & any MCP app',
-    steps: ['Any app or agent that supports remote MCP (Streamable HTTP) can use the URL below.',
+    steps: ['Apps with remote MCP + OAuth: paste {base} and sign in. Apps that only take a URL with no sign-in: use the URL below (needs a token).',
       'Apps without MCP: use the REST API (OpenAPI at /openapi.json) with the header Authorization: Bearer <token>.'],
     snippet: '{url}',
   },
