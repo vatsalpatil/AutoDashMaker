@@ -1,5 +1,6 @@
 import { useRef } from 'react';
-import { ArrowRight, Check } from 'lucide-react';
+import { ArrowRight, BookOpen, Check } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { BRAND_NAME } from '@/lib/brand';
 import { LogoIcon } from '@/components/common/LogoIcon';
 import { Button } from '@/components/ui/kit';
@@ -33,6 +34,7 @@ export function LandingPage({ onEnter }: { onEnter: () => void }) {
           <div className="flex items-center gap-2 text-lg font-semibold"><LogoIcon className="size-7" />{BRAND_NAME}</div>
           <div className="flex items-center gap-2">
             <ThemePicker />
+            <Link to="/docs" onClick={() => window.scrollTo(0, 0)} className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"><BookOpen className="size-4" />Docs</Link>
             <Button variant="primary" size="sm" className="rounded-full" onClick={onEnter} icon={<ArrowRight className="order-last size-3.5" />} label="Get started" />
           </div>
         </div>

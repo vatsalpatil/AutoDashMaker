@@ -1,6 +1,7 @@
 import { createElement, type ReactNode } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { LoginPage } from '@/features/auth/LoginPage';
+import { DocsPage } from '@/features/docs/DocsPage';
 import { LandingPage } from './LandingPage';
 
 const KEY = 'dashtor.entered';
@@ -10,6 +11,7 @@ const markEntered = () => { try { sessionStorage.setItem(KEY, '1'); } catch { /*
 /**
  * URL rules for the public pages of the main app (the backoffice does not use them):
  *   /welcome            landing page, always
+ *   /docs               public documentation, always
  *   signed out, /       landing page          → "Get started" goes to /login
  *   signed out, /login  sign-in page          → after sign-in, back to ?next= or /
  *   signed out, other   → /login?next=<that page>
@@ -25,6 +27,8 @@ export function usePublicPage({ active, enabled, signedIn, notice }: { active: b
   const safeNext = next?.startsWith('/') && !next.startsWith('//') ? next : '/';
   const go = (to: string) => () => { markEntered(); window.scrollTo(0, 0); navigate(to); };
 
+  const enter = go(enabled && !signedIn ? '/login' : '/');
+  if (pathname === '/docs') return createElement(DocsPage, { onEnter: enter, onHome: () => { window.scrollTo(0, 0); navigate(signedIn || !enabled ? '/welcome' : '/'); } });
   if (pathname === '/welcome') return createElement(LandingPage, { onEnter: go(enabled && !signedIn ? '/login' : '/') });
 
   if (enabled && !signedIn) {

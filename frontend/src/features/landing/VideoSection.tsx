@@ -11,7 +11,7 @@ const LOOPS = [
 ];
 
 /** Silent looping clip that only downloads and plays while on screen (behaves like a GIF, ~100 KB each). */
-function Loop({ id }: { id: string }) {
+export function Loop({ id }: { id: string }) {
   const ref = useRef<HTMLVideoElement>(null);
   useEffect(() => {
     const v = ref.current;
