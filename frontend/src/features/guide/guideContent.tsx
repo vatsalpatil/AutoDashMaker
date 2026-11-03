@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { BookOpen, Bot, FileText, HelpCircle, Keyboard, Lightbulb, Link2, Map as MapIcon, Rocket, ShieldCheck, type LucideIcon } from 'lucide-react';
+import { BookOpen, Bot, FileText, HelpCircle, Keyboard, Lightbulb, Link2, Map as MapIcon, Plug, Rocket, ShieldCheck, type LucideIcon } from 'lucide-react';
 import { Code } from './GuideParts';
 
 export type SectionId =
@@ -9,6 +9,7 @@ export type SectionId =
   | 'flows'
   | 'walkthroughs'
   | 'ai'
+  | 'connect-ai'
   | 'sharing'
   | 'privacy'
   | 'tips'
@@ -27,6 +28,7 @@ export const SECTIONS: SectionDef[] = [
   { id: 'flows', label: 'Workflows', icon: MapIcon },
   { id: 'walkthroughs', label: 'Feature Walkthroughs', icon: FileText },
   { id: 'ai', label: 'AI Assistant', icon: Bot },
+  { id: 'connect-ai', label: 'Connect your own AI', icon: Plug },
   { id: 'sharing', label: 'Sharing', icon: Link2 },
   { id: 'privacy', label: 'Your Data & Privacy', icon: ShieldCheck },
   { id: 'tips', label: 'Keyboard & Tips', icon: Keyboard },
