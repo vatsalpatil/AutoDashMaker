@@ -11,8 +11,8 @@ import { downloadCsv, useSearch } from '../parts/useAdmin';
 import { right, type Row } from './charts';
 
 /** Every user active in the window with traffic, quality, AI and content numbers. */
-export function UsersTab({ days, onUser }: { days: string; onUser: (id: string) => void }) {
-  const state = useApi<Row[]>(`/admin/monitor/users?days=${days}`);
+export function UsersTab({ query, onUser }: { query: string; onUser: (id: string) => void }) {
+  const state = useApi<Row[]>(`/admin/monitor/users?${query}`);
   const [q, setQ] = useState('');
   const rows = useSearch(state.data, q, ['email', 'user_id', 'device', 'browser']);
   return (
@@ -25,7 +25,7 @@ export function UsersTab({ days, onUser }: { days: string; onUser: (id: string) 
             <StatTile label="Requests" value={num(sum('requests'))} hint={all.length ? `${num(Math.round(sum('requests') / all.length))} per user` : undefined} />
             <StatTile label="AI calls" value={num(sum('ai_calls'))} hint={`${num(sum('ai_tokens'))} tokens`} />
             <StatTile label="Errors hit" value={num(sum('errors'))} />
-            <StatTile label="Power users" value={num(all.filter((r) => r.active_days >= Math.min(5, Number(days))).length)} hint="active most days" />
+            <StatTile label="Power users" value={num(all.filter((r) => r.active_days >= 3).length)} hint="active 3+ days" />
             <StatTile label="One-day users" value={num(all.filter((r) => r.active_days === 1).length)} />
           </StatGrid>
           <Section title="Per-user usage" description="click a user for the full timeline, sessions, routes, AI and devices"

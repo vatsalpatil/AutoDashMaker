@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import shutil
 import time
+from datetime import date, timedelta
 
 from ...core.config import DATA_DIR
 from ...core.store import store
@@ -31,6 +32,17 @@ def _one(sql: str, params: list | None = None) -> dict:
 
 def _since(minutes: int) -> str:
     return f"created_at > now() - INTERVAL {int(minutes)} MINUTE"
+
+
+def window(start: str | None, end: str | None, hours: int) -> tuple[str, float]:
+    """SQL filter on created_at + its length in hours: a custom date range (inclusive days, validated) or the last N hours."""
+    if not (start or end):
+        return f"created_at > now() - INTERVAL {int(hours)} HOUR", hours
+    hi = date.fromisoformat(end) + timedelta(days=1) if end else date.today() + timedelta(days=1)
+    lo = date.fromisoformat(start) if start else hi - timedelta(days=30)
+    if lo >= hi:
+        lo, hi = hi - timedelta(days=1), lo + timedelta(days=1)
+    return f"created_at >= TIMESTAMP '{lo}' AND created_at < TIMESTAMP '{hi}'", (hi - lo).days * 24
 
 
 def live() -> dict:
@@ -63,9 +75,8 @@ def live() -> dict:
     }
 
 
-def traffic(hours: int = 24) -> dict:
-    hours = max(1, min(int(hours), 24 * 90))
-    w = f"created_at > now() - INTERVAL {hours} HOUR"
+def traffic(hours: int = 24, start: str | None = None, end: str | None = None) -> dict:
+    w, hours = window(start, end, max(1, min(int(hours), 24 * 366)))
     bucket = "hour" if hours <= 72 else "day"
     fmt = "%m-%d %H:00" if bucket == "hour" else "%Y-%m-%d"
     return {
@@ -95,5 +106,5 @@ def traffic(hours: int = 24) -> dict:
         "devices": store.execute(f"SELECT {DEVICE} AS label, COUNT(*) AS n, COUNT(DISTINCT user_id) AS users FROM activity_log WHERE {w} GROUP BY 1 ORDER BY n DESC"),
         "browsers": store.execute(f"SELECT {BROWSER} AS label, COUNT(*) AS n, COUNT(DISTINCT user_id) AS users FROM activity_log WHERE {w} GROUP BY 1 ORDER BY n DESC"),
         "heatmap": store.execute(f"SELECT dayofweek(created_at) AS dow, hour(created_at) AS hour, COUNT(*) AS n FROM activity_log "
-                                 f"WHERE created_at > now() - INTERVAL 28 DAY GROUP BY 1, 2"),
+                                 f"WHERE {w if start or end else 'created_at > now() - INTERVAL 28 DAY'} GROUP BY 1, 2"),
     }

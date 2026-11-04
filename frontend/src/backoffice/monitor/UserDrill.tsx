@@ -11,8 +11,8 @@ import { ActivityTable } from '../parts/ActivityTable';
 import { BarList, SeriesChart, right, type Row } from './charts';
 
 /** Everything one user did: timeline, sessions, areas, routes, AI, devices, errors. */
-export function UserDrill({ id, days, onBack }: { id: string; days: string; onBack: () => void }) {
-  const state = useApi<Row>(`/admin/monitor/users/${encodeURIComponent(id)}?days=${days}`);
+export function UserDrill({ id, query, onBack }: { id: string; query: string; onBack: () => void }) {
+  const state = useApi<Row>(`/admin/monitor/users/${encodeURIComponent(id)}?${query}`);
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-2">

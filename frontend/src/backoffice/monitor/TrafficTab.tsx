@@ -11,8 +11,8 @@ import { BarList, Heatmap, SeriesChart, right, type Row } from './charts';
 const route = (r: Row) => <span className="font-mono text-xs"><b>{r.method}</b> {r.route}</span>;
 
 /** Traffic + API performance over a window (hours). */
-export function TrafficTab({ hours }: { hours: string }) {
-  const state = useApi<Row>(`/admin/monitor/traffic?hours=${hours}`);
+export function TrafficTab({ query }: { query: string }) {
+  const state = useApi<Row>(`/admin/monitor/traffic?${query}`);
   return (
     <AsyncView state={state}>{(t) => (
       <div className="flex flex-col gap-3">

@@ -29,8 +29,8 @@ function Retention({ rows }: { rows: Row[] }) {
 }
 
 /** Growth & positioning: engagement, growth, retention, adoption, content. */
-export function PlatformTab({ days }: { days: string }) {
-  const state = useApi<Row>(`/admin/monitor/platform?days=${Math.max(7, Number(days))}`);
+export function PlatformTab({ query }: { query: string }) {
+  const state = useApi<Row>(`/admin/monitor/platform?${query}`);
   return (
     <AsyncView state={state}>{(p) => {
       const e = p.engagement, daily = new Map<string, Row>();

@@ -3,6 +3,7 @@
 Every change is written to the audit trail as admin.* with the admin's email. `public_router` serves /api/notice
 (announcement + maintenance) to every client, signed in or not.
 """
+from datetime import date
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -172,26 +173,34 @@ def list_audit(q: str | None = None, limit: int = 300):
 
 
 # ---- monitoring ------------------------------------------------------------------------------------------------
+def _dates(start: str | None, end: str | None) -> tuple[str | None, str | None]:
+    """Custom range bounds must be plain YYYY-MM-DD dates (they go into SQL as literals)."""
+    try:
+        return tuple(date.fromisoformat(d).isoformat() if d else None for d in (start, end))  # type: ignore[return-value]
+    except ValueError:
+        raise HTTPException(400, "Dates must look like 2026-11-04")
+
+
 @router.get("/monitor/live")
 def monitor_live():
     return monitor.live()
 
 
 @router.get("/monitor/traffic")
-def monitor_traffic(hours: int = 24):
-    return monitor.traffic(hours)
+def monitor_traffic(hours: int = 24, start: str | None = None, end: str | None = None):
+    return monitor.traffic(hours, *_dates(start, end))
 
 
 @router.get("/monitor/users")
-def monitor_users_list(days: int = 7):
-    return monitor_users.users(days)
+def monitor_users_list(days: int = 7, start: str | None = None, end: str | None = None):
+    return monitor_users.users(days, *_dates(start, end))
 
 
 @router.get("/monitor/users/{user_id}")
-def monitor_user(user_id: str, days: int = 30):
-    return monitor_users.user(user_id, days)
+def monitor_user(user_id: str, days: int = 30, start: str | None = None, end: str | None = None):
+    return monitor_users.user(user_id, days, *_dates(start, end))
 
 
 @router.get("/monitor/platform")
-def monitor_platform(days: int = 30):
-    return monitor_users.platform(days)
+def monitor_platform(days: int = 30, start: str | None = None, end: str | None = None):
+    return monitor_users.platform(days, *_dates(start, end))

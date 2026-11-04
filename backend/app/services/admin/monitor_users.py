@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from ...core.store import store
-from .monitor import AREA, BROWSER, DEVICE, ROUTE, _one
+from .monitor import AREA, BROWSER, DEVICE, ROUTE, _one, window
 from .users import _ws, owner_map
 
 _CONTENT = ("datasources", "datasets", "dashboards", "charts", "queries", "alerts", "reports")
@@ -12,18 +12,18 @@ def _by_ws(table: str) -> dict[str, int]:
     return {r["w"]: r["n"] for r in store.execute(f"SELECT workspace_id AS w, COUNT(*) AS n FROM {table} GROUP BY 1")}
 
 
-def users(days: int = 7) -> list[dict]:
+def users(days: int = 7, start: str | None = None, end: str | None = None) -> list[dict]:
     """One row per user seen in the window, with traffic, quality, AI and content numbers."""
-    days = max(1, min(int(days), 365))
+    w, _ = window(start, end, 24 * max(1, min(int(days), 366)))
     rows = store.execute(
         f"SELECT user_id, MAX(email) AS email, COUNT(*) AS requests, COUNT(*) FILTER (WHERE status >= 400) AS errors, "
         f"ROUND(AVG(ms), 1) AS avg_ms, ROUND(QUANTILE_CONT(ms, 0.95), 1) AS p95, COUNT(DISTINCT CAST(created_at AS DATE)) AS active_days, "
         f"COUNT(DISTINCT {AREA}) AS areas, COUNT(DISTINCT ip) AS ips, MIN(created_at) AS first_seen, MAX(created_at) AS last_seen, "
         f"mode({DEVICE}) AS device, mode({BROWSER}) AS browser FROM activity_log "
-        f"WHERE created_at > now() - INTERVAL {days} DAY AND user_id IS NOT NULL GROUP BY user_id ORDER BY requests DESC")
+        f"WHERE {w} AND user_id IS NOT NULL GROUP BY user_id ORDER BY requests DESC")
     ai = {r["w"]: r for r in store.execute(
         f"SELECT workspace_id AS w, COUNT(*) AS calls, COALESCE(SUM(tokens_in + tokens_out), 0) AS tokens FROM ai_usage "
-        f"WHERE created_at > now() - INTERVAL {days} DAY GROUP BY 1")}
+        f"WHERE {w} GROUP BY 1")}
     counts = {t: _by_ws(t) for t in ("datasets", "dashboards", "charts")}
     for r in rows:
         ws = _ws(r["user_id"])
@@ -34,9 +34,10 @@ def users(days: int = 7) -> list[dict]:
     return rows
 
 
-def user(user_id: str, days: int = 30) -> dict:
-    days = max(1, min(int(days), 365))
-    w, p, ws = f"user_id = ? AND created_at > now() - INTERVAL {days} DAY", [user_id], _ws(user_id)
+def user(user_id: str, days: int = 30, start: str | None = None, end: str | None = None) -> dict:
+    span, hours = window(start, end, 24 * max(1, min(int(days), 366)))
+    days = max(1, round(hours / 24))
+    w, p, ws = f"user_id = ? AND {span}", [user_id], _ws(user_id)
     return {
         "user_id": user_id, "days": days,
         "totals": _one(f"SELECT MAX(email) AS email, COUNT(*) AS requests, COUNT(*) FILTER (WHERE status >= 400) AS errors, "
@@ -61,14 +62,17 @@ def user(user_id: str, days: int = 30) -> dict:
         "recent": store.execute(f"SELECT created_at, method, path, status, ms, ip FROM activity_log WHERE {w} ORDER BY created_at DESC LIMIT 100", p),
         "ai": store.execute(f"SELECT feature, model, COUNT(*) AS calls, COALESCE(SUM(tokens_in + tokens_out), 0) AS tokens, "
                             f"COUNT(*) FILTER (WHERE NOT ok) AS errors, ROUND(AVG(ms)) AS avg_ms FROM ai_usage "
-                            f"WHERE workspace_id = ? AND created_at > now() - INTERVAL {days} DAY GROUP BY 1, 2 ORDER BY calls DESC", [ws]),
+                            f"WHERE workspace_id = ? AND {span} GROUP BY 1, 2 ORDER BY calls DESC", [ws]),
         "content": {t: _one(f"SELECT COUNT(*) AS n FROM {t} WHERE workspace_id = ?", [ws]).get("n", 0) for t in _CONTENT},
     }
 
 
-def platform(days: int = 30) -> dict:
+def platform(days: int = 30, start: str | None = None, end: str | None = None) -> dict:
     """Growth and positioning: DAU/WAU/MAU, new vs returning users, retention, feature adoption, content growth."""
-    days = max(7, min(int(days), 365))
+    w, hours = window(start, end, 24 * max(7, min(int(days), 366)))
+    days = max(1, round(hours / 24))
+    lo = f"DATE '{start}'" if start else f"current_date - INTERVAL {days} DAY"
+    hi = f"DATE '{end}'" if end else "current_date"
     owners = owner_map()
     first = "(SELECT user_id, MIN(CAST(created_at AS DATE)) AS d0 FROM activity_log WHERE user_id IS NOT NULL GROUP BY 1)"
     total_users = _one("SELECT COUNT(DISTINCT user_id) AS n FROM activity_log WHERE user_id IS NOT NULL").get("n", 0)
@@ -80,7 +84,7 @@ def platform(days: int = 30) -> dict:
             "COUNT(DISTINCT user_id) FILTER (WHERE created_at > now() - INTERVAL 30 DAY) AS mau FROM activity_log WHERE user_id IS NOT NULL")
         | {"total_users": total_users},
         "growth": store.execute(
-            f"WITH days AS (SELECT CAST(d AS DATE) AS day FROM range(current_date - INTERVAL {days} DAY, current_date + INTERVAL 1 DAY, INTERVAL 1 DAY) t(d)), "
+            f"WITH days AS (SELECT CAST(d AS DATE) AS day FROM range({lo}, {hi} + INTERVAL 1 DAY, INTERVAL 1 DAY) t(d)), "
             f"act AS (SELECT CAST(created_at AS DATE) AS day, COUNT(DISTINCT user_id) AS active FROM activity_log WHERE user_id IS NOT NULL GROUP BY 1), "
             f"new AS (SELECT d0 AS day, COUNT(*) AS new_users FROM {first} GROUP BY 1) "
             f"SELECT strftime(days.day, '%Y-%m-%d') AS day, COALESCE(active, 0) AS active, COALESCE(new_users, 0) AS new_users, "
@@ -94,16 +98,16 @@ def platform(days: int = 30) -> dict:
         "adoption": store.execute(
             f"SELECT {AREA} AS label, COUNT(DISTINCT user_id) AS users, COUNT(*) AS requests, "
             f"ROUND(100.0 * COUNT(DISTINCT user_id) / NULLIF((SELECT COUNT(DISTINCT user_id) FROM activity_log "
-            f"WHERE created_at > now() - INTERVAL {days} DAY), 0), 1) AS pct FROM activity_log "
-            f"WHERE created_at > now() - INTERVAL {days} DAY AND user_id IS NOT NULL GROUP BY 1 ORDER BY users DESC LIMIT 25"),
+            f"WHERE {w}), 0), 1) AS pct FROM activity_log "
+            f"WHERE {w} AND user_id IS NOT NULL GROUP BY 1 ORDER BY users DESC LIMIT 25"),
         "ai_features": store.execute(
             f"SELECT feature AS label, COUNT(*) AS n, COUNT(DISTINCT workspace_id) AS users, COALESCE(SUM(tokens_in + tokens_out), 0) AS tokens "
-            f"FROM ai_usage WHERE created_at > now() - INTERVAL {days} DAY GROUP BY 1 ORDER BY n DESC"),
-        "content": {t: _one(f"SELECT COUNT(*) AS total, COUNT(*) FILTER (WHERE created_at > now() - INTERVAL {days} DAY) AS recent, "
+            f"FROM ai_usage WHERE {w} GROUP BY 1 ORDER BY n DESC"),
+        "content": {t: _one(f"SELECT COUNT(*) AS total, COUNT(*) FILTER (WHERE {w}) AS recent, "
                             f"COUNT(DISTINCT workspace_id) AS workspaces FROM {t}") for t in _CONTENT},
         "content_daily": store.execute(
             " UNION ALL ".join(f"SELECT '{t}' AS kind, strftime(created_at, '%Y-%m-%d') AS day, COUNT(*) AS n FROM {t} "
-                               f"WHERE created_at > now() - INTERVAL {days} DAY GROUP BY 2" for t in ("datasets", "dashboards", "charts"))),
+                               f"WHERE {w} GROUP BY 2" for t in ("datasets", "dashboards", "charts"))),
         "leaders": [r | {"owner": owners.get(r["w"], r["w"])} for r in store.execute(
             "SELECT workspace_id AS w, COUNT(*) AS n FROM datasets GROUP BY 1 ORDER BY n DESC LIMIT 10")],
     }

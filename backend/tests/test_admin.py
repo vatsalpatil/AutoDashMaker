@@ -39,7 +39,8 @@ try:
     assert ov["totals"]["datasets"] == 1 and ov["activity"]["requests_24h"] >= 2, ov
     # monitoring endpoints answer with data
     assert c.get("/api/admin/monitor/live", headers=ALICE).status_code == 403
-    for path in ("live", "traffic?hours=200", "users", "users/alice", "platform"):
+    assert c.get("/api/admin/monitor/traffic?start=x", headers=BOSS).status_code == 400
+    for path in ("live", "traffic?hours=200", "traffic?start=2026-01-01&end=2026-12-31", "users?start=2026-01-01", "platform?start=2025-11-01&end=2025-11-30", "users/alice?end=2030-01-01", "users", "users/alice", "platform"):
         r = c.get(f"/api/admin/monitor/{path}", headers=BOSS)
         assert r.status_code == 200, (path, r.text)
     assert c.get("/api/admin/monitor/live", headers=BOSS).json()["now"]["req_60m"] >= 2
