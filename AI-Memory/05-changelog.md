@@ -372,3 +372,4 @@ Format: `YYYY-MM-DD · tool · files · what + why`
 - 2026-11-03 · features/guide/sections/ConnectAiSection.tsx, guideContent.tsx, GuidePage · Guide section 'Connect your own AI': MCP overview diagram, connection URL, per-app setup (reuses settings/connect-ai/clients.ts + Snippet), tokens, example asks, safety.
 - 2026-11-03 · frontend/src/features/docs/* (new), landing/useLanding.ts, LandingPage.tsx, VideoSection.tsx · Public /docs page (Docs button beside Get started): install/setup, architecture diagrams, use cases with looping clips + numbered-pointer screenshots, every-feature reference (from MODULES), plus all in-app guide sections reused.
 - 2026-11-03 · (no code) · Live check on dashtor.laveyent.com: OAuth discovery/register/authorize OK, all 20 MCP tools OK with a test token, admin path + DROP blocked; test dashboard, share and token removed.
+- 2026-11-04 · frontend/caddy.backoffice.conf · X-Frame-Options DENY→SAMEORIGIN so /architecture iframe renders
