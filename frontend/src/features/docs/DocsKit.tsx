@@ -95,6 +95,9 @@ export function Cards({ cards, go }: { cards: { icon: LucideIcon; title: string;
   );
 }
 
+/** Renders `backticks` inside plain strings as inline code. */
+const fmt = (c: ReactNode) => typeof c !== 'string' ? c : c.split('`').map((t, i) => i % 2 ? <code key={i} className="rounded bg-muted px-1 text-xs text-foreground">{t}</code> : t);
+
 /** Simple reference table; first column rendered as code. */
 export function Table({ head, rows, code = true }: { head: string[]; rows: ReactNode[][]; code?: boolean }) {
   return (
@@ -104,7 +107,7 @@ export function Table({ head, rows, code = true }: { head: string[]; rows: React
         <tbody>
           {rows.map((r, i) => (
             <tr key={i} className="border-t align-top">
-              {r.map((c, k) => <td key={k} className={cn('px-3 py-2', k === 0 ? (code ? 'whitespace-nowrap font-mono text-xs text-foreground' : 'font-medium text-foreground') : 'text-muted-foreground')}>{c}</td>)}
+              {r.map((c, k) => <td key={k} className={cn('px-3 py-2', k === 0 ? (code ? 'whitespace-nowrap font-mono text-xs text-foreground' : 'font-medium text-foreground') : 'text-muted-foreground')}>{fmt(c)}</td>)}
             </tr>
           ))}
         </tbody>
