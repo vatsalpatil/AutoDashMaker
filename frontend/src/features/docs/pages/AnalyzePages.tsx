@@ -7,27 +7,27 @@ const IMG = '/images/landing';
 export function WorkbenchPage() {
   return (
     <>
-      <PageTitle eyebrow="Analyze" title="SQL Workbench" lead="A notebook for SQL: cells that run DuckDB queries, chart their results and ask AI to fix, explain or optimise them." />
+      <PageTitle eyebrow="Analyze" title="SQL Workbench" lead="A notebook for SQL: cells that run SQL queries, chart their results and ask AI to fix, explain or optimise them." />
       <H2>Cells</H2>
       <P>Each cell holds one query. Run it with <b>Ctrl/⌘ + Enter</b>; the result appears below as a sortable, filterable grid you can switch to a chart. Cells keep their output, so a notebook reads like a report: question, query, answer.</P>
       <Clip id="sql-workbench" caption="Run SQL, chart the result, ask AI to explain it." />
       <H2>Writing queries</H2>
-      <P>You write <b>DuckDB SQL</b> — close to Postgres, with extras that make analysis shorter:</P>
-      <Code title="DuckDB shortcuts" code={`-- group by every non-aggregated column\nSELECT region, category, SUM(revenue) FROM sales_2025 GROUP BY ALL;\n\n-- month buckets and filters on aggregates\nSELECT date_trunc('month', order_date) AS m, SUM(revenue) AS rev\nFROM sales_2025 GROUP BY 1 HAVING rev > 10000 ORDER BY 1;\n\n-- top 3 products per region\nSELECT * FROM sales_2025\nQUALIFY row_number() OVER (PARTITION BY region ORDER BY revenue DESC) <= 3;`} />
+      <P>You write standard SQL (the DuckDB dialect — close to Postgres), with extras that make analysis shorter:</P>
+      <Code title="handy shortcuts" code={`-- group by every non-aggregated column\nSELECT region, category, SUM(revenue) FROM sales_2025 GROUP BY ALL;\n\n-- month buckets and filters on aggregates\nSELECT date_trunc('month', order_date) AS m, SUM(revenue) AS rev\nFROM sales_2025 GROUP BY 1 HAVING rev > 10000 ORDER BY 1;\n\n-- top 3 products per region\nSELECT * FROM sales_2025\nQUALIFY row_number() OVER (PARTITION BY region ORDER BY revenue DESC) <= 3;`} />
       <P>Autocomplete suggests dataset and column names as you type. Instant lint checks flag common mistakes (missing <code>GROUP BY</code>, <code>SELECT *</code> on wide tables, unknown columns) before you run.</P>
       <H2>AI cell actions</H2>
       <Table head={['Action', 'What it does']} rows={[
         ['Fix', 'Reads the error message and your SQL, returns a corrected query for you to accept.'],
         ['Explain', 'Plain-English walk-through: which tables, filters, joins and what each column means.'],
         ['Optimize', 'Suggests a faster equivalent (pre-filtering, fewer scans) with the reason.'],
-        ['Convert', 'Translates SQL from another dialect (Postgres, MySQL, BigQuery, T-SQL) to DuckDB.'],
+        ['Convert', 'Translates SQL from another dialect (Postgres, MySQL, BigQuery, T-SQL) to the SQL Dashtor uses.'],
       ]} />
       <Note>AI never runs SQL by itself in the Workbench: it proposes, you click to apply and run.</Note>
       <H2>Parameters</H2>
       <P>Use <code>{'{{name}}'}</code> placeholders to make a query reusable. Dashboards fill them from controls (date period, number, text). Values are passed safely, never pasted into the SQL string.</P>
       <Code code={`SELECT * FROM sales_2025 WHERE region = {{region}} AND revenue > {{min_revenue}}`} />
       <H2>Limits</H2>
-      <List items={['Queries stop after 30 seconds (configurable on self-hosted).', 'Up to 10,000 rows are returned to the browser; aggregate first for big tables.', 'Identical queries within 15 minutes are served from a result cache.']} />
+      <List items={['Queries stop after 30 seconds.', 'Up to 10,000 rows are returned to the browser; aggregate first for big tables.', 'Identical queries within 15 minutes are served from a result cache.']} />
     </>
   );
 }
@@ -60,7 +60,7 @@ export function AskPage() {
         { title: 'Context is assembled', body: <P>{BRAND_NAME} gathers the schema of the relevant datasets (table and column names, types, a few sample values), your metric definitions, glossary and verified queries. <b>Your full rows are not sent.</b></P> },
         { title: 'The model writes SQL', body: <P>Your configured AI provider returns a query — or a clarifying question if the request is ambiguous (<i>“By revenue, do you mean gross or net?”</i>).</P> },
         { title: 'The SQL is checked', body: <P>The read-only guard parses it; anything other than a single SELECT is refused. Unknown tables/columns trigger one automatic repair attempt.</P> },
-        { title: 'It runs and is explained', body: <P>DuckDB runs it, a chart type is chosen from the result's shape (time → line, category → bar, one number → KPI), and you get a summary plus follow-ups.</P> },
+        { title: 'It runs and is explained', body: <P>The query runs, a chart type is chosen from the result's shape (time → line, category → bar, one number → KPI), and you get a summary plus follow-ups.</P> },
       ]} />
       <H2>Asking good questions</H2>
       <Table code={false} head={['Instead of', 'Ask']} rows={[
@@ -72,7 +72,7 @@ export function AskPage() {
       <H2>The AI Assistant (agent)</H2>
       <P>Inside the Workbench and dashboards, the assistant can take several steps: look at datasets, run queries, build a chart, add it to a dashboard. Each step is shown as it runs, and you can stop it.</P>
       <H2>AI providers</H2>
-      <P>Pick a provider in <b>Settings → AI</b>: Gemini (free tier default), OpenAI, Anthropic, Groq or OpenRouter. You can store several keys per provider and switch automatically when one runs low. Answers use temperature 0 so the same question gives the same SQL.</P>
+      <P>Pick a provider in <b>Settings → AI models</b>: Gemini (free tier default), OpenAI, Anthropic, Groq or OpenRouter. You can store several keys per provider and switch automatically when one runs low. Answers use temperature 0 so the same question gives the same SQL.</P>
       <Warning>Free models (for example <code>openrouter/free</code>) pick a random model per request, so answers can vary. Pin a specific model for consistency.</Warning>
     </>
   );

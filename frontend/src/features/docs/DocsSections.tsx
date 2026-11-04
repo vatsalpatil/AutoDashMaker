@@ -1,65 +1,7 @@
-import { BRAND_NAME } from '@/lib/brand';
-import { FlowDiagram } from '@/features/guide/FlowDiagram';
-import { ConceptCard, H2, P } from '@/features/guide/GuideParts';
-import { AnnotatedShot, Callout, Clip, CodeBlock, type Pin } from './DocsParts';
+import { H2, P } from '@/features/guide/GuideParts';
+import { AnnotatedShot, Callout, Clip, type Pin } from './DocsParts';
 
 const IMG = '/images/landing';
-
-/** System architecture: browser → API → engines → storage, plus the AI layer. */
-export function ArchitectureSection() {
-  const nodes = [
-    { id: 'ui', x: 10, y: 120, w: 130, h: 54, label: 'React web app', sub: 'Vite · shadcn · Recharts' },
-    { id: 'mcp', x: 10, y: 220, w: 130, h: 54, label: 'Your AI (MCP)', sub: 'Claude · ChatGPT · Cursor', tone: 'ai' as const },
-    { id: 'api', x: 200, y: 160, w: 130, h: 64, label: 'FastAPI backend', sub: 'routers → services' },
-    { id: 'guard', x: 390, y: 40, w: 140, h: 50, label: 'Read-only SQL guard', sub: 'sqlglot validation', tone: 'alert' as const },
-    { id: 'engine', x: 390, y: 130, w: 140, h: 50, label: 'DuckDB engine', sub: 'queries · Parquet' },
-    { id: 'meta', x: 390, y: 210, w: 140, h: 50, label: 'Metadata store', sub: 'charts · dashboards' },
-    { id: 'ai', x: 390, y: 290, w: 140, h: 50, label: 'AI providers', sub: 'Gemini · OpenAI · Claude…', tone: 'ai' as const },
-    { id: 'src', x: 590, y: 130, w: 130, h: 54, label: 'Your sources', sub: 'CSV · Postgres · REST…' },
-  ];
-  const edges = [
-    { from: 'ui', to: 'api', label: '/api' }, { from: 'mcp', to: 'api', label: 'token' },
-    { from: 'api', to: 'guard' }, { from: 'api', to: 'engine' }, { from: 'api', to: 'meta' }, { from: 'api', to: 'ai' },
-    { from: 'engine', to: 'src', label: 'ingest' },
-  ];
-  return (
-    <div className="flex flex-col gap-4">
-      <H2>How {BRAND_NAME} is built</H2>
-      <P>A React app talks to one FastAPI backend. Data is pulled from your sources into DuckDB (stored as Parquet), and every query passes a read-only SQL guard before it runs. AI is optional and pluggable.</P>
-      <div className="rounded-xl border bg-card p-4"><FlowDiagram nodes={nodes} edges={edges} width={730} height={350} /></div>
-      <H2>The data pipeline</H2>
-      <div className="rounded-xl border bg-card p-4">
-        <FlowDiagram width={730} height={90} edges={['src', 'ds', 'q', 'c'].map((f, i) => ({ from: f, to: ['ds', 'q', 'c', 'd'][i] }))}
-          nodes={[['src', 'Source', 'file · DB · API'], ['ds', 'Dataset', 'profiled + scored'], ['q', 'Query', 'SQL · builder · Ask'], ['c', 'Chart', '30+ types'], ['d', 'Dashboard', 'share · alert · report']]
-            .map(([id, label, sub], i) => ({ id, label, sub, x: 10 + i * 148, y: 18, w: 118, h: 54, tone: id === 'q' ? 'ai' as const : undefined }))} />
-      </div>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <ConceptCard title="Safe by design">Every SQL statement — typed, built or written by AI — is checked to be read-only before DuckDB runs it.</ConceptCard>
-        <ConceptCard title="Auditable answers">Explanations, confidence and "why" notes are rule-based, so you can see exactly where a number came from.</ConceptCard>
-      </div>
-    </div>
-  );
-}
-
-/** Running it yourself. */
-export function SetupSection() {
-  return (
-    <div className="flex flex-col gap-4">
-      <H2>Run {BRAND_NAME} on your machine</H2>
-      <P>You need Python 3.12 and Node 20+. The backend and the web app run in two terminals.</P>
-      <h3 className="font-semibold">1 · Backend (port 8000)</h3>
-      <CodeBlock code={`cd backend\npython -m venv .venv\n.venv\\Scripts\\activate        # macOS/Linux: source .venv/bin/activate\npip install -r requirements.txt\npython Main.py`} />
-      <h3 className="font-semibold">2 · Web app (port 5174)</h3>
-      <CodeBlock code={`cd frontend\nnpm install\nnpm run dev`} />
-      <P>Open http://localhost:5174. The interactive API reference is at http://127.0.0.1:8000/docs.</P>
-      <h3 className="font-semibold">3 · Optional settings (backend/.env)</h3>
-      <CodeBlock title="backend/.env" code={`# Leave Supabase unset for single-user local mode (no login)\nSUPABASE_URL=...\nSUPABASE_ANON_KEY=...\nAPP_URL=http://localhost:5174`} />
-      <Callout title="AI keys">Add a Gemini, OpenAI, Anthropic, Groq or OpenRouter key in <b>Settings → AI</b>. Keys are encrypted at rest. Without a key everything except AI features still works — or connect your own AI over MCP.</Callout>
-      <h3 className="font-semibold">Deploy with Docker</h3>
-      <P>Both <code>backend/</code> and <code>frontend/</code> ship a Dockerfile. Point any Docker host (Dokploy, Coolify, Fly…) at each folder, set the same .env values on the backend and you're live.</P>
-    </div>
-  );
-}
 
 const HOME_PINS: Pin[] = [
   { x: 8, y: 22, label: 'Sidebar', text: 'every tool: Ask, sources, Workbench, charts, dashboards.' },

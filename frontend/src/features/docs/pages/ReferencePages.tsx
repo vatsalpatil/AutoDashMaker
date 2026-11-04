@@ -1,74 +1,46 @@
-import { ArchitectureSection } from '../DocsSections';
+import { BRAND_NAME } from '@/lib/brand';
 import { FeaturesReference } from '../FeaturesReference';
 import { FaqSection } from '@/features/guide/sections/FaqSection';
-import { Accordion, Code, H2, P, PageTitle, Table } from '../DocsKit';
+import { Accordion, H2, List, P, PageTitle, Steps, Table, Tip } from '../DocsKit';
 
-export function ConfigPage() {
+export function AccountPage() {
   return (
     <>
-      <PageTitle eyebrow="Reference" title="Configuration" lead="Every backend setting, read from environment variables or backend/.env (names are case-insensitive)." />
-      <H2>Core & storage</H2>
-      <Table head={['Variable', 'Default', 'Meaning']} rows={[
-        ['APP_URL', '(first CORS origin)', 'Public address; links in emails point here'],
-        ['CORS_ORIGINS', 'localhost dev ports', 'Allowed browser origins (JSON list)'],
-        ['MAX_UPLOAD_MB', '50', 'Largest file upload'],
-        ['USER_QUOTA_MB', '250', 'Storage per user (hosted)'],
-        ['MAX_ROWS_PER_DATASET', '5000000', 'Row cap per dataset'],
-        ['MAX_DATASETS', '20', 'Datasets per user'],
-        ['DISK_USAGE_LIMIT_PCT', '80', 'Uploads refused above this disk usage'],
+      <PageTitle eyebrow="Get started" title="Account & settings" lead={`Create your account, set up AI, and find your way around ${BRAND_NAME}'s settings.`} />
+      <H2>Create your account</H2>
+      <Steps steps={[
+        { title: 'Sign up', body: <P>Click <b>Get started</b> on the home page, enter your email and a password, then open the confirmation link we email you.</P> },
+        { title: 'Your private workspace', body: <P>Every account gets its own workspace. Your sources, datasets, charts and dashboards are visible only to you, unless you share a dashboard link.</P> },
+        { title: 'Add an AI key (optional)', body: <P>AI features (Ask, AI Assistant, chart and dashboard AI) need an AI provider. Open <b>Settings → AI models</b> and paste a key from Gemini (has a free tier), OpenAI, Anthropic, Groq or OpenRouter. Everything else works without one.</P> },
       ]} />
-      <H2>Query engine</H2>
-      <Table head={['Variable', 'Default', 'Meaning']} rows={[
-        ['DEFAULT_ROW_LIMIT', '10000', 'Rows returned to the browser'],
-        ['QUERY_TIMEOUT_S', '30', 'Query is cancelled after this'],
-        ['DUCKDB_MEMORY_LIMIT', '6GB', 'Engine memory before spilling to disk'],
-        ['DUCKDB_THREADS', '3', 'CPU threads for queries'],
-        ['RESULT_CACHE_TTL_S', '900', 'How long identical query results are reused'],
-        ['RESULT_CACHE_ENTRIES', '512', 'Max cached results'],
+      <Tip title="No AI key? Use your own AI app">Connect Claude, ChatGPT or Cursor through <b>MCP</b> and use the subscription you already have — see “Connect your AI”.</Tip>
+      <H2>Settings tabs</H2>
+      <Table head={['Tab', 'What you can do']} code={false} rows={[
+        ['AI models', 'Add keys per provider, pick a model, add backup keys that switch in automatically when one runs low.'],
+        ['AI usage', 'See how many AI requests you made, by feature and model, and how much quota is left.'],
+        ['Connect your AI', 'Create access tokens for Claude, ChatGPT, Cursor and other MCP apps.'],
+        ['Appearance', 'Light / dark / system mode and colour themes.'],
+        ['Account', 'Change email or password, verify your email, delete your account and all data.'],
       ]} />
-      <H2>AI</H2>
-      <Table head={['Variable', 'Default', 'Meaning']} rows={[
-        ['DEFAULT_AI_PROVIDER', 'gemini', 'Provider used until one is set in Settings'],
-        ['DEFAULT_AI_MODEL', 'gemini-2.0-flash', 'Model for that provider'],
-        ['WHISPER_MODEL', 'base', 'Voice typing model: tiny | base | small'],
-      ]} />
-      <H2>Auth (hosted mode)</H2>
-      <Table head={['Variable', 'Default', 'Meaning']} rows={[
-        ['AUTH_ENABLED', 'false', 'Turn on login + per-user workspaces'],
-        ['SUPABASE_URL / SUPABASE_ANON_KEY', '—', 'Your Supabase project (cloud or self-hosted)'],
-        ['SUPABASE_SERVICE_KEY', '—', 'Secret; only used to change a user\'s email'],
-        ['SUPABASE_JWT_SECRET', '—', 'Legacy HS256 projects; empty = verify via JWKS'],
-        ['ADMIN_EMAILS', '[]', 'Who can open the backoffice'],
-        ['ALLOW_USER_PYTHON', 'false', 'Allow Python transform layers for users'],
-      ]} />
-      <H2>Email & verification</H2>
-      <Table head={['Variable', 'Default', 'Meaning']} rows={[
-        ['SMTP_HOST / SMTP_PORT / SMTP_USER / SMTP_PASSWORD / SMTP_FROM', '— / 587', 'Outgoing mail'],
-        ['VERIFICATION_REQUIRED', 'false', 'Block unverified users after the grace period'],
-        ['VERIFICATION_GRACE_DAYS', '7', 'Days before blocking'],
-        ['SMS_PROVIDER', 'console', 'console (log only) or twilio + TWILIO_* keys'],
-      ]} />
-      <Code title="backend/.env (hosted example)" code={`AUTH_ENABLED=true\nSUPABASE_URL=https://xyz.supabase.co\nSUPABASE_ANON_KEY=...\nAPP_URL=https://dashtor.example.com\nADMIN_EMAILS=["you@example.com"]`} />
+      <H2>Tips for picking an AI model</H2>
+      <List items={['Pin one specific model: “free/random” routers change model per request, so answers vary.', 'Faster, smaller models are fine for simple questions; use a stronger model for complex joins.', 'You only pay your AI provider for what you use — Dashtor adds no AI charge.']} />
     </>
   );
 }
 
-export function ArchitecturePage() {
+export function LimitsPage() {
   return (
     <>
-      <PageTitle eyebrow="Reference" title="Architecture" lead="How the pieces fit: React app, FastAPI, DuckDB, the metadata store, AI providers and MCP." />
-      <ArchitectureSection />
-      <H2>Request lifecycle of a chart</H2>
-      <P>The browser asks <code>/api/charts/:id/data</code> → the router loads the chart from the metadata store → the SQL is validated read-only and rewritten for linked sources → the engine checks the result cache, else runs DuckDB with a timeout → rows are capped and returned with column types → the React chart renders them.</P>
-      <H2>Code layout</H2>
-      <Table head={['Folder', 'Role']} rows={[
-        ['backend/app/routers', 'Thin HTTP endpoints (one file per area)'],
-        ['backend/app/services', 'Business logic: engine, ingest, quality, ai, dashboards, mcp…'],
-        ['backend/app/connectors', 'file, postgres, mysql, sqlite, rest, graphql, url'],
-        ['backend/app/core', 'config, metadata store, security (SQL guard)'],
-        ['frontend/src/features', 'Feature UIs (workbench, ai, dashboards, docs…)'],
+      <PageTitle eyebrow="Reference" title="Limits" lead="What fits in one account, and what to do when you hit a limit." />
+      <Table head={['Limit', 'Value', 'If you hit it']} code={false} rows={[
+        ['File upload', '50 MB per file', 'Split the file, or connect the database/API directly instead of uploading.'],
+        ['Storage', '250 MB per account', 'Delete datasets or old versions you no longer need.'],
+        ['Datasets', '20 per account', 'Combine related files, remove test datasets.'],
+        ['Rows per dataset', '5,000,000', 'Import a filtered or aggregated table.'],
+        ['Query time', '30 seconds', 'Filter earlier and aggregate; avoid SELECT * on wide tables.'],
+        ['Rows shown in the browser', '10,000', 'Aggregate with GROUP BY — charts rarely need more.'],
       ]} />
-      <P>Full HTTP reference with try-it-out: open <code>/docs</code> on your backend (FastAPI OpenAPI).</P>
+      <P>Repeated identical queries within 15 minutes are answered from a cache, so dashboards open quickly.</P>
     </>
   );
 }
@@ -78,15 +50,16 @@ export function FeaturesPage() { return <FeaturesReference />; }
 export function TroubleshootingPage() {
   return (
     <>
-      <PageTitle eyebrow="Reference" title="Troubleshooting & FAQ" lead="Common errors, what they mean and how to fix them." />
+      <PageTitle eyebrow="Reference" title="Troubleshooting & FAQ" lead="Common messages, what they mean and how to fix them." />
       <H2>Common errors</H2>
       <Accordion items={[
-        { q: '“Only read-only SELECT statements are allowed”', a: 'You sent a write, DDL or two statements. Remove the extra statement, or use a transform to create new data.' },
-        { q: '“Table not found” / unknown column', a: 'Use the dataset\'s physical name (shown on the dataset page) and check column spelling; autocomplete in the Workbench lists both.' },
-        { q: 'Query timed out', a: 'Filter earlier, aggregate, avoid SELECT * on wide tables, or raise QUERY_TIMEOUT_S on a self-hosted server.' },
-        { q: 'Upload refused: disk / quota', a: 'Hosted users have 250 MB and 20 datasets — delete old datasets. Self-hosted: free disk space or raise DISK_USAGE_LIMIT_PCT.' },
-        { q: 'AI says it is paused or out of quota', a: 'Your provider key hit its rate limit. Add a second key with auto-switch in Settings → AI, or wait for the daily reset.' },
-        { q: 'Can\'t connect to my database', a: 'The host must be reachable from the server (not localhost on hosted). Check firewall, SSL mode and that the user has SELECT rights.' },
+        { q: '“Only read-only SELECT statements are allowed”', a: 'You sent something that changes data, or two statements at once. Keep one SELECT. To create new data, use a transform.' },
+        { q: '“Table not found” / unknown column', a: 'Use the dataset\'s SQL name (shown on the dataset page) and check spelling — the Workbench autocompletes both.' },
+        { q: 'Query timed out', a: 'Filter earlier, aggregate, and avoid SELECT * on wide tables. Queries stop after 30 seconds.' },
+        { q: 'Upload refused', a: 'The file is over 50 MB, or your account is at its storage/dataset limit. Delete old datasets or connect the source directly.' },
+        { q: 'AI says it is paused or out of quota', a: 'Your AI key hit its provider\'s limit. Add a second key with auto-switch in Settings → AI models, or wait for the provider\'s reset.' },
+        { q: 'Can\'t connect to my database', a: 'It must be reachable from the internet, with the right port open, SSL mode set, and a user that can SELECT.' },
+        { q: 'A shared link stopped working', a: 'The owner revoked it or deleted the dashboard. Ask them for a new link.' },
       ]} />
       <H2>FAQ</H2>
       <FaqSection />

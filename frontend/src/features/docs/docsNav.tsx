@@ -8,9 +8,9 @@ import { UseCasesSection } from './DocsSections';
 import { PageTitle } from './DocsKit';
 import { AskPage, BuilderPage, ChartsPage, WorkbenchPage } from './pages/AnalyzePages';
 import { DatasetsPage, SourcesPage, TransformsPage } from './pages/DataPages';
-import { ArchitecturePage, ConfigPage, FeaturesPage, TroubleshootingPage } from './pages/ReferencePages';
+import { AccountPage, FeaturesPage, LimitsPage, TroubleshootingPage } from './pages/ReferencePages';
 import { AlertsPage, DashboardsPage, McpPage, SecurityPage } from './pages/ShipPages';
-import { InstallPage, OverviewPage, QuickstartPage } from './pages/StartPages';
+import { OverviewPage, QuickstartPage } from './pages/StartPages';
 
 export type Go = (id: string) => void;
 export interface DocPage { id: string; tab: string; group: string; title: string; keywords?: string; render: (go: Go) => ReactNode }
@@ -24,7 +24,7 @@ const legacy = (title: string, lead: string, body: ReactNode) => (
 export const PAGES: DocPage[] = [
   { id: 'overview', tab: 'Get started', group: 'Introduction', title: 'Overview', render: (go) => <OverviewPage go={go} /> },
   { id: 'quickstart', tab: 'Get started', group: 'Introduction', title: 'Quickstart', keywords: 'first dashboard csv', render: (go) => <QuickstartPage go={go} /> },
-  { id: 'install', tab: 'Get started', group: 'Introduction', title: 'Install & run locally', keywords: 'docker setup self-host', render: () => <InstallPage /> },
+  { id: 'account', tab: 'Get started', group: 'Introduction', title: 'Account & settings', keywords: 'sign up ai key settings', render: () => <AccountPage /> },
   { id: 'concepts', tab: 'Get started', group: 'Core concepts', title: 'Concepts', render: () => legacy('Concepts', 'The vocabulary used across the app.', <ConceptsSection />) },
   { id: 'flows', tab: 'Get started', group: 'Core concepts', title: 'How data flows', render: () => legacy('How data flows', 'Diagrams of the main paths through the product.', <FlowsSection />) },
 
@@ -45,9 +45,8 @@ export const PAGES: DocPage[] = [
   { id: 'assistant', tab: 'AI', group: 'AI in Dashtor', title: 'AI Assistant', keywords: 'agent chat', render: () => legacy('AI Assistant', 'Chat with an agent that can query and build for you.', <AiAssistantSection />) },
   { id: 'mcp', tab: 'AI', group: 'Bring your own AI', title: 'Connect your AI (MCP)', keywords: 'claude chatgpt cursor token', render: () => <McpPage /> },
 
-  { id: 'config', tab: 'Reference', group: 'Reference', title: 'Configuration', keywords: 'env variables settings', render: () => <ConfigPage /> },
-  { id: 'architecture', tab: 'Reference', group: 'Reference', title: 'Architecture', render: () => <ArchitecturePage /> },
   { id: 'features', tab: 'Reference', group: 'Reference', title: 'Every feature', render: () => <FeaturesPage /> },
+  { id: 'limits', tab: 'Reference', group: 'Reference', title: 'Limits', keywords: 'quota size rows', render: () => <LimitsPage /> },
   { id: 'troubleshooting', tab: 'Reference', group: 'Help', title: 'Troubleshooting & FAQ', keywords: 'error timeout', render: () => <TroubleshootingPage /> },
 ];
 
