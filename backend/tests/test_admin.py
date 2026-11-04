@@ -37,6 +37,13 @@ try:
     activity.flush()
     ov = c.get("/api/admin/overview", headers=BOSS).json()
     assert ov["totals"]["datasets"] == 1 and ov["activity"]["requests_24h"] >= 2, ov
+    # monitoring endpoints answer with data
+    assert c.get("/api/admin/monitor/live", headers=ALICE).status_code == 403
+    for path in ("live", "traffic?hours=200", "users", "users/alice", "platform"):
+        r = c.get(f"/api/admin/monitor/{path}", headers=BOSS)
+        assert r.status_code == 200, (path, r.text)
+    assert c.get("/api/admin/monitor/live", headers=BOSS).json()["now"]["req_60m"] >= 2
+    assert any(u["user_id"] == "alice" for u in c.get("/api/admin/monitor/users", headers=BOSS).json())
     # activity log knows who did what
     rows = c.get("/api/admin/activity?q=upload", headers=BOSS).json()
     assert rows and rows[0]["email"] == "alice@x.com" and rows[0]["status"] == 200, rows

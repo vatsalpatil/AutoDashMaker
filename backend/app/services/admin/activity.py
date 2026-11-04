@@ -20,6 +20,7 @@ log = logging.getLogger("activity")
 MAX_ROWS = 200_000
 _SKIP = ("/api/health", "/api/auth/config")
 _counter = itertools.count(1)
+inflight = [0]  # requests being served right now (backoffice live monitor)
 _writer = ThreadPoolExecutor(max_workers=1, thread_name_prefix="activity")
 
 
@@ -48,6 +49,7 @@ class ActivityMiddleware:
         if scope["type"] != "http" or not path.startswith("/api/") or path in _SKIP:
             return await self.app(scope, receive, send)
         t0, status = time.perf_counter(), [500]
+        inflight[0] += 1
 
         async def _send(msg):
             if msg["type"] == "http.response.start":
@@ -57,6 +59,7 @@ class ActivityMiddleware:
         try:
             await self.app(scope, receive, _send)
         finally:
+            inflight[0] -= 1
             headers = dict(scope.get("headers") or [])
             c = _claims(headers)
             row = {"user_id": c.get("sub") or ("local" if not headers.get(b"authorization") else None), "email": c.get("email"),

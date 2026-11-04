@@ -10,7 +10,7 @@ from pydantic import BaseModel
 
 from ..core.admin import require_admin
 from ..core.store import store
-from ..services.admin import activity, ai_admin, controls, data, overview, system, users
+from ..services.admin import activity, ai_admin, controls, data, monitor, monitor_users, overview, system, users
 from ..services.audit import record
 
 router = APIRouter(prefix="/api/admin", tags=["admin"], dependencies=[Depends(require_admin)])
@@ -169,3 +169,29 @@ def list_audit(q: str | None = None, limit: int = 300):
     for r in rows:
         r["owner"] = owners.get(r["workspace_id"], r["workspace_id"])
     return rows
+
+
+# ---- monitoring ------------------------------------------------------------------------------------------------
+@router.get("/monitor/live")
+def monitor_live():
+    return monitor.live()
+
+
+@router.get("/monitor/traffic")
+def monitor_traffic(hours: int = 24):
+    return monitor.traffic(hours)
+
+
+@router.get("/monitor/users")
+def monitor_users_list(days: int = 7):
+    return monitor_users.users(days)
+
+
+@router.get("/monitor/users/{user_id}")
+def monitor_user(user_id: str, days: int = 30):
+    return monitor_users.user(user_id, days)
+
+
+@router.get("/monitor/platform")
+def monitor_platform(days: int = 30):
+    return monitor_users.platform(days)

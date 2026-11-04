@@ -1,5 +1,5 @@
 import { NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom';
-import { Activity, Bot, Network, Database, LayoutDashboard, LogOut, ScrollText, Server, ShieldCheck, Users } from 'lucide-react';
+import { Activity, Bot, Gauge, Network, Database, LayoutDashboard, LogOut, ScrollText, Server, ShieldCheck, Users } from 'lucide-react';
 import { useApi } from '@/hooks/useApi';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { Loading } from '@/components/common/Loading';
@@ -15,9 +15,11 @@ import { AiPage } from './pages/AiPage';
 import { AuditPage } from './pages/AuditPage';
 import { SystemPage } from './pages/SystemPage';
 import { ArchitecturePage } from './pages/ArchitecturePage';
+import { MonitoringPage } from './pages/MonitoringPage';
 
 const NAV = [
   { to: '/', label: 'Overview', icon: LayoutDashboard },
+  { to: '/monitoring', label: 'Monitoring', icon: Gauge },
   { to: '/users', label: 'Users', icon: Users },
   { to: '/data', label: 'Data', icon: Database },
   { to: '/ai', label: 'AI', icon: Bot },
@@ -64,6 +66,7 @@ export function BackofficeApp() {
         <ErrorBoundary key={pathname}>
         <Routes>
           <Route path="/" element={<OverviewPage />} />
+          <Route path="/monitoring" element={<MonitoringPage />} />
           <Route path="/users" element={<UsersPage />} />
           <Route path="/users/:id" element={<UserDetailPage />} />
           <Route path="/activity" element={<ActivityPage />} />
