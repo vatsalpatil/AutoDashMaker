@@ -37,13 +37,18 @@ try:
     activity.flush()
     ov = c.get("/api/admin/overview", headers=BOSS).json()
     assert ov["totals"]["datasets"] == 1 and ov["activity"]["requests_24h"] >= 2, ov
-    # monitoring endpoints answer with data
+    # monitoring endpoints answer with data; Cloudflare geo headers are recorded
+    c.get("/api/admin/me", headers={**BOSS, "cf-ipcountry": "IN", "cf-ipcity": "Pune", "cf-connecting-ip": "1.2.3.4"})
+    activity.flush()
     assert c.get("/api/admin/monitor/live", headers=ALICE).status_code == 403
     assert c.get("/api/admin/monitor/traffic?start=x", headers=BOSS).status_code == 400
-    for path in ("live", "traffic?hours=200", "traffic?start=2026-01-01&end=2026-12-31", "users?start=2026-01-01", "platform?start=2025-11-01&end=2025-11-30", "users/alice?end=2030-01-01", "users", "users/alice", "platform"):
+    for path in ("live", "traffic?hours=200", "traffic?start=2026-01-01&end=2026-12-31", "users?start=2026-01-01", "platform?start=2025-11-01&end=2025-11-30", "users/alice?end=2030-01-01", "locations?start=2026-01-01", "users", "users/alice", "platform"):
         r = c.get(f"/api/admin/monitor/{path}", headers=BOSS)
         assert r.status_code == 200, (path, r.text)
     assert c.get("/api/admin/monitor/live", headers=BOSS).json()["now"]["req_60m"] >= 2
+    geo = c.get("/api/admin/monitor/locations", headers=BOSS).json()
+    assert geo["countries"][0]["country"] == "IN" and geo["cities"][0]["city"] == "Pune", geo
+    assert any(r["ip"] == "1.2.3.4" for r in c.get("/api/admin/monitor/traffic", headers=BOSS).json()["ips"])
     assert any(u["user_id"] == "alice" for u in c.get("/api/admin/monitor/users", headers=BOSS).json())
     # activity log knows who did what
     rows = c.get("/api/admin/activity?q=upload", headers=BOSS).json()

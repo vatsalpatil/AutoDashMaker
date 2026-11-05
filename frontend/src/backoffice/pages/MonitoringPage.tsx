@@ -8,19 +8,21 @@ import { UsersTab } from '../monitor/UsersTab';
 import { UserDrill } from '../monitor/UserDrill';
 import { PlatformTab } from '../monitor/PlatformTab';
 import { ResourcesTab } from '../monitor/ResourcesTab';
+import { LocationsTab } from '../monitor/LocationsTab';
 import { RangePicker, rangeQuery, type Range } from '../monitor/RangePicker';
 
-const TABS = [['live', 'Live'], ['traffic', 'Traffic & API'], ['users', 'Users'], ['platform', 'Growth & adoption'], ['resources', 'Resources']];
-type Ranged = 'traffic' | 'users' | 'platform';
+const TABS = [['live', 'Live'], ['traffic', 'Traffic & API'], ['users', 'Users'], ['locations', 'Locations'], ['platform', 'Growth & adoption'], ['resources', 'Resources']];
+type Ranged = 'traffic' | 'users' | 'locations' | 'platform';
 const RANGES: Record<Ranged, { param: 'hours' | 'days'; presets: [string, string][] }> = {
   traffic: { param: 'hours', presets: [['1', '1h'], ['6', '6h'], ['24', '24h'], ['168', '7d'], ['720', '30d']] },
   users: { param: 'days', presets: [['1', '1d'], ['7', '7d'], ['30', '30d'], ['90', '90d']] },
+  locations: { param: 'hours', presets: [['24', '24h'], ['168', '7d'], ['720', '30d'], ['2160', '90d']] },
   platform: { param: 'days', presets: [['30', '30d'], ['90', '90d'], ['365', '1y']] },
 };
 
 export function MonitoringPage() {
   const [tab, setTab] = useState('live');
-  const [range, setRange] = useState<Record<Ranged, Range>>({ traffic: { preset: '24' }, users: { preset: '7' }, platform: { preset: '30' } });
+  const [range, setRange] = useState<Record<Ranged, Range>>({ traffic: { preset: '24' }, users: { preset: '7' }, locations: { preset: '720' }, platform: { preset: '30' } });
   const [user, setUser] = useState<string | null>(null);
   const [paused, setPaused] = useState(false);
   const live = tab === 'live' || tab === 'resources';
@@ -41,6 +43,7 @@ export function MonitoringPage() {
       {tab === 'live' && <LiveTab paused={paused} onUser={openUser} />}
       {tab === 'traffic' && <TrafficTab query={q('traffic')} />}
       {tab === 'users' && (user ? <UserDrill id={user} query={drillQ} onBack={() => setUser(null)} /> : <UsersTab query={q('users')} onUser={setUser} />)}
+      {tab === 'locations' && <LocationsTab query={q('locations')} onUser={openUser} />}
       {tab === 'platform' && <PlatformTab query={q('platform')} />}
       {tab === 'resources' && <ResourcesTab paused={paused} />}
     </div>

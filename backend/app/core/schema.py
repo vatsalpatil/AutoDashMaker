@@ -207,4 +207,7 @@ MIGRATIONS = [
     "ALTER TABLE admin_user_flags ADD COLUMN ai_blocked BOOLEAN DEFAULT FALSE",
     "ALTER TABLE admin_user_flags ADD COLUMN note TEXT",
     "ALTER TABLE ai_providers ADD COLUMN switch_below INTEGER DEFAULT 5",  # snapshot before the last Edit-with-AI run (JSON), for one-click undo
+    "ALTER TABLE activity_log ADD COLUMN country TEXT",  # visitor location from Cloudflare headers (services/admin/activity.py)
+    "ALTER TABLE activity_log ADD COLUMN region TEXT",
+    "ALTER TABLE activity_log ADD COLUMN city TEXT",
 ]

@@ -19,7 +19,7 @@ def users(days: int = 7, start: str | None = None, end: str | None = None) -> li
         f"SELECT user_id, MAX(email) AS email, COUNT(*) AS requests, COUNT(*) FILTER (WHERE status >= 400) AS errors, "
         f"ROUND(AVG(ms), 1) AS avg_ms, ROUND(QUANTILE_CONT(ms, 0.95), 1) AS p95, COUNT(DISTINCT CAST(created_at AS DATE)) AS active_days, "
         f"COUNT(DISTINCT {AREA}) AS areas, COUNT(DISTINCT ip) AS ips, MIN(created_at) AS first_seen, MAX(created_at) AS last_seen, "
-        f"mode({DEVICE}) AS device, mode({BROWSER}) AS browser FROM activity_log "
+        f"mode({DEVICE}) AS device, mode({BROWSER}) AS browser, mode(country) AS country, mode(city) AS city FROM activity_log "
         f"WHERE {w} AND user_id IS NOT NULL GROUP BY user_id ORDER BY requests DESC")
     ai = {r["w"]: r for r in store.execute(
         f"SELECT workspace_id AS w, COUNT(*) AS calls, COALESCE(SUM(tokens_in + tokens_out), 0) AS tokens FROM ai_usage "
@@ -50,7 +50,7 @@ def user(user_id: str, days: int = 30, start: str | None = None, end: str | None
         "routes": store.execute(f"SELECT method, {ROUTE} AS route, COUNT(*) AS n, COUNT(*) FILTER (WHERE status >= 400) AS errors, "
                                 f"ROUND(AVG(ms), 1) AS avg_ms FROM activity_log WHERE {w} GROUP BY 1, 2 ORDER BY n DESC LIMIT 25", p),
         "ips": store.execute(f"SELECT ip, COUNT(*) AS n, MIN(created_at) AS first_at, MAX(created_at) AS last_at, {BROWSER} AS browser, "
-                             f"{DEVICE} AS device FROM activity_log WHERE {w} GROUP BY ip, 5, 6 ORDER BY n DESC LIMIT 20", p),
+                             f"{DEVICE} AS device, MAX(country) AS country, MAX(city) AS city FROM activity_log WHERE {w} GROUP BY ip, 5, 6 ORDER BY n DESC LIMIT 20", p),
         "sessions": store.execute(  # a new session starts after 30 idle minutes
             f"WITH s AS (SELECT created_at, CASE WHEN created_at - lag(created_at) OVER (ORDER BY created_at) > INTERVAL 30 MINUTE "
             f"OR lag(created_at) OVER (ORDER BY created_at) IS NULL THEN 1 ELSE 0 END AS new FROM activity_log WHERE {w}), "

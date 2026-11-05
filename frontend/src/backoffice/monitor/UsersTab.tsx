@@ -9,6 +9,7 @@ import { Section } from '../parts/Section';
 import { StatGrid, StatTile } from '../parts/StatTile';
 import { downloadCsv, useSearch } from '../parts/useAdmin';
 import { right, type Row } from './charts';
+import { country } from './LocationsTab';
 
 /** Every user active in the window with traffic, quality, AI and content numbers. */
 export function UsersTab({ query, onUser }: { query: string; onUser: (id: string) => void }) {
@@ -45,6 +46,7 @@ export function UsersTab({ query, onUser }: { query: string; onUser: (id: string
               { label: 'Tokens', cell: (r) => num(r.ai_tokens), className: right },
               { label: 'Datasets', cell: (r) => num(r.datasets), className: right },
               { label: 'Dashboards', cell: (r) => num(r.dashboards), className: right },
+              { label: 'Location', cell: (r) => <span className="whitespace-nowrap text-xs">{country(r.country)}{r.city ? ` · ${r.city}` : ''}</span> },
               { label: 'Device', cell: (r) => <span className="whitespace-nowrap text-xs">{r.device} · {r.browser}</span> },
               { label: 'IPs', cell: (r) => num(r.ips), className: right },
             ]} />

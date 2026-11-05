@@ -378,3 +378,4 @@ Format: `YYYY-MM-DD · tool · files · what + why`
 - 2026-11-04 · features/docs/* · Docs made user-only: removed Install/Configuration/Architecture pages + all internal wording (DuckDB/Parquet/env vars/self-host); added Account & settings + Limits pages; dropped dead SetupSection/ArchitectureSection.
 - 2026-11-04 · backoffice monitor/RangePicker.tsx, MonitoringPage, monitor tabs, services/admin/monitor{,_users}.py, routers/admin.py · Monitoring custom date range: from/to dates, whole month, whole year (start/end=YYYY-MM-DD on /admin/monitor/*)
 - 2026-11-05 · frontend/caddy.backoffice.conf · backoffice HTML sent with Cache-Control no-cache so new deploys show without a hard refresh
+- 2026-11-05 · activity.py, schema.py, services/admin/monitor_geo.py, routers/admin.py, backoffice monitor/LocationsTab + Users/UserDrill · visitor location (Cloudflare CF-IPCountry/CF-IPCity/CF-Region) per request + Monitoring 'Locations' tab; IP now from CF-Connecting-IP

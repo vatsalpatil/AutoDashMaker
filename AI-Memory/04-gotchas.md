@@ -132,3 +132,6 @@ invalid currency codes throw in Intl; repeated item names (ungrouped queries) ga
 - **Hero orb line shader:** bold/broken streaks come from (a) noise in the line coordinate (closed islands), (b) stacked transparent layers at folds (keep depthWrite on), (c) clamped facing=0 regions landing exactly on a line (keep the +0.5 offset). Screen-space dFdx normals look faceted on this mesh — don't use them.
 
 - MCP OAuth: issuer/links use `APP_URL` (else first CORS origin). If prod APP_URL is wrong or empty, AI apps get metadata pointing at the wrong host and OAuth fails. OAuth codes live in process memory: a backend restart mid-connect means the user clicks Connect again.
+
+## Visitor location
+activity_log.country/region/city come from Cloudflare headers only (no IP-lookup service). IP = CF-Connecting-IP (X-Forwarded-For behind Caddy is the CF edge). Rows before 2026-11-05 have no location.

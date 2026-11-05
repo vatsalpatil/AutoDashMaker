@@ -9,6 +9,7 @@ import { Section } from '../parts/Section';
 import { StatGrid, StatTile } from '../parts/StatTile';
 import { ActivityTable } from '../parts/ActivityTable';
 import { BarList, SeriesChart, right, type Row } from './charts';
+import { country } from './LocationsTab';
 
 /** Everything one user did: timeline, sessions, areas, routes, AI, devices, errors. */
 export function UserDrill({ id, query, onBack }: { id: string; query: string; onBack: () => void }) {
@@ -59,7 +60,8 @@ export function UserDrill({ id, query, onBack }: { id: string; query: string; on
               </Section>
               <Section title="Devices & IPs">
                 <SimpleTable rows={u.ips as Row[]} cols={[
-                  { label: 'IP', cell: (r) => <span className="font-mono text-xs">{r.ip}</span> }, { label: 'Client', cell: (r) => `${r.device} · ${r.browser}` },
+                  { label: 'IP', cell: (r) => <span className="font-mono text-xs">{r.ip}</span> }, { label: 'Place', cell: (r) => `${country(r.country)}${r.city ? ` · ${r.city}` : ''}` },
+                  { label: 'Client', cell: (r) => `${r.device} · ${r.browser}` },
                   { label: 'Requests', cell: (r) => num(r.n), className: right }, { label: 'Last', cell: (r) => ago(r.last_at) },
                 ]} />
               </Section>

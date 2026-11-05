@@ -35,9 +35,20 @@ def _claims(headers: dict[bytes, bytes]) -> dict:
         return {}
 
 
+def _h(headers: dict[bytes, bytes], name: bytes, limit: int = 80) -> str | None:
+    return headers.get(name, b"").decode(errors="ignore").strip()[:limit] or None
+
+
 def _ip(scope: dict, headers: dict[bytes, bytes]) -> str:
-    fwd = headers.get(b"x-forwarded-for", b"").decode(errors="ignore").split(",")[0].strip()
+    # behind Cloudflare the proxy's X-Forwarded-For is the edge server, CF-Connecting-IP is the visitor
+    fwd = _h(headers, b"cf-connecting-ip") or (_h(headers, b"x-forwarded-for", 300) or "").split(",")[0].strip()
     return fwd or (scope.get("client") or ("", 0))[0]
+
+
+def _location(headers: dict[bytes, bytes]) -> dict:
+    """Cloudflare's visitor geo headers: country always; region/city only with the 'Add visitor location headers' transform."""
+    country = _h(headers, b"cf-ipcountry", 4)
+    return {"country": None if country in ("XX", "T1") else country, "region": _h(headers, b"cf-region"), "city": _h(headers, b"cf-ipcity")}
 
 
 class ActivityMiddleware:
@@ -65,7 +76,7 @@ class ActivityMiddleware:
             row = {"user_id": c.get("sub") or ("local" if not headers.get(b"authorization") else None), "email": c.get("email"),
                    "method": scope.get("method"), "path": path[:300], "status": status[0],
                    "ms": round((time.perf_counter() - t0) * 1000, 1), "ip": _ip(scope, headers),
-                   "user_agent": headers.get(b"user-agent", b"").decode(errors="ignore")[:200]}
+                   "user_agent": headers.get(b"user-agent", b"").decode(errors="ignore")[:200], **_location(headers)}
             try:
                 _writer.submit(_write, row)
             except Exception:

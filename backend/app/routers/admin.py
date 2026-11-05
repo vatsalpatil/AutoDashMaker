@@ -11,7 +11,7 @@ from pydantic import BaseModel
 
 from ..core.admin import require_admin
 from ..core.store import store
-from ..services.admin import activity, ai_admin, controls, data, monitor, monitor_users, overview, system, users
+from ..services.admin import activity, ai_admin, controls, data, monitor, monitor_geo, monitor_users, overview, system, users
 from ..services.audit import record
 
 router = APIRouter(prefix="/api/admin", tags=["admin"], dependencies=[Depends(require_admin)])
@@ -199,6 +199,11 @@ def monitor_users_list(days: int = 7, start: str | None = None, end: str | None 
 @router.get("/monitor/users/{user_id}")
 def monitor_user(user_id: str, days: int = 30, start: str | None = None, end: str | None = None):
     return monitor_users.user(user_id, days, *_dates(start, end))
+
+
+@router.get("/monitor/locations")
+def monitor_locations(hours: int = 720, start: str | None = None, end: str | None = None):
+    return monitor_geo.locations(hours, *_dates(start, end))
 
 
 @router.get("/monitor/platform")
