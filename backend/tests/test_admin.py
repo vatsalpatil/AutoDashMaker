@@ -76,6 +76,9 @@ try:
     assert c.get("/api/notice").json()["maintenance"]["message"] == "brb"
     c.put("/api/admin/settings/maintenance", headers=BOSS, json={"on": False})
     assert c.get("/api/datasets", headers=ALICE).status_code == 200
+    # bad limit values are a clear 400, not a crash
+    assert c.put("/api/admin/settings/limits", headers=BOSS, json={"max_datasets": "1.5"}).status_code == 400
+    assert c.put("/api/admin/settings/limits", headers=BOSS, json={"max_datasets": "0"}).status_code == 400
 
     # AI kill switch is enforced before any provider call
     from app.services.admin import controls

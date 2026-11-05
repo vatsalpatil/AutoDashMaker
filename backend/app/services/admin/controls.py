@@ -53,7 +53,12 @@ def put(key: str, value: dict, admin_email: str) -> dict:
     if key not in DEFAULTS:
         raise HTTPException(404, f"Unknown setting {key}")
     if key == "limits":  # full replace: an empty field means "back to the .env default"
-        merged = {k: int(v) for k, v in value.items() if k in LIMIT_KEYS and v not in (None, "")}
+        try:
+            merged = {k: int(v) for k, v in value.items() if k in LIMIT_KEYS and v not in (None, "")}
+        except (TypeError, ValueError):
+            raise HTTPException(400, "Limits must be whole numbers")
+        if any(v < 1 for v in merged.values()):
+            raise HTTPException(400, "Limits must be at least 1")
     else:
         merged = {**get(key), **{k: v for k, v in value.items() if k in DEFAULTS[key]}}
     store.execute("DELETE FROM system_settings WHERE id = ?", [key])

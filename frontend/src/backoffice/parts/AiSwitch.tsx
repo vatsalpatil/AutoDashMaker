@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Check } from 'lucide-react';
 import { useApi } from '@/hooks/useApi';
 import { Switch } from '@/components/ui/switch';
 import { ErrorBanner } from '@/components/common/ErrorBanner';
@@ -13,15 +14,24 @@ export interface PlatformSettings { settings: Conf; defaults: Record<string, num
 export function useSettings() {
   const state = useApi<PlatformSettings>('/admin/settings');
   const act = useAdminAction(state.reload);
-  const save = (key: string, value: unknown, confirmText?: string) => act.run('put', `/admin/settings/${key}`, value, confirmText);
-  return { conf: state.data?.settings, defaults: state.data?.defaults, save, busy: act.busy, error: act.error ?? state.error };
+  const [saved, setSaved] = useState(false);
+  const save = async (key: string, value: unknown, confirmText?: string) => {
+    if (confirmText && !window.confirm(confirmText)) return;
+    setSaved(false);
+    if (await act.run('put', `/admin/settings/${key}`, value)) { setSaved(true); setTimeout(() => setSaved(false), 2500); }
+  };
+  return { conf: state.data?.settings, defaults: state.data?.defaults, save, saved, busy: act.busy, error: act.error ?? state.error };
 }
+
+/** "Saved" tick shown for a moment after a successful save. */
+export const SavedMark = ({ show }: { show: boolean }) => (show
+  ? <span className="flex items-center gap-1 text-xs text-muted-foreground" role="status"><Check className="size-3.5" />Saved</span> : null);
 
 /** A switch + message editor for one {on|enabled, message} setting. */
 function ToggleCard({ k, flag, title, description, onLabel, confirmOn }: {
   k: string; flag: 'on' | 'enabled'; title: string; description: string; onLabel: string; confirmOn?: string;
 }) {
-  const { conf, save, busy, error } = useSettings();
+  const { conf, save, saved, busy, error } = useSettings();
   const cur = conf?.[k];
   const [msg, setMsg] = useState('');
   useEffect(() => { if (cur) setMsg(cur.message ?? ''); }, [cur?.message]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -34,9 +44,10 @@ function ToggleCard({ k, flag, title, description, onLabel, confirmOn }: {
         onCheckedChange={(v) => save(k, { [flag]: v, message: msg }, (flag === 'on' ? v : !v) ? confirmOn : undefined)} />}>
       {error && <ErrorBanner message={error} />}
       <Field label="Message shown to users">
-        <div className="flex gap-2">
-          <TextInput value={msg} onChange={setMsg} className="flex-1" />
-          <Button size="sm" label="Save" isDisabled={busy || msg === cur.message} onClick={() => save(k, { message: msg })} />
+        <div className="flex items-center gap-2">
+          <div className="min-w-0 flex-1"><TextInput aria-label="Message shown to users" value={msg} onChange={setMsg} /></div>
+          <Button size="sm" label="Save" isDisabled={busy || !msg.trim() || msg === cur.message} onClick={() => save(k, { message: msg.trim() })} />
+          <SavedMark show={saved} />
         </div>
       </Field>
     </Section>
