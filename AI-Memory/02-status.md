@@ -76,3 +76,6 @@ Multiple keys per provider + auto-switch (rule stored on the active provider row
 
 ## 2026-10-20 Backoffice (admin panel) — phase 1 done, LIVE at dashtorbackoffice.laveyent.com (Dokploy app autodashmaker-dashtorbackoffice-tgzh5i, BACKEND_URL=http://autodashmaker-backend-g62guf:8000)
 Pages: Overview, Users (detail: suspend, delete, AI on/off, own storage/dataset limits, private note, email the user, CSV), Data (all workspaces' datasets/dashboards/sources/share links/storage: refresh, delete, revoke), AI (usage by user/model/feature, failures, every key, clear pause, global AI kill switch), Activity, Audit trail (incl. admin.* actions), System (maintenance mode, announcement banner, default limits, health, config, secrets set?, server log). Needs `ADMIN_EMAILS` on the Backend. Not done: impersonation, force sign-out, signup on/off. Monitoring tab added 2026-11-04 (live/traffic/users/growth/resources) - tested by test_admin, not yet viewed live.
+
+## OUTAGE 2026-11-13 (read first)
+Live site down (Cloudflare 522): Oracle instance gone after trial ended. Data safe on preserved 200GB boot volume; new instance blocked by A1 service limits (see 05-changelog last line). Next: user upgrades OCI to Pay As You Go (stays $0 inside Always Free), recreate instance from the boot volume with key ~/.ssh/dashtor_oci, repoint Cloudflare DNS, check Dokploy + Supabase come up.
