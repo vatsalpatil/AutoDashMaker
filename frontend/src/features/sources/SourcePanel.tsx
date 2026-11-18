@@ -13,11 +13,13 @@ import { SOURCE_SCHEMAS, buildPayload, defaultValues, schemaOf, valuesFromSource
 type Values = Record<string, Record<string, string>>;
 
 /** Add / edit a connection, inline on the Data Sources page. The form is rendered from SOURCE_SCHEMAS, one set of values per source type. */
-export function SourcePanel({ open, editing, onClose, onSaved }: {
+export function SourcePanel({ open, editing, onClose, onSaved, onFile }: {
   open: boolean;
   editing: Source | null;
   onClose: () => void;
   onSaved: () => void;
+  /** 'Upload a file' in the picker: hand the chosen file to the page's upload flow */
+  onFile?: (file: File) => void;
 }) {
   const [type, setType] = useState('postgres');
   const [values, setValues] = useState<Values>({});
@@ -77,7 +79,7 @@ export function SourcePanel({ open, editing, onClose, onSaved }: {
   };
 
   if (!open) return null;
-  const heading = editing ? `Edit ${editing.name}` : picked ? `Connect ${schema.label}` : 'Add connection: choose a source type';
+  const heading = editing ? `Edit ${editing.name}` : picked ? `Connect ${schema.label}` : 'Add data: where does it live?';
   return (
     <Card padding={0}>
       <div ref={top} className="flex flex-col gap-4 p-5">
@@ -86,7 +88,7 @@ export function SourcePanel({ open, editing, onClose, onSaved }: {
           <button type="button" aria-label="Close" onClick={onClose} className="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-foreground"><X className="size-4" /></button>
         </div>
 
-        {!picked ? <SourceTypeCards onPick={(id) => { setType(id); setPicked(true); }} /> : <>
+        {!picked ? <SourceTypeCards onPick={(id) => { setType(id); setPicked(true); }} onFile={onFile && ((f) => { onClose(); onFile(f); })} /> : <>
         {!editing && <button type="button" onClick={() => setPicked(false)} className="w-fit text-xs font-medium text-primary hover:underline">← Choose a different source type</button>}
         {schema.note && <p className="rounded-md border border-primary/30 bg-primary/10 p-3 text-sm text-primary">{schema.note}</p>}
         <div className={cn(schema.grid ? 'grid grid-cols-2 gap-3' : 'flex flex-col gap-3')}>{schema.fields.filter((f) => !f.advanced).map(renderField)}</div>

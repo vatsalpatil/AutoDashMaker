@@ -56,15 +56,15 @@ export default function SourcesPage() {
             <Button variant="ghost" icon={full.active ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />} aria-label={full.active ? 'Exit full screen' : 'Full screen'} onClick={full.toggle} />
             <Link to="/sources/studio" className="inline-flex h-8 items-center gap-1.5 rounded-lg border bg-card px-3 text-sm font-medium hover:bg-accent"><Braces className="h-4 w-4 text-primary" /> API Studio</Link>
             {s.datasets.length >= 2 && <Button variant="secondary" label="Blend datasets" icon={<GitMerge className="h-4 w-4" />} onClick={() => setBlendOpen(true)} />}
-            <Button variant="primary" label="Add connection" icon={<Plus className="h-4 w-4" />} onClick={() => setDialog({ open: true, editing: null })} />
+            <Button variant="primary" label="Add data" icon={<Plus className="h-4 w-4" />} onClick={() => setDialog({ open: true, editing: null })} />
           </>
         }
       />
       <ErrorBanner message={s.error} />
 
-      <SourcePanel open={dialog.open} editing={dialog.editing} onClose={() => setDialog({ open: false, editing: null })} onSaved={s.reload} />
+      <SourcePanel open={dialog.open} editing={dialog.editing} onClose={() => setDialog({ open: false, editing: null })} onSaved={s.reload} onFile={setPendingFile} />
 
-      <UploadDropzone onFile={setPendingFile} busy={s.uploading} title="Drag a CSV, Parquet, Excel, or JSON file here" busyTitle="Uploading and ingesting dataset…" />
+      {!dialog.open && <UploadDropzone onFile={setPendingFile} busy={s.uploading} title="Drag a CSV, Parquet, Excel, or JSON file here" busyTitle="Uploading and ingesting dataset…" />}
 
       <div className="flex flex-wrap items-center justify-between gap-3 border-b pb-3">
         <UnderlineTabs<Tab>
