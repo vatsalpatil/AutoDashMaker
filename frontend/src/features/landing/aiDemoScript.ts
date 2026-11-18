@@ -33,7 +33,6 @@ export function useLoopClock(ref: RefObject<HTMLElement | null>, length: number)
   const [t, setT] = useState(0);
   const visible = useRef(false);
   useEffect(() => {
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { setT(length - 1); return; }
     const el = ref.current;
     const io = new IntersectionObserver(([e]) => { visible.current = e.isIntersecting; }, { threshold: 0.25 });
     if (el) io.observe(el);

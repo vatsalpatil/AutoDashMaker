@@ -27,7 +27,7 @@ export function Scene3D({ className = '' }: { className?: string }) {
       const idle = window.requestIdleCallback ?? ((cb: () => void, _o?: object) => setTimeout(cb, 300));
       idle(() => void import('./dataScene').then(({ createDataScene }) => {
         if (cancelled) return;
-        try { cleanup = createDataScene(el, { still: window.matchMedia('(prefers-reduced-motion: reduce)').matches }); } catch { setFailed(true); }
+        try { cleanup = createDataScene(el); } catch { setFailed(true); }
       }), { timeout: 1500 });
     }, { rootMargin: '300px' });
     io.observe(el);

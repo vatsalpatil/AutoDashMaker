@@ -15,7 +15,7 @@ export function Loop({ id }: { id: string }) {
   const ref = useRef<HTMLVideoElement>(null);
   useEffect(() => {
     const v = ref.current;
-    if (!v || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    if (!v) return;
     const io = new IntersectionObserver(([e]) => { if (e.isIntersecting) void v.play().catch(() => {}); else v.pause(); }, { threshold: 0.3 });
     io.observe(v);
     return () => io.disconnect();

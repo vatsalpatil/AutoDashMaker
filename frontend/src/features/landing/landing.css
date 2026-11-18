@@ -1,4 +1,4 @@
-/* Landing page motion + 3D. Colours only from theme tokens. Everything stops under prefers-reduced-motion. */
+/* Landing page motion + 3D. Colours only from theme tokens. */
 .lp { --scroll: 0; overflow-x: clip; }
 
 /* ---- background: aurora orbs + 3D perspective grid floor */
@@ -88,9 +88,3 @@
 @keyframes lp-flow { to { stroke-dashoffset: -160; } }
 @keyframes lp-marquee { to { transform: translateX(-50%); } }
 
-@media (prefers-reduced-motion: reduce) {
-  .lp *, .lp *::before, .lp *::after { animation: none !important; transition: none !important; }
-  .lp-rise, [data-reveal] { opacity: 1; transform: none; }
-  .lp-hero-shot { transform: none; }
-  .lp-draw { stroke-dashoffset: 0; }
-}
