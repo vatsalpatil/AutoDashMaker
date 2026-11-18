@@ -50,7 +50,7 @@
 **What we changed** (user feedback: "confusing, repeated, too divided")
 - Two rows by how data arrives: **Files** (one-time copy: Upload, Google Sheets, File from a link) and **Live connections** (Database, Web API).
 - One **Database** tile; the engine (PostgreSQL | MySQL) is a switch inside the form, like Metabase. Typed values carry over when switching.
-- One **Web API** tile; style (REST / JSON | GraphQL) is a switch inside the form. API Studio stays the place to explore first (linked under the row).
+- No Web API tile (user feedback): APIs are added from API Studio, which builds and tests the request first; the picker links to it. The REST|GraphQL switch remains in the form for editing existing API sources.
 - **SQLite removed from the picker**: it only reads a file on the Dashtor server, which users of the hosted app cannot use. Existing SQLite sources still open and work.
 - Google Sheets moved to Files: users think of a sheet as a spreadsheet, not a service (Julius lists it beside file tools).
 
