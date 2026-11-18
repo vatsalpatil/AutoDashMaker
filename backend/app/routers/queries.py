@@ -116,7 +116,9 @@ def run_query(body: QueryIn):
     if not re.sub(r"--[^\n]*|/\*.*?\*/", "", body.sql, flags=re.S).strip(" ;\n\t\r"):
         raise HTTPException(400, "Write a query first (only comments or nothing to run).")
     try:
-        result = engine.execute(body.sql, body.row_limit)
+        from ..services.names import resolve   # dataset names -> physical tables, like the Workbench
+        # {{placeholders}} would be mangled by the parser before rendering, so leave those queries as written
+        result = engine.execute(body.sql if "{{" in body.sql else resolve(body.sql), body.row_limit)
     except UnsafeQueryError as e:
         audit.record("query.run", detail=body.sql, status="blocked")
         raise HTTPException(400, f"unsafe query: {e}")

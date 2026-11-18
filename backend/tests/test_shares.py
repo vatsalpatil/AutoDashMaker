@@ -64,6 +64,9 @@ try:
     # saved through the same /run endpoint the studio uses: the placeholder must survive saving
     q2 = c.post("/api/queries/run", headers=A, json={"sql": "SELECT region, SUM(qty) AS qty FROM sales WHERE qty >= {{min_qty|0}} GROUP BY 1", "name": "q2", "save": True}).json()
     q2["id"] = q2["query_id"]
+    # /queries/run accepts friendly dataset names (Ask "Save as chart" / "Pin to dashboard" use it)
+    r = c.post("/api/queries/run", headers=A, json={"sql": "SELECT COUNT(*) AS n FROM sales"})
+    assert r.status_code == 200 and r.json()["rows"][0]["n"] > 0, r.text
     assert "{{min_qty|0}}" in c.get(f"/api/queries/{q2['id']}", headers=A).json()["sql"]
     ch2 = c.post("/api/charts", headers=A, json={"name": "Qty2", "query_id": q2["id"], "spec": {"type": "bar"}}).json()
     c.post(f"/api/dashboards/{d['id']}/widgets", headers=A, json={"chart_id": ch2["id"]})

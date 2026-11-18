@@ -4,7 +4,8 @@ import { BarChart3, Check, Copy, FlaskConical, ShieldCheck, ThumbsDown, ThumbsUp
 import { Button } from '@/components/ui/kit';
 import { appendNotebookCell } from '@/features/workbench/notebookModel';
 import { api } from '@/lib/api';
-import type { AnalystResponse, Chart, QueryResult } from '@/lib/types';
+import type { AnalystResponse } from '@/lib/types';
+import { PinToDashboard, saveAnswerAsChart } from './PinToDashboard';
 import { cn } from '@/lib/utils';
 
 const REASONS = ['wrong_metric', 'wrong_table', 'wrong_filter', 'wrong_time', 'wrong_interpretation', 'other'];
@@ -28,8 +29,7 @@ export function AnswerActions({ question, response }: { question: string; respon
   const toStudio = async () => {
     setBusy(true);
     try {
-      const q = await api.post<QueryResult>('/queries/run', { sql, name: question.slice(0, 80), save: true });
-      const chart = await api.post<Chart>('/charts', { name: question.slice(0, 80), query_id: q.query_id, spec: response.chart ?? { type: 'table', encoding: { x: '', y: '' } } });
+      const chart = await saveAnswerAsChart(question, response);
       nav(`/charts/${chart.id}`);
     } finally {
       setBusy(false);
@@ -44,6 +44,7 @@ export function AnswerActions({ question, response }: { question: string; respon
     <div className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center gap-1.5">
         <Button size="sm" variant="primary" icon={<BarChart3 className="size-4" />} label="Save as chart" title="Saves the query and opens the chart studio, where you can add it to a dashboard" isDisabled={busy} onClick={toStudio} />
+        <PinToDashboard question={question} response={response} />
         <Button size="sm" variant="outline" icon={<FlaskConical className="size-4" />} label="Open in Workbench" onClick={toWorkbench} />
         <Button size="sm" variant="ghost" icon={copied ? <Check className="size-4" /> : <Copy className="size-4" />} label="Copy SQL" onClick={copy} />
         <span className="ml-auto flex items-center gap-1">
