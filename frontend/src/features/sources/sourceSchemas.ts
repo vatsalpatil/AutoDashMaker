@@ -155,3 +155,17 @@ export function buildPayload(schema: SourceSchema, values: Record<string, string
   }
   return { name: values.name, type: schema.id, config, source_id: editing?.id };
 }
+
+/** Types that are one choice for the user: same form shape, picked with a switch inside the form (Database: engine, Web API: style). */
+export const FAMILIES = [
+  { id: 'database', title: 'database', switchLabel: 'Engine', members: [
+    { id: 'postgres', label: 'PostgreSQL', note: 'also Supabase, Neon, Redshift, CockroachDB' },
+    { id: 'mysql', label: 'MySQL', note: 'also MariaDB, TiDB, PlanetScale' },
+  ] },
+  { id: 'api', title: 'web API', switchLabel: 'Style', members: [
+    { id: 'rest', label: 'REST / JSON', note: 'GET or POST, records found automatically' },
+    { id: 'graphql', label: 'GraphQL', note: 'one query against a GraphQL endpoint' },
+  ] },
+] as const;
+
+export const familyOf = (type: string) => FAMILIES.find((f) => f.members.some((m) => m.id === type));

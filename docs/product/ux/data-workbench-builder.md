@@ -39,3 +39,19 @@
 ## Backend needs
 - `/qb/run` reports no truncation: the injected `LIMIT row_limit` hides it, so the frontend infers it from `row_count >= 5000`. Return `truncated: bool` and `limit` on QueryResult.
 - Dataset description and owner fields would allow a Metabase-style catalog.
+
+## Add data picker — revision 2 (2026-11-19)
+
+**How others do it**
+- Power BI *Get data* groups connectors by category (File, Database, Online Services, Other) with an "All" list ([Microsoft Learn](https://learn.microsoft.com/en-us/power-bi/connect-data/desktop-data-sources)).
+- Julius groups sources as warehouses, databases, business tools (Google Sheets, OneDrive) and file uploads ([julius.ai/business](https://julius.ai/business), [connector docs](https://julius.ai/docs/data-connectors/overview)).
+- Metabase splits *uploads* (CSV into a collection, Google Sheets on Cloud) from *Admin > Databases > Add a database* where you pick the engine inside one form ([uploads](https://www.metabase.com/docs/latest/databases/uploads)).
+
+**What we changed** (user feedback: "confusing, repeated, too divided")
+- Two rows by how data arrives: **Files** (one-time copy: Upload, Google Sheets, File from a link) and **Live connections** (Database, Web API).
+- One **Database** tile; the engine (PostgreSQL | MySQL) is a switch inside the form, like Metabase. Typed values carry over when switching.
+- One **Web API** tile; style (REST / JSON | GraphQL) is a switch inside the form. API Studio stays the place to explore first (linked under the row).
+- **SQLite removed from the picker**: it only reads a file on the Dashtor server, which users of the hosted app cannot use. Existing SQLite sources still open and work.
+- Google Sheets moved to Files: users think of a sheet as a spreadsheet, not a service (Julius lists it beside file tools).
+
+**Still worth doing**: Google sign-in for private Sheets/Drive (Julius, Metabase Cloud), warehouse engines (BigQuery/Snowflake) as more Database engines, and an "All connectors" search once there are more than ~8.

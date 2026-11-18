@@ -8,7 +8,8 @@ import type { Source } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { FileField } from './FileField';
 import { SourceTypeCards } from './SourceTypeCards';
-import { SOURCE_SCHEMAS, buildPayload, defaultValues, schemaOf, valuesFromSource, type Field } from './sourceSchemas';
+import { SOURCE_SCHEMAS, buildPayload, defaultValues, familyOf, schemaOf, valuesFromSource, type Field } from './sourceSchemas';
+import { FamilySwitch } from './FamilySwitch';
 
 type Values = Record<string, Record<string, string>>;
 
@@ -43,6 +44,16 @@ export function SourcePanel({ open, editing, onClose, onSaved, onFile }: {
   const current = values[type] ?? {};
   const set = (key: string, v: string) => setValues((all) => ({ ...all, [type]: { ...all[type], [key]: v } }));
   const connectable = schema.fields.length > 0;
+  const family = familyOf(type);
+  /** Switch engine/style inside a family, carrying over what was already typed (name, host, user…). */
+  const switchTo = (next: string) => {
+    setValues((all) => {
+      const carried = Object.fromEntries(Object.entries(all[type] ?? {}).filter(([k, v]) => v && k !== 'port' && k in (all[next] ?? {})));
+      return { ...all, [next]: { ...all[next], ...carried } };
+    });
+    setType(next);
+    setTest(null);
+  };
 
   const [runTest, testState] = useAsyncAction(async () => {
     setTest(null);
@@ -79,7 +90,7 @@ export function SourcePanel({ open, editing, onClose, onSaved, onFile }: {
   };
 
   if (!open) return null;
-  const heading = editing ? `Edit ${editing.name}` : picked ? `Connect ${schema.label}` : 'Add data: where does it live?';
+  const heading = editing ? `Edit ${editing.name}` : picked ? `Connect ${family ? `a ${family.title}` : schema.label}` : 'Add data';
   return (
     <Card padding={0}>
       <div ref={top} className="flex flex-col gap-4 p-5">
@@ -90,6 +101,7 @@ export function SourcePanel({ open, editing, onClose, onSaved, onFile }: {
 
         {!picked ? <SourceTypeCards onPick={(id) => { setType(id); setPicked(true); }} onFile={onFile && ((f) => { onClose(); onFile(f); })} /> : <>
         {!editing && <button type="button" onClick={() => setPicked(false)} className="w-fit text-xs font-medium text-primary hover:underline">← Choose a different source type</button>}
+        {family && <FamilySwitch family={family} value={type} onChange={switchTo} disabled={Boolean(editing)} />}
         {schema.note && <p className="rounded-md border border-primary/30 bg-primary/10 p-3 text-sm text-primary">{schema.note}</p>}
         <div className={cn(schema.grid ? 'grid grid-cols-2 gap-3' : 'flex flex-col gap-3')}>{schema.fields.filter((f) => !f.advanced).map(renderField)}</div>
         {schema.fields.some((f) => f.advanced) && (

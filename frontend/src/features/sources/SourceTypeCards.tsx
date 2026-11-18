@@ -1,68 +1,74 @@
 import { useRef } from 'react';
-import { Cloud, Database, FileUp, HardDrive, Link2, Server, Share2, Sheet, Webhook } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Database, FileUp, Link2, Sheet, Webhook } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
-type Item = { id: string; title: string; blurb: string; icon: React.ReactNode };
-type Domain = { title: string; lead: string; icon: React.ReactNode; items: Item[] };
+type Tile = { id: string; title: string; blurb: string; icon: React.ReactNode; tags?: string[] };
 
-/** Get-data gallery grouped by where the data lives (Power BI "Get data" / Hex connections). Each option appears once. */
-const DOMAINS: Domain[] = [
-  {
-    title: 'Files', lead: 'A spreadsheet or data file', icon: <FileUp />,
-    items: [
-      { id: 'file', title: 'Upload a file', blurb: 'CSV, Excel, Parquet or JSON from your computer', icon: <FileUp /> },
-      { id: 'url', title: 'File from a link', blurb: 'A public URL to one of those files', icon: <Link2 /> },
-    ],
-  },
-  {
-    title: 'Databases', lead: 'Copy tables in or query them live', icon: <Database />,
-    items: [
-      { id: 'postgres', title: 'PostgreSQL', blurb: 'Also Supabase, Redshift, Neon, CockroachDB', icon: <Database /> },
-      { id: 'mysql', title: 'MySQL', blurb: 'Also MariaDB, TiDB, PlanetScale', icon: <Server /> },
-      { id: 'sqlite', title: 'SQLite', blurb: 'A .sqlite / .db file on the server', icon: <HardDrive /> },
-    ],
-  },
-  {
-    title: 'Apps & APIs', lead: 'Online services and web endpoints', icon: <Cloud />,
-    items: [
-      { id: 'gsheets', title: 'Google Sheets', blurb: 'A sheet shared as "anyone with the link"', icon: <Sheet /> },
-      { id: 'rest', title: 'REST API', blurb: 'Any JSON endpoint; records found automatically', icon: <Webhook /> },
-      { id: 'graphql', title: 'GraphQL', blurb: 'A query against a GraphQL endpoint', icon: <Share2 /> },
-    ],
-  },
+/** Two ways data arrives (research: docs/product/ux/data-workbench-builder.md → "Add data"):
+ *  a copy of a file, or a live connection that can be refreshed. One tile per thing the user knows they have. */
+const FILES: Tile[] = [
+  { id: 'file', title: 'Upload a file', blurb: 'From your computer', icon: <FileUp />, tags: ['CSV', 'Excel', 'Parquet', 'JSON'] },
+  { id: 'gsheets', title: 'Google Sheets', blurb: 'A sheet shared as "anyone with the link"', icon: <Sheet /> },
+  { id: 'url', title: 'File from a link', blurb: 'A public URL to a CSV, Excel, Parquet or JSON file', icon: <Link2 /> },
 ];
-
+const LIVE: Tile[] = [
+  { id: 'postgres', title: 'Database', blurb: 'Copy tables in, or query them live', icon: <Database />, tags: ['PostgreSQL', 'MySQL', '+ compatible'] },
+  { id: 'rest', title: 'Web API', blurb: 'Pull records from an endpoint on a schedule', icon: <Webhook />, tags: ['REST / JSON', 'GraphQL'] },
+];
 const ACCEPT = '.csv,.tsv,.txt,.xlsx,.xls,.parquet,.json,.jsonl';
 
-/** Step 1 of adding data: pick the kind of source. "Upload a file" opens the file picker straight away. */
+function TileButton({ t, onClick, primary }: { t: Tile; onClick: () => void; primary?: boolean }) {
+  return (
+    <button type="button" onClick={onClick}
+      className={cn('flex h-full items-start gap-3 rounded-xl border bg-card p-3.5 text-left transition-colors hover:border-primary hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring',
+        primary && 'border-primary/50 bg-primary/5')}>
+      <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary [&>svg]:size-[18px]">{t.icon}</span>
+      <span className="flex min-w-0 flex-col gap-1">
+        <span className="text-sm font-semibold">{t.title}</span>
+        <span className="text-xs text-muted-foreground">{t.blurb}</span>
+        {t.tags && (
+          <span className="flex flex-wrap gap-1 pt-0.5">
+            {t.tags.map((x) => <span key={x} className="rounded border px-1.5 py-px text-[11px] text-muted-foreground">{x}</span>)}
+          </span>
+        )}
+      </span>
+    </button>
+  );
+}
+
+function Row({ title, lead, children }: { title: string; lead: string; children: React.ReactNode }) {
+  return (
+    <section className="flex flex-col gap-2">
+      <div className="flex flex-wrap items-baseline gap-x-2">
+        <h3 className="text-sm font-semibold">{title}</h3>
+        <p className="text-xs text-muted-foreground">{lead}</p>
+      </div>
+      {children}
+    </section>
+  );
+}
+
+/** Step 1 of adding data. "Upload a file" opens the file picker straight away; the others open their form. */
 export function SourceTypeCards({ onPick, onFile }: { onPick: (id: string) => void; onFile?: (file: File) => void }) {
   const fileInput = useRef<HTMLInputElement>(null);
   const choose = (id: string) => (id === 'file' && onFile ? fileInput.current?.click() : onPick(id));
 
   return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-      {DOMAINS.map((d) => (
-        <section key={d.title} className="flex flex-col gap-2 rounded-xl border bg-muted/30 p-3">
-          <header className="flex items-center gap-2 px-1">
-            <span className="text-primary [&>svg]:size-4">{d.icon}</span>
-            <div className="min-w-0">
-              <h3 className="text-sm font-semibold">{d.title}</h3>
-              <p className="text-xs text-muted-foreground">{d.lead}</p>
-            </div>
-          </header>
-          <div className="flex flex-col gap-1.5">
-            {d.items.map((it) => (
-              <button key={it.id} type="button" onClick={() => choose(it.id)}
-                className="flex items-center gap-3 rounded-lg border bg-card px-3 py-2.5 text-left transition-colors hover:border-primary hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring">
-                <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary [&>svg]:size-4">{it.icon}</span>
-                <span className="flex min-w-0 flex-col">
-                  <span className="text-sm font-medium">{it.title}</span>
-                  <span className="text-xs text-muted-foreground">{it.blurb}</span>
-                </span>
-              </button>
-            ))}
-          </div>
-        </section>
-      ))}
+    <div className="flex flex-col gap-5">
+      <Row title="Files" lead="A one-time copy. Re-upload or refresh to update.">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+          {FILES.map((t, i) => <TileButton key={t.id} t={t} primary={i === 0} onClick={() => choose(t.id)} />)}
+        </div>
+      </Row>
+      <Row title="Live connections" lead="Stay connected to the source. Refresh any time or on a schedule.">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          {LIVE.map((t) => <TileButton key={t.id} t={t} onClick={() => choose(t.id)} />)}
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Not sure what an API returns? Try it first in <Link to="/sources/studio" className="font-medium text-primary hover:underline">API Studio</Link>, then save it as a source.
+        </p>
+      </Row>
       <input ref={fileInput} type="file" accept={ACCEPT} className="hidden" aria-hidden tabIndex={-1}
         onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) onFile?.(f); }} />
     </div>
