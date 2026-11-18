@@ -114,12 +114,14 @@ export function createDataScene(canvas: HTMLCanvasElement, { still = false } = {
   const io = new IntersectionObserver(([e]) => { visible = e.isIntersecting; });
   io.observe(canvas);
   const clock = new THREE.Clock();
-  if (still) update(2);
-  else {
-    window.addEventListener('pointermove', onPointer, { passive: true });
-    let last = 0;   // ~30 fps is plenty for a slow morph and halves the GPU work
-    renderer.setAnimationLoop((now) => { if (visible && now - last > 32) { last = now; update(clock.getElapsedTime()); } });
-  }
+  // reduced-motion (also what Windows "animation effects: off" reports) keeps the morph, just 4x slower and no mouse follow
+  const speed = still ? 0.25 : 1;
+  if (!still) window.addEventListener('pointermove', onPointer, { passive: true });
+  let last = 0;   // ~30 fps is plenty for a slow morph and halves the GPU work
+  renderer.setAnimationLoop((now) => { if (visible && now - last > 32) { last = now; update(clock.getElapsedTime() * speed); } });
+  // a GPU reset kills the context and the loop with it: let the browser restore it, then draw again
+  canvas.addEventListener('webglcontextlost', (e) => e.preventDefault());
+  canvas.addEventListener('webglcontextrestored', resize);
 
   return () => {
     renderer.setAnimationLoop(null);
