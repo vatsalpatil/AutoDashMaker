@@ -26,6 +26,9 @@ export interface Dataset {
   source_id?: string | null;
   /** set for linked (live) datasets: only the schema was imported, queries run against this remote table */
   remote_table?: string | null;
+  /** optional grouping, '/' nests ('Finance/2026') */
+  folder?: string | null;
+  description?: string;
   created_at?: string;
 }
 

@@ -1,13 +1,13 @@
 """Datasets: upload files, ingest from sources, schema discovery, preview."""
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException, UploadFile
+from fastapi import APIRouter, Form, HTTPException, UploadFile
 from pydantic import BaseModel
 
 from ..connectors import ConnectorError
 from ..core.config import settings
 from ..core.store import store
-from ..services import audit, columnar, disk, quota, refresh_jobs
+from ..services import audit, columnar, dataset_meta, disk, quota, refresh_jobs
 from ..services.engine import engine
 from ..services.ingest import ingest_source, refresh_dataset
 from ..services.refresh import age_minutes, is_overdue
@@ -20,6 +20,7 @@ class IngestIn(BaseModel):
     source_id: str
     name: str            # table/file name from discovery
     dataset_name: str | None = None
+    folder: str | None = None
     mode: str = "copy"   # copy = import the rows · link = schema only, queries run live against the source
 
 
@@ -29,8 +30,9 @@ def list_datasets():
 
 
 @router.post("/upload")
-async def upload(file: UploadFile):
-    """Upload a CSV/Excel/Parquet/JSON file and register it as a dataset."""
+async def upload(file: UploadFile, name: str | None = Form(None), folder: str | None = Form(None)):
+    """Upload a CSV/Excel/Parquet/JSON file and register it as a dataset (optional own name + folder)."""
+    name, folder = (v if isinstance(v, str) else None for v in (name, folder))  # called directly (tests): Form defaults
     filename = Path((file.filename or "").replace("\\", "/")).name  # strip any directory part (path traversal)
     if not filename:
         raise HTTPException(400, "missing file name")
@@ -46,7 +48,7 @@ async def upload(file: UploadFile):
         src = store.insert("datasources", {
             "name": filename, "type": "file", "config": {"path": str(dest)},
         })
-        return _ingest(src, dest.stem)
+        return _ingest(src, (name or '').strip() or dest.stem, name=name, folder=folder)
     finally:
         if quota.enforced():  # hosted: the Parquet copy is the dataset; keeping the original would double the storage
             dest.unlink(missing_ok=True)
@@ -74,17 +76,32 @@ def ingest(body: IngestIn):
     if body.mode == "link":
         from ..services.remote import link_source
         try:
-            return link_source(src, body.name, body.dataset_name or body.name)
+            return _meta(link_source(src, body.name, body.dataset_name or body.name), None, body.folder)
         except ConnectorError as e:
             raise HTTPException(400, str(e))
-    return _ingest(src, body.dataset_name or body.name, discover_name=body.name)
+    return _ingest(src, body.dataset_name or body.name, discover_name=body.name, name=body.dataset_name, folder=body.folder)
 
 
-def _ingest(src: dict, friendly_name: str, discover_name: str | None = None) -> dict:
+def _ingest(src: dict, friendly_name: str, discover_name: str | None = None, name: str | None = None, folder: str | None = None) -> dict:
+    if name:  # check the chosen name before the (slow) import, not after
+        try:
+            dataset_meta.clean_name(name)
+        except dataset_meta.MetaError as e:
+            raise HTTPException(400, str(e))
     try:
-        return ingest_source(src, friendly_name, discover_name)
+        return _meta(ingest_source(src, friendly_name, discover_name), name, folder)
     except ConnectorError as e:
         raise HTTPException(400, str(e))
+
+
+def _meta(ds: dict, name: str | None, folder: str | None) -> dict:
+    """Apply the user's own name / folder chosen while adding the dataset."""
+    if not (name or folder) or not ds.get("id"):
+        return ds
+    try:
+        return dataset_meta.apply(ds["id"], name=name or None, folder=folder or None)
+    except dataset_meta.MetaError as e:
+        raise HTTPException(400, f"Dataset added as '{ds.get('name')}', but: {e}")
 
 
 @router.get("/columns")

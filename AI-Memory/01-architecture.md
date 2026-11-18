@@ -34,7 +34,8 @@ alerts scheduler (`services/alerts.py::scheduler_loop`, started in `Main.py` lif
 - `brief.py` (76) — decision brief from live widgets. `alerts.py` (95) — rule evaluation + scheduler. `transforms.py` (193) — SQL/Polars layer pipeline (sandboxed Python, AST-validated).
 ### routers/ (prefix `/api/...`)
 - `datasources.py` `/sources` — CRUD, `POST /test`, `GET /{id}/discover`, `POST /{id}/test-saved`.
-- `datasets.py` `/datasets` — list, `POST /upload`, `POST /ingest`, `/{id}` `/schema` `/preview`, `/freshness` (GET/PATCH), `POST /{id}/refresh`, DELETE.
+- `dataset_meta.py` (mounted before datasets) — `PATCH /datasets/{id}` rename / folder / description, `GET /datasets/folders`; logic in `services/dataset_meta.py` (unique names, '/'-nested folders). Column `datasets.folder`.
+- `datasets.py` `/datasets` — list, `POST /upload` (optional form `name`, `folder`), `POST /ingest` (`dataset_name`, `folder`), `/{id}` `/schema` `/preview`, `/freshness` (GET/PATCH), `POST /{id}/refresh`, DELETE.
 - `queries.py` `/queries` — `POST /run`, list/get/delete.
 - `ai_agent.py` `POST /api/ai/agent` — Roo/Cline-style workbench agent streamed as SSE (`services/agent.py`: model proposes ONE JSON tool call per turn; server runs read-only tools list_tables/describe_table/sample_rows/run_sql through the engine; add_cell/edit_cell are only emitted as proposals the browser applies). Frontend `features/workbench/agent/{useAgent,AgentPanel,AgentMessage,StepCard}`; `AiSidebar` opens from the notebook toolbar button (no collapsed rail); `components/common/Markdown.tsx` renders answers.
 - `reports.py` `/api/reports` — scheduled reports (`services/reports.py`: run → CSV in uploads/reports + `report_runs` row + notification + optional webhook; `reports_loop` scheduler in main lifespan; last 10 runs kept). Page `/reports` (`features/reports/*`).

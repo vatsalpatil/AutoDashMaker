@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { ExternalLink, RefreshCw, Trash2 } from 'lucide-react';
+import { ExternalLink, FolderInput, RefreshCw, Trash2 } from 'lucide-react';
 import { IconButton } from '@/components/common/IconButton';
 import { ResourceList, type ListColumn } from '@/components/common/ResourceList';
 import { Badge, Card } from '@/components/ui/kit';
@@ -10,12 +10,14 @@ import { typeBadge } from './sourceSchemas';
 
 const date = (iso?: string) => (iso ? new Date(iso).toLocaleDateString() : '—');
 
-export function DatasetsTab({ datasets, view, refreshing, onRefresh, onRemove }: {
+export function DatasetsTab({ datasets, view, refreshing, onRefresh, onRemove, onEdit }: {
   datasets: Dataset[];
   view: ListViewMode;
   refreshing: Record<string, boolean>;
   onRefresh: (id: string) => void;
   onRemove: (id: string) => void;
+  /** rename / move to a folder */
+  onEdit: (d: Dataset) => void;
 }) {
   const columns: ListColumn<Dataset>[] = [
     { header: 'Dataset Name', cell: (d) => <Link to={`/datasets/${d.id}`} className="font-semibold text-primary hover:underline">{d.name}</Link> },
@@ -30,6 +32,7 @@ export function DatasetsTab({ datasets, view, refreshing, onRefresh, onRemove }:
           <Link to={`/datasets/${d.id}`} className="inline-flex items-center gap-1 rounded-md border bg-card px-2.5 py-1 text-xs font-semibold hover:bg-muted">
             <ExternalLink className="h-3.5 w-3.5" /> Explore
           </Link>
+          <IconButton title="Rename or move to folder" onClick={() => onEdit(d)}><FolderInput className="h-3.5 w-3.5" /></IconButton>
           <IconButton title="Re-ingest dataset" disabled={refreshing[d.id]} onClick={() => onRefresh(d.id)}>
             <RefreshCw className={cn('h-3.5 w-3.5', refreshing[d.id] && 'animate-spin')} />
           </IconButton>

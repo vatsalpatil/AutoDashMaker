@@ -18,6 +18,9 @@ import { useSources } from '@/features/sources/useSources';
 import { FULLSCREEN_OVERLAY, useFullscreen } from '@/hooks/useFullscreen';
 import { useListView } from '@/hooks/useListView';
 import type { Dataset, Source } from '@/lib/types';
+import { api } from '@/lib/api';
+import { DatasetMetaDialog } from '@/features/datasets/DatasetMetaDialog';
+import { DatasetFolders } from '@/features/sources/DatasetFolders';
 
 type Tab = 'datasets' | 'connections' | 'relationships';
 
@@ -25,6 +28,7 @@ const DATASET_FIELDS: FieldDef<Dataset>[] = [
   { id: 'name', label: 'Name', type: 'text', get: (d) => d.name },
   { id: 'kind', label: 'Kind', type: 'text', get: (d) => d.kind },
   { id: 'rows', label: 'Rows', type: 'number', get: (d) => d.row_count },
+  { id: 'folder', label: 'Folder', type: 'text', get: (d) => d.folder ?? '' },
 ];
 
 /** Datasets (what you can query) and connections (where they come from). Thin: logic is in features/sources. */
@@ -37,6 +41,8 @@ export default function SourcesPage() {
   const [blendOpen, setBlendOpen] = useState(false);
   const [importing, setImporting] = useState<Source | null>(null);
   const full = useFullscreen<HTMLDivElement>();
+  const [pendingFile, setPendingFile] = useState<File | null>(null);   // dropped file waiting for its name + folder
+  const [editing, setEditing] = useState<Dataset | null>(null);
 
   if (!s.sources || !s.datasets) return s.error ? <ErrorBanner message={s.error} /> : <Loading />;
 
@@ -58,7 +64,7 @@ export default function SourcesPage() {
 
       <SourcePanel open={dialog.open} editing={dialog.editing} onClose={() => setDialog({ open: false, editing: null })} onSaved={s.reload} />
 
-      <UploadDropzone onFile={s.upload} busy={s.uploading} title="Drag a CSV, Parquet, Excel, or JSON file here" busyTitle="Uploading and ingesting dataset…" />
+      <UploadDropzone onFile={setPendingFile} busy={s.uploading} title="Drag a CSV, Parquet, Excel, or JSON file here" busyTitle="Uploading and ingesting dataset…" />
 
       <div className="flex flex-wrap items-center justify-between gap-3 border-b pb-3">
         <UnderlineTabs<Tab>
@@ -78,12 +84,11 @@ export default function SourcesPage() {
 
       {tab === 'datasets' && <div className="flex flex-wrap items-center gap-2">{filters.bar}</div>}
       {tab === 'relationships' ? <RelationshipsPanel datasets={s.datasets} /> : tab === 'datasets' ? (
-        <DatasetsTab
-          datasets={filters.apply(list.filter(s.datasets, (d) => [d.name, d.kind]))}
-          view={list.view}
-          refreshing={s.refreshing}
-          onRefresh={s.refreshDataset}
-          onRemove={s.removeDataset}
+        <DatasetFolders
+          datasets={filters.apply(list.filter(s.datasets, (d) => [d.name, d.kind, d.folder ?? '']))}
+          render={(items) => (
+            <DatasetsTab datasets={items} view={list.view} refreshing={s.refreshing} onRefresh={s.refreshDataset} onRemove={s.removeDataset} onEdit={setEditing} />
+          )}
         />
       ) : (
         <ConnectionsTab
@@ -96,6 +101,15 @@ export default function SourcesPage() {
       )}
 
       <ImportTablesDialog source={importing} onClose={() => setImporting(null)} onImported={s.reload} />
+      <DatasetMetaDialog open={!!pendingFile} title="Add dataset" submitLabel="Upload"
+        hint={pendingFile ? `${pendingFile.name} · name it the way you talk about it, and file it in a folder if you like.` : undefined}
+        initial={{ name: pendingFile?.name.replace(/\.[^.]+$/, '') ?? '', folder: '' }}
+        onClose={() => setPendingFile(null)} onSubmit={(m) => s.upload(pendingFile!, m)} />
+      <DatasetMetaDialog open={!!editing} title="Rename or move dataset" submitLabel="Save" withDescription
+        hint="The new name works right away in Ask and SQL. Saved charts and dashboards keep working."
+        initial={{ name: editing?.name ?? '', folder: editing?.folder ?? '', description: editing?.description ?? '' }}
+        onClose={() => setEditing(null)}
+        onSubmit={async (m) => { await api.patch(`/datasets/${editing!.id}`, m); s.reload(); }} />
       <BlendDialog isOpen={blendOpen} onClose={() => setBlendOpen(false)} datasets={s.datasets} />
     </div>
   );

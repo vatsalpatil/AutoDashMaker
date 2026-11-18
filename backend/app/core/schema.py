@@ -210,4 +210,5 @@ MIGRATIONS = [
     "ALTER TABLE activity_log ADD COLUMN country TEXT",  # visitor location from Cloudflare headers (services/admin/activity.py)
     "ALTER TABLE activity_log ADD COLUMN region TEXT",
     "ALTER TABLE activity_log ADD COLUMN city TEXT",
+    "ALTER TABLE datasets ADD COLUMN folder TEXT",  # optional grouping in Data Sources ('Finance' or 'Finance/2026')
 ]

@@ -23,10 +23,19 @@ export function useSources() {
     try { await action(); } catch (e) { setError((e as Error).message); }
   }
 
-  const upload = async (file: File) => {
+  /** Upload with the user's own name/folder; throws so the naming dialog can show the error and stay open. */
+  const upload = async (file: File, meta?: { name: string; folder: string }) => {
     setUploading(true);
-    await attempt(async () => { await api.upload('/datasets/upload', file); reload(); });
-    setUploading(false);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      if (meta?.name) fd.append('name', meta.name);
+      if (meta?.folder) fd.append('folder', meta.folder);
+      await api.form('/datasets/upload', fd);
+      reload();
+    } finally {
+      setUploading(false);
+    }
   };
 
   const refreshDataset = (id: string) => refresher.start(id);

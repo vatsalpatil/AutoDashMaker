@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Badge, Button, Tab, TabList } from '@/components/ui/kit';
-import { Link2 } from 'lucide-react';
+import { Folder, Link2, Pencil } from 'lucide-react';
+import { DatasetMetaDialog } from '@/features/datasets/DatasetMetaDialog';
 import { api } from '@/lib/api';
 import type { Dataset, DatasetSchema, PreviewResult } from '@/lib/types';
 import { DataGrid } from '@/components/common/DataGrid';
@@ -26,6 +27,7 @@ export default function DatasetDetailPage() {
   const [tab, setTab] = useState('preview');
   const [error, setError] = useState<string | null>(null);
   const [linking, setLinking] = useState(false);
+  const [renaming, setRenaming] = useState(false);
 
   /** Drop the stored copy of a database table; only schema + stats stay, queries run live against the source. */
   async function keepOnlyStats() {
@@ -51,8 +53,12 @@ export default function DatasetDetailPage() {
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">{dataset.name}</h1>
-          <div className="mt-1 flex gap-2">
+          <div className="flex items-center gap-1">
+            <h1 className="text-2xl font-bold">{dataset.name}</h1>
+            <Button variant="ghost" size="sm" aria-label="Rename or move to folder" title="Rename or move to folder" icon={<Pencil className="size-4" />} onClick={() => setRenaming(true)} />
+          </div>
+          <div className="mt-1 flex flex-wrap gap-2">
+            {dataset.folder && <span className="inline-flex items-center gap-1 text-xs text-muted-foreground"><Folder className="size-3.5" /> {dataset.folder.split('/').join(' / ')}</span>}
             {dataset.kind && <Badge variant="neutral" label={dataset.kind} />}
             {schema && <Badge variant="blue" label={countLabel(schema.row_count, 'row')} />}
           </div>
@@ -66,6 +72,12 @@ export default function DatasetDetailPage() {
         </div>
       </div>
       <ErrorBanner message={error} />
+      {dataset.description && <p className="-mt-2 text-sm text-muted-foreground">{dataset.description}</p>}
+      <DatasetMetaDialog open={renaming} title="Rename or move dataset" submitLabel="Save" withDescription
+        hint="The new name works right away in Ask and SQL. Saved charts and dashboards keep working."
+        initial={{ name: dataset.name, folder: dataset.folder ?? '', description: dataset.description ?? '' }}
+        onClose={() => setRenaming(false)}
+        onSubmit={async (m) => { await api.patch(`/datasets/${dataset.id}`, m); loadDataset(); }} />
 
       <FreshnessStrip datasetId={id!} onRefreshed={loadDataset} />
 

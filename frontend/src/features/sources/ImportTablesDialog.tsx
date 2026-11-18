@@ -6,6 +6,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useApi } from '@/hooks/useApi';
 import { api } from '@/lib/api';
 import type { Source } from '@/lib/types';
+import { FolderField } from '@/features/datasets/DatasetMetaDialog';
 
 type Status = 'pending' | 'running' | 'done' | string;
 
@@ -16,11 +17,13 @@ export function ImportTablesDialog({ source, onClose, onImported }: { source: So
   const [filter, setFilter] = useState('');
   const [progress, setProgress] = useState<Record<string, Status>>({});
   const [busy, setBusy] = useState(false);
+  const [ownNames, setOwnNames] = useState<Record<string, string>>({});   // own dataset name per table (blank = table name)
+  const [folder, setFolder] = useState('');
   const linkable = ['mysql', 'postgres', 'sqlite'].includes(source?.type ?? '');  // only databases can be queried live
   const [chosen, setMode] = useState<'link' | 'copy'>('link');
   const mode = linkable ? chosen : 'copy';
 
-  useEffect(() => { setPicked(new Set()); setFilter(''); setProgress({}); setDbs(null); }, [source?.id]);
+  useEffect(() => { setPicked(new Set()); setFilter(''); setProgress({}); setDbs(null); setOwnNames({}); setFolder(''); }, [source?.id]);
 
   const items = data?.items ?? [];
   const groupOf = (n: string) => (n.includes('.') ? n.split('.')[0] : '');
@@ -43,7 +46,7 @@ export function ImportTablesDialog({ source, onClose, onImported }: { source: So
     for (const name of names) {
       setProgress((p) => ({ ...p, [name]: 'running' }));
       try {
-        await api.post('/datasets/ingest', { source_id: source.id, name, dataset_name: name, mode });
+        await api.post('/datasets/ingest', { source_id: source.id, name, dataset_name: ownNames[name]?.trim() || name, folder: folder.trim() || undefined, mode });
         setProgress((p) => ({ ...p, [name]: 'done' }));
       } catch (e) {
         setProgress((p) => ({ ...p, [name]: (e as Error).message }));
@@ -107,6 +110,11 @@ export function ImportTablesDialog({ source, onClose, onImported }: { source: So
             <label key={i.name} className="flex cursor-pointer items-center gap-3 border-b px-3 py-2 text-sm last:border-b-0 hover:bg-accent">
               <Checkbox checked={picked.has(i.name)} onCheckedChange={() => toggle(i.name)} disabled={busy} aria-label={`Import ${i.name}`} />
               <span className="mono min-w-0 flex-1 truncate">{i.name}</span>
+              {picked.has(i.name) && !progress[i.name] && (
+                <input value={ownNames[i.name] ?? ''} onChange={(e) => setOwnNames((n) => ({ ...n, [i.name]: e.target.value }))}
+                  placeholder="Name as… (optional)" aria-label={`Dataset name for ${i.name}`} maxLength={80} disabled={busy}
+                  className="h-7 w-40 rounded-md border border-input bg-transparent px-2 text-xs outline-none focus-visible:border-ring" />
+              )}
               {progress[i.name] === 'done' && <Check className="size-4 text-success" />}
               {progress[i.name] === 'running' && <Loader2 className="size-4 animate-spin" />}
               {progress[i.name] && !['pending', 'running', 'done'].includes(progress[i.name]) && <span className="max-w-48 truncate text-xs text-destructive" title={progress[i.name]}>{progress[i.name]}</span>}
@@ -114,6 +122,7 @@ export function ImportTablesDialog({ source, onClose, onImported }: { source: So
           ))}
         </div>
 
+        {picked.size > 0 && !finished && <FolderField value={folder} onChange={setFolder} disabled={busy} />}
         <div className="flex items-center justify-between gap-2">
           <span className="text-xs text-muted-foreground">{picked.size} selected{finished && !failed ? ' · done' : ''}</span>
           <div className="flex gap-2">
