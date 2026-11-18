@@ -3,7 +3,11 @@ import { BRAND_NAME } from '@/lib/brand';
 import { MODULES } from './modulesContent';
 import { useCycle } from './motion';
 
-const GROUPS = ['Work', 'Govern', 'Help', 'Extras'] as const;
+import { GROUPS as NAV_GROUPS, NAV } from '@/components/layout/nav';
+
+/** Same groups as the app sidebar; modules not in the sidebar fall under Extras. */
+const GROUPS = [...NAV_GROUPS, 'Extras'];
+const groupOf = (name: string) => NAV.find((n) => n.label === name)?.group ?? 'Extras';
 
 /** Every tab of the app: a sidebar like the real one on the left, the selected tab explained on the right (auto-plays until clicked). */
 export function ProductExplorer() {
@@ -23,7 +27,7 @@ export function ProductExplorer() {
           {GROUPS.map((g) => (
             <div key={g} className="contents md:block">
               <div className="hidden px-2 pt-3 pb-1 text-xs text-muted-foreground md:block">{g}</div>
-              {MODULES.map((x, i) => x.group === g && (
+              {MODULES.map((x, i) => groupOf(x.name) === g && (
                 <button key={x.id} onClick={() => pick(i)}
                   className={`relative flex shrink-0 items-center gap-2.5 overflow-hidden rounded-lg px-2.5 py-2 text-left text-sm transition md:w-full
                     ${i === active ? 'bg-primary/15 text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}>
@@ -41,7 +45,7 @@ export function ProductExplorer() {
               <Icon className="size-7" />
             </span>
             <div>
-              <p className="text-xs text-muted-foreground">{m.group}</p>
+              <p className="text-xs text-muted-foreground">{groupOf(m.name)}</p>
               <h3 className="text-2xl font-semibold">{m.name}</h3>
               <p className="text-primary">{m.tagline}</p>
             </div>

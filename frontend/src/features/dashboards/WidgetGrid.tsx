@@ -63,9 +63,10 @@ export function WidgetGrid({ widgets, layout, editing, onLayoutChange, onAutoFit
   const gridLayout = editing ? layout.map((l) => (byId.get(l.i) && isLocked(byId.get(l.i)!) ? { ...l, static: true } : l)) : layout;
   if (widgets.length === 0 && !editing) {
     return (
-      <p className="rounded-lg border border-dashed border-input p-8 text-center text-sm text-muted-foreground">
-        No widgets on this page yet — add charts to build this dashboard.
-      </p>
+      <div className="rounded-lg border border-dashed border-input p-8 text-center text-sm text-muted-foreground">
+        <p className="font-medium text-foreground">This page is empty</p>
+        <p className="mt-1">Use <b>Add widget</b> to place a saved chart, a key number, a text note or a section heading, or <b>Edit with AI</b> to describe what you want to see.</p>
+      </div>
     );
   }
   const phone = !editing && width > 0 && width < 640;

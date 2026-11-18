@@ -10,6 +10,7 @@ import { ChartView } from '@/features/charts/render/ChartView';
 import { autoEncode } from '@/features/charts/templates';
 import { columnKinds } from '@/features/charts/chartData';
 import { rememberSpec } from './qbHandoff';
+import { QB_ROW_LIMIT } from './useQueryBuilder';
 import { appendNotebookCell } from '@/features/workbench/notebookModel';
 import { api } from '@/lib/api';
 import type { QbSpec } from './qbModel';
@@ -52,10 +53,12 @@ export function ResultPane({ result, sql, spec: builtSpec, hint, running, baseDa
         <TabList value={tab} onChange={setTab} aria-label="Result view"><Tab value="table" label="Table" /><Tab value="chart" label="Chart" /><Tab value="sql" label="SQL" /></TabList>
         {result && <span className="text-xs text-muted-foreground">{result.row_count.toLocaleString()} rows · {result.duration_ms} ms{result.cached ? ' · cached' : ''}{previewAt != null ? ` · preview of stage ${previewAt + 1}` : ''}</span>}
         <span className="ml-auto flex flex-wrap items-center gap-1.5">
+          {result && tab !== 'chart' && <Button size="sm" variant="primary" icon={<BarChart3 className="size-4" />} label="Visualize" onClick={() => setTab('chart')} />}
           <Button size="sm" variant="ghost" icon={copied ? <Check className="size-4" /> : <Copy className="size-4" />} label="Copy SQL" isDisabled={!sql} onClick={copy} />
           <Button size="sm" variant="outline" icon={<FlaskConical className="size-4" />} label="Workbench" isDisabled={!sql} onClick={() => { if (builtSpec) rememberSpec(sql, builtSpec); appendNotebookCell(sql); nav('/workbench'); }} />
         </span>
       </div>
+      {result && (result.row_count >= QB_ROW_LIMIT || result.warnings?.some((w) => w.startsWith('truncated'))) && <p className="rounded-lg bg-warning/10 px-3 py-2 text-sm text-warning">Showing the first {result.row_count.toLocaleString()} rows only. Add a Summarize step or a filter to see totals over all rows, or save as a dataset to keep every row.</p>}
       {hint && <p className="rounded-lg bg-warning/10 px-3 py-2 text-sm text-warning">{hint}</p>}
       <div className="relative min-h-0 min-w-0 flex-1 overflow-hidden">
         {running && result && <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/50 backdrop-blur-[2px]"><Spinner /></div>}

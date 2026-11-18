@@ -31,7 +31,7 @@ export function StageEditor({ spec, index, schema, prev, onChange, onRemove, onP
         <Button size="sm" variant={previewing ? 'primary' : 'ghost'} icon={<Eye className="size-3.5" />} label="Preview" onClick={onPreview} isDisabled={!ready} />
         {index > 0 && <Button size="sm" variant="ghost" aria-label="Remove stage" icon={<Trash2 className="size-3.5" />} onClick={onRemove} />}
       </div>
-      {!collapsed && <>
+      {!collapsed && <div className="flex flex-col gap-2 [counter-reset:qbstep]">
       {raw ? <SqlSourceStep sql={st.sql ?? ''} onChange={(sql) => onChange({ sql })} /> : index === 0 && <SourceStep st={st} schema={schema} set={onChange} />}
       {ready && !raw && <>
         {index === 0 && <JoinStep st={st} schema={schema} cols={cols} set={onChange} />}
@@ -44,7 +44,7 @@ export function StageEditor({ spec, index, schema, prev, onChange, onRemove, onP
         <FilterStep st={st} cols={cols} set={onChange} />
         <SortLimitStep st={st} outCols={outputCols(st, cols)} set={onChange} />
       </>}
-      </>}
+      </div>}
     </div>
   );
 }

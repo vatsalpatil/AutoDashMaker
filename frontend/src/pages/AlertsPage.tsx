@@ -34,7 +34,7 @@ export default function AlertsPage() {
       <AlertForm datasets={datasets} onCreated={alerts.reload} />
       <div className="flex flex-wrap items-center gap-2">{filters.bar}</div>
       {shown.length === 0
-        ? <EmptyState title={alerts.data.length ? 'No alerts match the filters' : 'No alerts yet'} description={alerts.data.length ? undefined : 'Create one above.'} />
+        ? <EmptyState title={alerts.data.length ? 'No alerts match the filters' : 'No alerts yet'} description={alerts.data.length ? undefined : 'An alert watches one number (a metric or a query result) on a schedule and notifies you when it crosses a threshold, e.g. daily revenue below 1,000. Pick a dataset, set the condition in the form above, then press Create.'} />
         : shown.map((a) => <AlertCard key={a.id} alert={a} datasetName={names.get(a.dataset_id)} onChanged={alerts.reload} />)}
     </div>
   );

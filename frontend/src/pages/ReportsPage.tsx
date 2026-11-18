@@ -16,7 +16,7 @@ export default function ReportsPage() {
       <PageHeader title="Reports" description="Run a query on a schedule, keep every result as a CSV, and get notified (or POST a summary to a webhook)." />
       <ReportForm onCreated={reports.reload} />
       {reports.data.length === 0
-        ? <EmptyState title="No reports yet" description="Create one above." />
+        ? <EmptyState title="No reports yet" description="A report re-runs a read-only query every N minutes (1440 = daily, 10080 = weekly), keeps each result as a CSV and can POST a summary to an optional webhook. Fill in a name, the query and the interval above, then press Create report." />
         : reports.data.map((r) => <ReportCard key={r.id} report={r} onChanged={reports.reload} />)}
     </div>
   );

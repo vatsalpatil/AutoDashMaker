@@ -3,26 +3,29 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 
-export interface NavItem { to: string; label: string; icon: LucideIcon; end?: boolean; group: 'Work' | 'Govern' | 'Help' }
+export type NavGroup = 'Start' | 'Connect' | 'Explore' | 'Define & visualize' | 'Monitor' | 'Help';
+/** `hint` is the one-line "what is this for" shown as the sidebar tooltip. */
+export interface NavItem { to: string; label: string; icon: LucideIcon; end?: boolean; group: NavGroup; hint: string }
 
+/** Ordered by the user workflow: Connect -> Explore -> Define -> Visualize -> Monitor. */
 export const NAV: NavItem[] = [
-  { to: '/', label: 'Home', icon: Home, end: true, group: 'Work' },
-  { to: '/ask', label: 'Ask', icon: Sparkles, group: 'Work' },
-  { to: '/sources', label: 'Data Sources', icon: Database, group: 'Work' },
-  { to: '/workbench', label: 'Workbench', icon: TerminalSquare, group: 'Work' },
-  { to: '/builder', label: 'Query Builder', icon: Blocks, group: 'Work' },
-  { to: '/metrics', label: 'Key Numbers', icon: BookOpen, group: 'Work' },
-  { to: '/charts', label: 'Charts', icon: BarChart3, group: 'Work' },
-  { to: '/dashboards', label: 'Dashboards', icon: LayoutDashboard, group: 'Work' },
-  { to: '/alerts', label: 'Alerts', icon: Bell, group: 'Govern' },
-  { to: '/reports', label: 'Reports', icon: FileClock, group: 'Govern' },
-  { to: '/quality', label: 'Quality', icon: ShieldCheck, group: 'Govern' },
-  { to: '/activity', label: 'Activity', icon: History, group: 'Govern' },
-  { to: '/guide', label: 'Guide', icon: HelpCircle, group: 'Help' },
-  { to: '/settings', label: 'Settings', icon: Settings, group: 'Help' },
+  { to: '/', label: 'Home', icon: Home, end: true, group: 'Start', hint: 'Overview, recent work and next steps' },
+  { to: '/ask', label: 'Ask', icon: Sparkles, group: 'Start', hint: 'Ask a question in plain English' },
+  { to: '/sources', label: 'Data Sources', icon: Database, group: 'Connect', hint: 'Upload files or connect databases and APIs' },
+  { to: '/quality', label: 'Quality', icon: ShieldCheck, group: 'Connect', hint: 'Check data for nulls, duplicates and drift' },
+  { to: '/workbench', label: 'Workbench', icon: TerminalSquare, group: 'Explore', hint: 'Write SQL in notebook cells' },
+  { to: '/builder', label: 'Query Builder', icon: Blocks, group: 'Explore', hint: 'Build a query without code' },
+  { to: '/metrics', label: 'Key Numbers', icon: BookOpen, group: 'Define & visualize', hint: 'Define trusted metrics once, reuse everywhere' },
+  { to: '/charts', label: 'Charts', icon: BarChart3, group: 'Define & visualize', hint: 'Turn queries into charts' },
+  { to: '/dashboards', label: 'Dashboards', icon: LayoutDashboard, group: 'Define & visualize', hint: 'Arrange charts and numbers to share' },
+  { to: '/alerts', label: 'Alerts', icon: Bell, group: 'Monitor', hint: 'Get notified when a number crosses a line' },
+  { to: '/reports', label: 'Reports', icon: FileClock, group: 'Monitor', hint: 'Run a query on a schedule and deliver results' },
+  { to: '/activity', label: 'Activity', icon: History, group: 'Monitor', hint: 'Who ran, changed or shared what' },
+  { to: '/guide', label: 'Guide', icon: HelpCircle, group: 'Help', hint: 'How the whole workflow fits together' },
+  { to: '/settings', label: 'Settings', icon: Settings, group: 'Help', hint: 'AI providers, appearance and account' },
 ];
 
-export const GROUPS: NavItem['group'][] = ['Work', 'Govern', 'Help'];
+export const GROUPS: NavGroup[] = ['Start', 'Connect', 'Explore', 'Define & visualize', 'Monitor', 'Help'];
 
 export const CRUMB_LABELS: Record<string, string> = {
   ask: 'Ask', sources: 'Data Sources', datasets: 'Data Sources', workbench: 'Workbench', builder: 'Query Builder', metrics: 'Key Numbers', charts: 'Charts',

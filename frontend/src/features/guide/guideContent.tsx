@@ -1,10 +1,11 @@
 import type { ReactNode } from 'react';
-import { BookOpen, Bot, FileText, HelpCircle, Keyboard, Lightbulb, Link2, Map as MapIcon, Plug, Rocket, ShieldCheck, type LucideIcon } from 'lucide-react';
+import { BookOpen, Bot, FileText, HelpCircle, Keyboard, Lightbulb, Link2, Map as MapIcon, Plug, Rocket, Route, ShieldCheck, type LucideIcon } from 'lucide-react';
 import { Code } from './GuideParts';
 
 export type SectionId =
   | 'welcome'
   | 'getting-started'
+  | 'workflow'
   | 'concepts'
   | 'flows'
   | 'walkthroughs'
@@ -24,6 +25,7 @@ export interface SectionDef {
 export const SECTIONS: SectionDef[] = [
   { id: 'welcome', label: 'Welcome', icon: BookOpen },
   { id: 'getting-started', label: 'Getting Started', icon: Rocket },
+  { id: 'workflow', label: 'End-to-end workflow', icon: Route },
   { id: 'concepts', label: 'Concepts', icon: Lightbulb },
   { id: 'flows', label: 'Workflows', icon: MapIcon },
   { id: 'walkthroughs', label: 'Feature Walkthroughs', icon: FileText },

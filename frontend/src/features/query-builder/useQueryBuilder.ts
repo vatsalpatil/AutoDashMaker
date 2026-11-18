@@ -6,6 +6,9 @@ import { QB_EVENT, takeIncoming, type QbIncoming } from './qbHandoff';
 import type { QueryResult } from '@/lib/types';
 import { emptySpec, hasSource, kindOf, type Kind, type QbSchema, type QbSpec, type QbStage } from './qbModel';
 
+/** Rows the builder fetches for its live result; a result this long was probably cut off. */
+export const QB_ROW_LIMIT = 5000;
+
 const kindOfValue = (v: unknown): Kind => (typeof v === 'number' ? 'num' : typeof v === 'boolean' ? 'bool' : typeof v === 'string' && /^\d{4}-\d\d-\d\d/.test(v) ? 'time' : 'text');
 
 /**
@@ -60,7 +63,7 @@ export function useQueryBuilder() {
       setRunning(true);
       try {
         const [res, ...heads] = await Promise.all([
-          api.post<QueryResult>('/qb/run', { spec: run, upto, row_limit: 5000 }),
+          api.post<QueryResult>('/qb/run', { spec: run, upto, row_limit: QB_ROW_LIMIT }),
           ...run.stages.slice(0, -1).map((_, i) => api.post<QueryResult>('/qb/run', { spec: run, upto: i + 1, row_limit: 1 })),
         ]);
         if (stale()) return;

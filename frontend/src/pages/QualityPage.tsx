@@ -37,7 +37,7 @@ export default function QualityPage() {
       <ErrorBanner message={error} />
       <div className="flex flex-wrap items-center gap-2">{filters.bar}</div>
       {shown.length === 0
-        ? <EmptyState title={rows.length ? 'No datasets match the filters' : 'No quality runs yet'} description={rows.length ? undefined : "Run a check from a dataset's Quality tab."} />
+        ? <EmptyState title={rows.length ? 'No datasets match the filters' : 'No quality runs yet'} description={rows.length ? undefined : "Quality checks score each dataset for completeness (nulls), uniqueness (duplicates) and validity. Open a dataset in Data Sources, go to its Quality tab and run a check; results appear here."} />
         : (
           <div className="overflow-auto rounded-xl border bg-card shadow-xs">
             <table className="min-w-full divide-y text-sm">

@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
-import { Eraser, Loader2, Sparkles } from 'lucide-react';
-import { AttentionPanel } from '@/components/AttentionPanel';
+import { Eraser, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/kit';
+import { AskEmptyState } from '@/features/ask/AskEmptyState';
 import { AnswerCard } from '@/features/ask/AnswerCard';
 import { Composer } from '@/features/ask/Composer';
 import { useAskThread, type AskTurn } from '@/features/ask/useAskThread';
@@ -27,7 +27,7 @@ export default function AskPage() {
   const openSaved = async (id: string) => { const v = await history.open(id); if (v) restore(v); };
   const historyButton = <SessionHistory h={history} busy={busy} onOpen={openSaved} onNew={newChat} />;
   const datasets = useApi<Dataset[]>('/datasets').data ?? [];
-  const starters = useApi<{ questions: string[] }>(`/ai/suggestions${scope ? `?dataset_id=${scope}` : ''}`).data?.questions ?? [];
+  const starters = useApi<{ questions: string[] }>(datasets.length === 0 ? null : `/ai/suggestions${scope ? `?dataset_id=${scope}` : ''}`).data?.questions ?? [];
   const endRef = useRef<HTMLDivElement>(null);
   // a question typed on Home: run it now (page already open) or on first mount
   useEffect(() => {
@@ -43,20 +43,7 @@ export default function AskPage() {
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-6">
         <div className="mx-auto flex max-w-4xl flex-col gap-6">
           {turns.length === 0 ? (
-            <div className="flex flex-col items-center gap-6 pt-6 text-center">
-              <span className="grid size-12 place-items-center rounded-2xl bg-primary/10 text-primary"><Sparkles className="size-6" /></span>
-              <div>
-                <h1 className="text-2xl font-semibold tracking-tight">What do you want to know?</h1>
-                <p className="mt-1 text-sm text-muted-foreground">I can see all your tables, saved queries and metrics. I write the SQL, run it, chart it and explain it.</p>
-              </div>
-              {starters.length > 0 && (
-                <div className="flex max-w-3xl flex-wrap justify-center gap-2">
-                  {starters.map((q) => <button key={q} onClick={() => ask(q)} className="rounded-full border bg-card px-3.5 py-1.5 text-sm shadow-xs transition-colors hover:border-primary hover:text-primary">{q}</button>)}
-                </div>
-              )}
-              {historyButton}
-              <div className="w-full text-left"><AttentionPanel /></div>
-            </div>
+            <AskEmptyState hasData={datasets.length > 0} starters={starters} onAsk={ask} history={historyButton} />
           ) : (
             <>
               <div className="flex items-center justify-end gap-2">{historyButton}<Button variant="ghost" size="sm" icon={<Eraser className="size-4" />} label="New conversation" onClick={newChat} /></div>

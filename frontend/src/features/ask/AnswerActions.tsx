@@ -43,7 +43,7 @@ export function AnswerActions({ question, response }: { question: string; respon
   return (
     <div className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center gap-1.5">
-        <Button size="sm" variant="primary" icon={<BarChart3 className="size-4" />} label="Create chart" isDisabled={busy} onClick={toStudio} />
+        <Button size="sm" variant="primary" icon={<BarChart3 className="size-4" />} label="Save as chart" title="Saves the query and opens the chart studio, where you can add it to a dashboard" isDisabled={busy} onClick={toStudio} />
         <Button size="sm" variant="outline" icon={<FlaskConical className="size-4" />} label="Open in Workbench" onClick={toWorkbench} />
         <Button size="sm" variant="ghost" icon={copied ? <Check className="size-4" /> : <Copy className="size-4" />} label="Copy SQL" onClick={copy} />
         <span className="ml-auto flex items-center gap-1">

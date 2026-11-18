@@ -19,9 +19,10 @@ export function Step({ icon, title, tone = 'primary', badge, onRemove, children,
 }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <section className="rounded-xl border bg-card">
+    <section className="rounded-xl border bg-card [counter-increment:qbstep]">
       <header className="flex items-center gap-2 px-3 py-2">
         <button className="flex min-w-0 flex-1 items-center gap-2 text-left" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
+          <span aria-hidden className="w-4 shrink-0 text-right text-xs font-semibold tabular-nums text-muted-foreground before:[content:counter(qbstep)]" />
           <span className={cn('flex size-6 items-center justify-center rounded-md [&>svg]:size-3.5', TONES[tone])}>{icon}</span>
           <span className="truncate text-sm font-semibold">{title}</span>
           {badge}

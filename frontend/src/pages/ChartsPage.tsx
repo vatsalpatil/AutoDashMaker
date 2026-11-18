@@ -13,7 +13,7 @@ import { KINDS, kindOf } from '@/features/charts/chartKinds';
 import { useApi } from '@/hooks/useApi';
 import { useListView } from '@/hooks/useListView';
 import { api } from '@/lib/api';
-import type { Chart } from '@/lib/types';
+import type { Chart, SavedQuery } from '@/lib/types';
 
 const date = (iso?: string) => (iso ? new Date(iso).toLocaleDateString() : '—');
 const mapping = (c: Chart) => [c.spec.encoding.x, ...(c.spec.encoding.ys?.length ? c.spec.encoding.ys : [c.spec.encoding.y])].filter(Boolean).join(' → ');
@@ -28,6 +28,9 @@ const FIELDS: FieldDef<Chart>[] = [
 export default function ChartsPage() {
   const nav = useNavigate();
   const { data: charts, error, reload } = useApi<Chart[]>('/charts');
+  const { data: queries } = useApi<SavedQuery[]>('/queries');
+  const source = (c: Chart) => queries?.find((q) => q.id === c.query_id)?.name ?? '—';
+  const usedIn = (c: Chart) => (c.used_in ? `on ${c.used_in} dashboard${c.used_in > 1 ? 's' : ''}` : 'not on a dashboard');
   const { view, setView, query, setQuery, filter } = useListView();
   const filters = useFieldFilters(FIELDS);
 
@@ -49,6 +52,7 @@ export default function ChartsPage() {
   const columns: ListColumn<Chart>[] = [
     { header: 'Chart', cell: (c) => <Link to={`/charts/${c.id}`} className="font-semibold text-primary hover:underline">{c.name}</Link> },
     { header: 'Type', cell: (c) => <Badge variant="purple" label={kindOf(c.spec.type).label} /> },
+    { header: 'Source query', className: 'text-xs', cell: source },
     { header: 'Mapping', className: 'mono text-xs', cell: mapping },
     { header: 'Used in', className: 'text-xs', cell: (c) => (c.used_in ? `${c.used_in} dashboard${c.used_in > 1 ? 's' : ''}` : <span className="text-muted-foreground">not used</span>) },
     { header: 'Created', className: 'text-xs text-muted-foreground', cell: (c) => date(c.created_at) },
@@ -65,7 +69,7 @@ export default function ChartsPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <PageHeader title="Charts" description="Build, style and reuse visualizations backed by live queries."
+      <PageHeader title="Charts" description="Each chart is a saved query drawn one way. Add charts to dashboards; a chart on no dashboard is a leftover you can clean up."
         actions={<>
           {unused.length > 0 && <Button variant="secondary" icon={<Trash2 className="size-4" />} label={`Clean up ${unused.length} unused`} onClick={() => cleanup(unused)} />}
           <Button variant="primary" icon={<Plus className="size-4" />} label="New chart" onClick={() => nav('/charts/new')} />
@@ -85,7 +89,7 @@ export default function ChartsPage() {
             <Card padding={0} className="overflow-hidden transition-shadow hover:shadow-md">
               <div className="border-b bg-muted/30 p-3"><ChartThumb chart={c} /></div>
               <div className="flex items-center justify-between gap-2 p-3">
-                <div className="min-w-0"><div className="truncate font-semibold">{c.name}</div><div className="mono truncate text-xs text-muted-foreground">{mapping(c)}</div></div>
+                <div className="min-w-0"><div className="truncate font-semibold">{c.name}</div><div className="truncate text-xs text-muted-foreground">{source(c)} · {usedIn(c)}</div></div>
                 <Badge variant="purple" label={kindOf(c.spec.type).label} />
               </div>
             </Card>

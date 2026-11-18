@@ -35,9 +35,9 @@ export function AppSidebar() {
             <SidebarGroupLabel>{g}</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {NAV.filter((n) => n.group === g).map(({ to, label, icon: Icon, end }) => (
+                {NAV.filter((n) => n.group === g).map(({ to, label, hint, icon: Icon, end }) => (
                   <SidebarMenuItem key={to}>
-                    <SidebarMenuButton tooltip={label} isActive={active(to, end)}
+                    <SidebarMenuButton tooltip={`${label} — ${hint}`} isActive={active(to, end)}
                       render={<NavLink to={to} end={end} onClick={() => isMobile && setOpenMobile(false)} />}>
                       <Icon />
                       <span>{label}</span>

@@ -9,6 +9,7 @@ import { DimensionsPanel } from '@/features/metrics/DimensionsPanel';
 import { GlossaryPanel } from '@/features/metrics/GlossaryPanel';
 import { MetricBuilder } from '@/features/metrics/MetricBuilder';
 import { MetricCard } from '@/features/metrics/MetricCard';
+import { MetricsIntro } from '@/features/metrics/MetricsIntro';
 import { useMetricsData } from '@/features/metrics/useMetricsData';
 import { suggestionKey, useSuggestedValues } from '@/features/metrics/useSuggestedValues';
 import { useAsyncAction } from '@/hooks/useAsyncAction';
@@ -60,6 +61,7 @@ export default function MetricsPage() {
         <Button variant="primary" label="Custom number" icon={<Plus className="size-4" />} onClick={() => setBuilder(true)} isDisabled={d.datasets.length === 0} />
       </div>
       <ErrorBanner message={d.error ?? pinError} />
+      {tab === 'numbers' && <MetricsIntro />}
 
       <TabList value={tab} onChange={(v) => setTab(v as TabId)} aria-label="Key numbers sections">
         {TABS.map((t) => <Tab key={t.id} value={t.id} label={t.id === 'numbers' ? t.label : `${t.label} · ${counts[t.id]}`} />)}

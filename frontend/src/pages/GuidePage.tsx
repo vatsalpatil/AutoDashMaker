@@ -5,6 +5,7 @@ import { DataPrivacySection } from '@/features/guide/sections/DataPrivacySection
 import { SharingSection } from '@/features/guide/sections/SharingSection';
 import { ConnectAiSection } from '@/features/guide/sections/ConnectAiSection';
 import { ConceptsSection } from '@/features/guide/sections/ConceptsSection';
+import { EndToEndSection } from '@/features/guide/sections/EndToEndSection';
 import { FaqSection } from '@/features/guide/sections/FaqSection';
 import { FlowsSection } from '@/features/guide/sections/FlowsSection';
 import { GettingStartedSection } from '@/features/guide/sections/GettingStartedSection';
@@ -52,6 +53,7 @@ export default function GuidePage() {
       <div className="flex min-w-0 max-w-3xl flex-1 flex-col gap-6">
         {active === 'welcome' && <WelcomeSection onStart={() => setActive('getting-started')} />}
         {active === 'getting-started' && <GettingStartedSection />}
+        {active === 'workflow' && <EndToEndSection />}
         {active === 'concepts' && <ConceptsSection />}
         {active === 'flows' && <FlowsSection />}
         {active === 'walkthroughs' && <WalkthroughsSection />}

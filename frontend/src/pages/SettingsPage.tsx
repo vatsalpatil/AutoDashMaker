@@ -1,4 +1,5 @@
 import { Suspense } from 'react';
+import { PageHeader } from '@/components/common/PageHeader';
 import { Loading } from '@/components/common/Loading';
 import { Tab, TabList } from '@/components/ui/kit';
 import AiSettings from '@/features/ai/AiSettings';
@@ -10,11 +11,11 @@ import ThemeSettings from '@/features/settings/ThemeSettings';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 
 const TABS = [
-  { id: 'ai', label: 'AI models' },
-  { id: 'usage', label: 'AI usage' },
-  { id: 'connect', label: 'Connect your AI' },
-  { id: 'appearance', label: 'Appearance' },
-  { id: 'account', label: 'Account' },
+  { id: 'ai', label: 'AI models', hint: 'Choose and key the AI providers that power Ask, chart and dashboard generation.' },
+  { id: 'usage', label: 'AI usage', hint: 'Tokens and requests used per provider, so you can watch cost.' },
+  { id: 'connect', label: 'Connect your AI', hint: 'Let external AI tools (e.g. MCP clients) query your data through this app.' },
+  { id: 'appearance', label: 'Appearance', hint: 'Theme and colours for the whole app.' },
+  { id: 'account', label: 'Account', hint: 'Your profile, contact details and account deletion.' },
 ] as const;
 type TabId = (typeof TABS)[number]['id'];
 
@@ -26,10 +27,11 @@ export default function SettingsPage() {
   const active: TabId = tabs.some((t) => t.id === tab) ? tab : 'ai';
   return (
     <div className="flex max-w-4xl flex-col gap-5">
-      <h1 className="text-2xl font-bold">Settings</h1>
+      <PageHeader title="Settings" description="Workspace-wide preferences. Pick a section below." />
       <TabList value={active} onChange={(v) => setTab(v as TabId)} aria-label="Settings sections">
         {tabs.map((t) => <Tab key={t.id} value={t.id} label={t.label} />)}
       </TabList>
+      <p className="text-sm text-muted-foreground">{tabs.find((t) => t.id === active)?.hint}</p>
       <Suspense fallback={<Loading />}>
         {active === 'ai' && <AiSettings />}
         {active === 'usage' && <AiUsagePanel />}

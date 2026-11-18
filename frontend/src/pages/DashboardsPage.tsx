@@ -23,6 +23,8 @@ const date = (iso?: string) => (iso ? new Date(iso).toLocaleDateString() : '—'
 type Quick = 'all' | 'fav' | 'week';
 const WEEK_MS = 7 * 24 * 3600 * 1000;
 const isNew = (d: Dashboard) => !!d.created_at && Date.now() - new Date(d.created_at).getTime() < WEEK_MS;
+const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? '' : 's'}`;
+const contents = (d: Dashboard) => [plural(d.widgets?.length ?? 0, 'widget'), plural(Math.max(1, d.pages?.length ?? 0), 'page'), d.filters?.length ? plural(d.filters.length, 'filter') : ''].filter(Boolean).join(' · ');
 const FIELDS: FieldDef<Dashboard>[] = [
   { id: 'name', label: 'Name', type: 'text', get: (d) => d.name },
   { id: 'description', label: 'Description', type: 'text', get: (d) => d.description },
@@ -62,6 +64,7 @@ export default function DashboardsPage() {
   const columns: ListColumn<Dashboard>[] = [
     { header: 'Dashboard', cell: (d) => <span className="flex items-center gap-2"><StarButton on={favs.has(d.id)} onClick={() => favs.toggle(d.id)} /><Link to={`/dashboards/${d.id}`} className="font-semibold text-primary hover:underline">{d.name}</Link></span> },
     { header: 'Description', className: 'text-muted-foreground', cell: (d) => d.description || '—' },
+    { header: 'Contents', className: 'text-xs text-muted-foreground', cell: contents },
     { header: 'Created', className: 'text-xs text-muted-foreground', cell: (d) => date(d.created_at) },
     {
       header: 'Actions', align: 'right',
@@ -76,7 +79,7 @@ export default function DashboardsPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <PageHeader title="Dashboards" description="Interactive multi-widget analytics dashboards with layout persistence."
+      <PageHeader title="Dashboards" description="Pages of charts, numbers and notes on a grid, with shared filters. Create one empty, generate it from a dataset, or describe it to AI."
         actions={<>
           <Button variant="secondary" label="Generate from dataset" icon={<Wand2 className="size-4" />} onClick={() => navigate('/dashboards/generate')} />
           <Button variant="primary" label="Create with AI" icon={<Sparkles className="size-4" />} onClick={() => setAiOpen(true)} />
@@ -102,13 +105,13 @@ export default function DashboardsPage() {
       <div className="flex flex-wrap items-center gap-2">{filters.bar}</div>
 
       <ResourceList items={shown} view={view} columns={columns}
-        empty={{ title: 'No dashboards found', description: 'Create one above, then add widgets from your charts.' }}
+        empty={{ title: 'No dashboards found', description: 'Name one above and add charts, or let Generate / Create with AI build a first draft you can edit.' }}
         renderCard={(d) => (
           <Link to={`/dashboards/${d.id}`} className="block">
             <Card padding={3} className="transition-shadow hover:shadow-md">
               <div className="flex items-center gap-2 font-semibold text-primary"><StarButton on={favs.has(d.id)} onClick={() => favs.toggle(d.id)} />{d.name}</div>
               {d.description && <p className="mt-1 text-sm text-muted-foreground">{d.description}</p>}
-              <p className="mt-2 text-xs text-muted-foreground">{date(d.created_at)}</p>
+              <p className="mt-2 text-xs text-muted-foreground">{contents(d)} · {date(d.created_at)}</p>
             </Card>
           </Link>
         )} />

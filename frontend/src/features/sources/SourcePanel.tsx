@@ -7,6 +7,7 @@ import { api } from '@/lib/api';
 import type { Source } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { FileField } from './FileField';
+import { SourceTypeCards } from './SourceTypeCards';
 import { SOURCE_SCHEMAS, buildPayload, defaultValues, schemaOf, valuesFromSource, type Field } from './sourceSchemas';
 
 type Values = Record<string, Record<string, string>>;
@@ -20,6 +21,7 @@ export function SourcePanel({ open, editing, onClose, onSaved }: {
 }) {
   const [type, setType] = useState('postgres');
   const [values, setValues] = useState<Values>({});
+  const [picked, setPicked] = useState(false);
   const [test, setTest] = useState<{ ok: boolean; text: string } | null>(null);
   const top = useRef<HTMLDivElement>(null);
 
@@ -30,6 +32,7 @@ export function SourcePanel({ open, editing, onClose, onSaved }: {
     for (const s of SOURCE_SCHEMAS) all[s.id] = editing?.type === s.id ? valuesFromSource(s, editing) : defaultValues(s);
     setValues(all);
     setType(editing?.type ?? 'postgres');
+    setPicked(Boolean(editing));
     setTest(null);
     top.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }, [open, editing]);
@@ -74,24 +77,17 @@ export function SourcePanel({ open, editing, onClose, onSaved }: {
   };
 
   if (!open) return null;
+  const heading = editing ? `Edit ${editing.name}` : picked ? `Connect ${schema.label}` : 'Add connection: choose a source type';
   return (
     <Card padding={0}>
       <div ref={top} className="flex flex-col gap-4 p-5">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold">{editing ? `Edit ${editing.name}` : 'Add connection'}</h2>
+          <h2 className="text-lg font-bold">{heading}</h2>
           <button type="button" aria-label="Close" onClick={onClose} className="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-foreground"><X className="size-4" /></button>
         </div>
 
-        <div className="flex flex-wrap gap-1.5 border-b pb-3">
-          {SOURCE_SCHEMAS.map((s) => (
-            <button key={s.id} type="button" onClick={() => setType(s.id)}
-              className={cn('rounded-lg px-3 py-1.5 text-xs font-semibold transition-all',
-                type === s.id ? 'bg-primary text-primary-foreground shadow-xs' : 'bg-muted text-foreground hover:bg-accent')}>
-              {s.label}
-            </button>
-          ))}
-        </div>
-
+        {!picked ? <SourceTypeCards onPick={(id) => { setType(id); setPicked(true); }} /> : <>
+        {!editing && <button type="button" onClick={() => setPicked(false)} className="w-fit text-xs font-medium text-primary hover:underline">← Choose a different source type</button>}
         {schema.note && <p className="rounded-md border border-primary/30 bg-primary/10 p-3 text-sm text-primary">{schema.note}</p>}
         <div className={cn(schema.grid ? 'grid grid-cols-2 gap-3' : 'flex flex-col gap-3')}>{schema.fields.filter((f) => !f.advanced).map(renderField)}</div>
         {schema.fields.some((f) => f.advanced) && (
@@ -115,6 +111,7 @@ export function SourcePanel({ open, editing, onClose, onSaved }: {
           {connectable && <Button variant="secondary" label={testState.busy ? 'Testing…' : 'Test connection'} onClick={() => runTest()} isDisabled={testState.busy} />}
           {connectable && <Button variant="primary" label={editing ? 'Save changes' : 'Create'} onClick={() => save()} isDisabled={saveState.busy} />}
         </div>
+        </>}
       </div>
     </Card>
   );

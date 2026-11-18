@@ -80,6 +80,7 @@ export function AnswerCard({ question, response, onFollowUp }: {
           {conf && <Badge variant={conf[0]} label={conf[1]} />}
           <Badge variant="green" label={countLabel(result.row_count, 'row')} />
           <Badge variant="neutral" label={`${result.duration_ms} ms`} />
+          {response.provenance?.tables.length ? <span className="ml-1 text-xs text-muted-foreground">Sources:</span> : null}
           {response.provenance?.tables.map((t) => <Badge key={t} variant="blue" label={t} />)}
           {(response.provenance?.warnings ?? []).map((w, i) => <Badge key={i} variant="warning" label={w} />)}
         </div>

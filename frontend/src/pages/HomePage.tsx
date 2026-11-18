@@ -2,7 +2,8 @@ import { useNavigate } from 'react-router-dom';
 import { AttentionPanel } from '@/components/AttentionPanel';
 import { Loading } from '@/components/common/Loading';
 import { AskBar } from '@/features/home/AskBar';
-import { ExampleQuestions, HowItWorks } from '@/features/home/GettingStarted';
+import { ExampleQuestions } from '@/features/home/GettingStarted';
+import { NextSteps } from '@/features/home/NextSteps';
 import { HomeHeader } from '@/features/home/HomeHeader';
 import { RecentWork } from '@/features/home/RecentWork';
 import { DataPanel, QuickActions, TryAsking } from '@/features/home/SidePanels';
@@ -31,11 +32,12 @@ export default function HomePage() {
     <div className="mx-auto flex min-h-[calc(100svh-5.5rem)] w-full min-w-0 max-w-7xl flex-col gap-4 pb-2">
       <HomeHeader hasData={hasData} />
       <AskBar hasData={hasData} />
+      <NextSteps datasets={counts.datasets} charts={counts.charts} dashboards={counts.dashboards} />
       <StatTiles counts={counts} />
       <QuickActions />
       <div className={cn('grid flex-1 gap-4 lg:grid-cols-3', stretch)}>
         <div className="flex min-w-0 flex-col gap-4 lg:col-span-2">
-          {hasData ? <RecentWork dashboards={dashboards} charts={charts} /> : <><StartHere /><HowItWorks /></>}
+          {hasData ? <RecentWork dashboards={dashboards} charts={charts} /> : <StartHere />}
         </div>
         <div className="flex min-w-0 flex-col gap-4">
           <DataPanel datasets={list} />
