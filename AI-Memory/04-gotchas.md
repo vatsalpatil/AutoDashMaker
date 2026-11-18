@@ -135,3 +135,4 @@ invalid currency codes throw in Intl; repeated item names (ungrouped queries) ga
 
 ## Visitor location
 activity_log.country/region/city come from Cloudflare headers only (no IP-lookup service). IP = CF-Connecting-IP (X-Forwarded-For behind Caddy is the CF edge). Rows before 2026-11-05 have no location.
+- `semantic.undefined_metric` (Ask) clarifies on profit/margin/churn/retention/LTV/CAC/ARPU/AOV/MRR/ARR/ROI/conversion/net income/EBITDA/burn rate unless a metric, definition term, synonym or column (word-start match, e.g. `net_profit`) covers it. Add a Metric or synonym if users get unwanted clarifications.

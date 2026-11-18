@@ -22,6 +22,7 @@ Visual Query Builder at `/builder` (plan §102) with AI: describe-to-build, edit
 - Bring-your-own-AI (MCP): users connect Claude/ChatGPT/Cursor/Kimi/DeepSeek/Grok to their workspace with an access token; no Dashtor AI cost. OAuth sign-in for MCP done (claude.ai/ChatGPT 'Connect' → consent page). Not yet: refresh tokens/expiry, MCP resources/prompts; all 20 MCP tools verified LIVE on dashtor.laveyent.com 2026-11-03 (token auth); OAuth discovery/register/authorize verified live, Allow+token exchange only tested locally.
 
 ## In progress
+- Ask lineage (2026-11-18): backend returns `lineage` on /ai/chat + /ai/ask; frontend panel to show it NOT built yet. Visual query builder (services/qb) does not expand semantic metrics yet (could reuse `semantic.metric_sql`).
 - Dashboard editor polish (drag/resize, widget toolbar, fullscreen, sections) — largely working per PROGRESS.md.
 - Trend/anomaly detection is partial (z-score only; trends only on time-ordered data).
 
@@ -35,7 +36,7 @@ USER-ONLY: purge `backend/data/*.duckdb` from git history (holds the OpenRouter 
 
 ## Next / not started (platform)
 Dashboard filters, sharing · model routing (cheap vs strong) · MCP/agent API · query cost estimate · UI for audit log + source health ·
-persist refresh backoff across restarts · persistent engine connection / Store connection reuse (each metadata write opens a connection, ~50 ms) · eval benchmark for NL→SQL · semantic-model versioning · scheduled reports · per-user quotas/admin role (auth + per-user isolation DONE 2026-10-07) · background jobs/embeddings.
+persist refresh backoff across restarts · eval benchmark for NL→SQL · semantic-model versioning · scheduled reports · per-user quotas/admin role (auth + per-user isolation DONE 2026-10-07) · background jobs/embeddings.
 
 ## Known bugs / risks
 - (fixed 2026-10-01) `services/alerts.py::evaluate_alert` crashed with "cannot access local variable 'value'" — see changelog.

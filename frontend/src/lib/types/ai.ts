@@ -86,6 +86,28 @@ export interface AnalystResponse {
   insights?: Insight[];
   confidence?: AskResponse['confidence'];
   provenance?: { tables: string[]; rows: number; duration_ms: number; warnings: string[] };
+  lineage?: AnswerLineage;
+  reason?: 'undefined_metric' | string;
+  term?: string;
+  error?: { code?: string; stage?: string; attempts?: number; message?: string };
+}
+
+/** How an ok answer was calculated (POST /ai/chat → lineage). */
+export interface AnswerLineage {
+  sql?: string;
+  tables?: string[];
+  ctes?: string[];
+  datasets?: { id: string; name: string; table: string; refreshed_at?: string | null; updated_at?: string | null }[];
+  columns?: { table: string; column: string }[];
+  filters?: string[];
+  group_by?: string[];
+  aggregations?: string[];
+  windows?: string[];
+  joins?: { type: string; table: string; on: string }[];
+  metrics?: { name: string; label?: string; expression?: string; definition_sql?: string }[];
+  row_count?: number;
+  execution_ms?: number;
+  attempts?: number;
 }
 
 export interface QueryExplanation {

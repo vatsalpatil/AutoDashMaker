@@ -16,12 +16,23 @@ from . import tenant
 from .config import settings
 
 
+_NAT64 = ipaddress.ip_network("64:ff9b::/96")
+
+
 class NetworkBlocked(Exception):
     pass
 
 
 def _bad(ip: ipaddress._BaseAddress) -> bool:
-    return (ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_multicast
+    """Anything not globally routable (private, loopback, link-local/metadata, CGNAT 100.64/10, reserved...). IPv6 forms
+    embedding an IPv4 address (::ffff:a.b.c.d, NAT64 64:ff9b::/96, 6to4) are judged by that address too."""
+    if isinstance(ip, ipaddress.IPv6Address):
+        inner = ip.ipv4_mapped or ip.sixtofour
+        if inner is None and ip in _NAT64:
+            inner = ipaddress.IPv4Address(int(ip) & 0xFFFFFFFF)
+        if inner is not None and _bad(inner):
+            return True
+    return (not ip.is_global or ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_multicast
             or ip.is_unspecified or ip.is_reserved)
 
 

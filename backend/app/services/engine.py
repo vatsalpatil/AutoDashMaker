@@ -67,6 +67,8 @@ class QueryEngine:
         with self._base_lock:
             if self._base is None:
                 self._base = duck.connect(self._path, config=self._config())
+                from .columnar import sweep_orphans
+                sweep_orphans(self._base, Path(self._path).parent / "parquet")  # leftovers of an ingest killed mid-way
             return self._base
 
     def close(self) -> None:
@@ -170,15 +172,16 @@ class QueryEngine:
         limit = row_limit or settings.default_row_limit
         from . import names, sql_params
         safe_sql = validate_readonly(names.resolve(sql_params.render(sql, params)), limit)
-        cached = None if fresh else self._cache_get(safe_sql)
+        key = f"{limit}|{safe_sql}"   # the row cap is part of the result, so it is part of the key
+        cached = None if fresh else self._cache_get(key)
         if cached is not None:
             return {**cached, "cached": True, "duration_ms": 0.0}
         # single flight: the same query asked by several widgets at once runs once, the others take its result
         with self._flight_lock:
-            flight = self._inflight.get(safe_sql)
+            flight = self._inflight.get(key)
             leader = flight is None
             if leader:
-                flight = self._inflight[safe_sql] = (threading.Event(), {})
+                flight = self._inflight[key] = (threading.Event(), {})
         event, holder = flight
         if not leader:
             event.wait(timeout=settings.query_timeout_s + 5)
@@ -187,7 +190,7 @@ class QueryEngine:
             if "error" in holder:
                 raise holder["error"]
         try:
-            result = self._run(safe_sql)
+            result = self._run(safe_sql, limit, key)
             if leader:
                 holder["result"] = result
             return result
@@ -198,10 +201,10 @@ class QueryEngine:
         finally:
             if leader:
                 with self._flight_lock:
-                    self._inflight.pop(safe_sql, None)
+                    self._inflight.pop(key, None)
                 event.set()
 
-    def _run(self, safe_sql: str) -> dict[str, Any]:
+    def _run(self, safe_sql: str, limit: int, key: str) -> dict[str, Any]:
         version = self._version  # plain int read; compared again under the lock in _cache_put
         t0 = time.perf_counter()
         from . import remote
@@ -213,12 +216,16 @@ class QueryEngine:
             try:
                 rel = con.execute(run_sql)
                 cols = [d[0] for d in rel.description]
-                rows = rel.fetchall()
+                # hard cap: validate_readonly only injects a LIMIT when the SQL has none, so `LIMIT 5000000` used to
+                # build millions of dicts (25 s, GBs of RAM). Fetch one extra row to know whether we cut anything.
+                rows = rel.fetchmany(limit + 1)
             except duckdb.InterruptException as e:
                 raise QueryTimeout(f"query exceeded {settings.query_timeout_s}s and was cancelled") from e
             finally:
                 timer.cancel()
         duration = (time.perf_counter() - t0) * 1000
+        truncated = len(rows) > limit
+        rows = rows[:limit]
         records = [dict(zip(cols, map(_finite, r))) for r in rows]
         result = {
             "sql": safe_sql,
@@ -226,10 +233,10 @@ class QueryEngine:
             "rows": tuple(records),  # shared with the cache: immutable on purpose
             "row_count": len(records),
             "duration_ms": round(duration, 1),
-            "warnings": tuple(self._profile_result(records, cols)),
+            "warnings": tuple(self._profile_result(records, cols)) + ((f"truncated: result capped at {limit} rows",) if truncated else ()),
             "cached": False,
         }
-        self._cache_put(safe_sql, version, dict(result))  # private copy: callers may mutate theirs
+        self._cache_put(key, version, dict(result))  # private copy: callers may mutate theirs
         return result
 
     # -- result validation (§20 of the blueprint) -------------------------
@@ -289,46 +296,8 @@ class QueryEngine:
         return {"table": table, "row_count": count, "columns": columns}
 
     def _describe_linked(self, table: str) -> dict[str, Any]:
-        """Schema of a linked (live) dataset: stored row count + stats from a 100-row sample.
-
-        Profiling a whole remote table (distinct counts over millions of rows) would hammer the source."""
-        from . import remote
-        from ..core.store import store
-        ref = remote.table_ref(table)
-        with self._session(hint=table) as con:
-            rel = con.execute(f"SELECT * FROM {ref} LIMIT 100")
-            names = [d[0] for d in rel.description]
-            types = [str(d[1]) for d in rel.description]
-            rows = rel.fetchall()
-        meta = store.list("datasets", where="physical_name = ?", params=[table], order=None)
-        total = int(meta[0].get("row_count") or len(rows)) if meta else len(rows)
-        exact = self._remote_stats(meta[0], names) if meta else None
-        columns = []
-        for i, name in enumerate(names):
-            vals = [r[i] for r in rows]
-            present = [v for v in vals if v is not None]
-            nulls, distinct = exact[name] if exact else (None, None)
-            columns.append({
-                "name": name, "dtype": types[i],
-                "null_pct": round(nulls / total * 100, 2) if exact and total else round((len(vals) - len(present)) / len(vals) * 100, 2) if vals else 0,
-                "distinct_count": distinct if exact else len({str(v) for v in present}),
-                "sample_values": list(dict.fromkeys(str(v)[:60] for v in present))[:5],
-            })
-        return {"table": table, "row_count": total, "columns": columns, "sampled": not exact}
-
-    def _remote_stats(self, ds: dict[str, Any], names: list[str]) -> dict[str, tuple[int, int]] | None:
-        """Exact null/distinct counts computed inside the source database (one aggregate query, one row back)."""
-        from ..connectors import get_connector
-        from ..core.store import store
-        from . import remote
-        src = store.get("datasources", ds["source_id"]) if ds.get("source_id") else None
-        if not src or not ds.get("remote_table"):
-            return None
-        try:
-            with self._session(hint=ds["physical_name"]) as con:
-                return get_connector(src["type"], src["config"]).remote_profile(con, remote.alias_for(src["id"]), ds["remote_table"], names)
-        except Exception:
-            return None  # the sample-based profile is the fallback
+        from .engine_linked import describe_linked
+        return describe_linked(self, table)
 
     def check_sql(self, sql: str) -> str | None:
         """Bind-check a query against the real schema without running it (DuckDB EXPLAIN).

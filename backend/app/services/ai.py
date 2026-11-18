@@ -65,12 +65,22 @@ NOT_A_QUERY_RULE = (
 )
 
 
+def _guard_url(base_url: str) -> None:
+    """SSRF check at call time too (providers saved before the router check, or edited in the DB)."""
+    from ..core.netguard import NetworkBlocked, ensure_public_url
+    try:
+        ensure_public_url(base_url)
+    except NetworkBlocked as e:
+        raise AIError(f"AI provider address not allowed: {e}") from e
+
+
 def _call_openai_compatible(base_url: str, api_key: str, model: str,
                             messages: list[dict], max_tokens: int = 2048, timeout: float = 60, meta: dict | None = None) -> str:
     payload: dict[str, Any] = {"model": model, "messages": messages, "max_tokens": max_tokens, "temperature": TEMPERATURE}
     if "openrouter.ai" in base_url:
         # Reasoning models otherwise spend most of the time (and tokens) "thinking"; SQL needs little of it.
         payload["reasoning"] = {"effort": "low"}
+    _guard_url(base_url)
     resp = httpx.post(
         f"{base_url.rstrip('/')}/chat/completions",
         headers={"Authorization": f"Bearer {api_key or 'none'}"},

@@ -2,7 +2,7 @@
 import re
 
 from ..core.store import store
-from . import names
+from . import names, semantic
 from .engine import engine
 
 FULL_SCHEMA_TABLES = 12   # up to this many tables every table lists its columns
@@ -13,16 +13,7 @@ def semantic_context(dataset_id: str | None) -> str:
     """Compact business context: metrics, dimensions, definitions, synonyms, verified query examples (§46)."""
     where, params = ("dataset_id = ?", [dataset_id]) if dataset_id else ("", None)
 
-    parts = []
-    for m in store.list("metrics", where=where, params=params, order=None)[:20]:
-        line = f"- {m['label']} ({m['name']}): {m['expression']}"
-        if m.get("filters"):
-            f = m["filters"]
-            line += f" WHERE {' AND '.join(f) if isinstance(f, list) else f}"
-        if m.get("description"):
-            line += f"  — {m['description']}"
-        parts.append(line)
-    metrics_txt = "\n".join(parts) or "none defined"
+    metrics_txt = "\n".join(semantic.metric_lines(dataset_id)) or "none defined"
 
     dims = store.list("dimensions", where=where, params=params, order=None)[:20]
     dims_txt = "\n".join(f"- {d['label']}: column {d['column_name']}" for d in dims) or "none defined"

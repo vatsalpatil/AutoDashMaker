@@ -14,7 +14,7 @@ from pydantic import BaseModel
 
 from ..core.security import UnsafeQueryError, validate_readonly
 from ..core.store import store, DEFAULT_WS
-from ..services import ai as ai_svc, assist as assist_svc, audit
+from ..services import ai as ai_svc, ask_lineage, assist as assist_svc, audit, semantic
 from ..services.ai_context import semantic_context, table_schema_text, with_notebook_steps, workbench_context
 from ..services.engine import engine
 from ..services.explain import explain_sql
@@ -169,6 +169,10 @@ def ask(body: AskIn):
     ds = store.get("datasets", body.dataset_id)
     if not ds:
         raise HTTPException(404, "dataset not found")
+    term = semantic.undefined_metric(body.question, body.dataset_id)
+    if term:
+        return {"status": "clarify", "reason": "undefined_metric", "term": term,
+                "detail": semantic.clarify_text(term), "sql": None, "result": None}
 
     followup = ""
     if body.previous_sql:
@@ -196,6 +200,8 @@ def ask(body: AskIn):
         audit.record("ai.ask", entity_type="dataset", entity_id=ds["id"],
                      detail=f"Q: {body.question} | blocked AI SQL: {sql}", status="blocked")
         raise HTTPException(400, f"AI generated unsafe SQL: {e}")
+    except ai_svc.NeedsClarification as e:
+        return {"status": "clarify", "detail": str(e.args[0]), "sql": None, "result": None}
     except ai_svc.NotAQuery:
         return {"status": "not_a_query", "detail": NOT_A_QUERY_REPLY, "sql": None, "result": None}
     except ai_svc.AIError as e:
@@ -228,6 +234,7 @@ def ask(body: AskIn):
         "insights": detect_insights(result["rows"], result["columns"]),
         "confidence": _confidence(body.question, result, ds, result["warnings"]),
         "conversation_id": conv_id,
+        "lineage": ask_lineage.build(result["sql"], result, ds["id"]),
         "provenance": {
             "dataset": ds["name"],
             "dataset_id": ds["id"],

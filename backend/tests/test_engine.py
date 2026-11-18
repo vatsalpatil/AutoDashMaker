@@ -55,6 +55,7 @@ try:
     raise SystemExit("expected timeout")
 except QueryTimeout:
     assert time.time() - t0 < 5
+settings.query_timeout_s = 30  # the slow single-flight query below needs more than 1 s
 
 # --- one shared instance, many cursors: queries run concurrently and correctly
 from concurrent.futures import ThreadPoolExecutor

@@ -14,6 +14,7 @@ from fastapi.concurrency import run_in_threadpool
 from app.core import tenant
 from app.core.config import settings
 
+_ALGS = {"HS256", "RS256", "ES256"}  # Supabase: HS256 (legacy secret) or asymmetric JWKS keys
 LOCAL_USER = {"id": "local", "email": "local@localhost", "role": "owner"}
 
 
@@ -39,13 +40,16 @@ def verify_token(token: str) -> dict:
         raise HTTPException(500, "Server is missing PyJWT (pip install -r backend/requirements.txt)") from e
     try:
         alg = jwt.get_unverified_header(token).get("alg", "")
+        if alg not in _ALGS:  # never let the token pick "none" or an HMAC variant keyed with a public key
+            raise HTTPException(401, "Invalid or expired token: unsupported signing algorithm")
         if alg == "HS256":
             if not settings.supabase_jwt_secret:
                 raise HTTPException(401, "Server has no SUPABASE_JWT_SECRET for HS256 tokens")
             key = settings.supabase_jwt_secret
         else:
             key = _jwks().get_signing_key_from_jwt(token).key
-        claims = jwt.decode(token, key, algorithms=[alg], audience="authenticated")
+        claims = jwt.decode(token, key, algorithms=[alg], audience="authenticated",
+                            options={"require": ["exp", "sub"]})  # a token without exp would never expire
     except HTTPException:
         raise
     except jwt.PyJWTError as e:

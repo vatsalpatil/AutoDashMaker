@@ -11,6 +11,16 @@ from ..services import ai as ai_svc, ai_models, ai_usage, audit
 router = APIRouter()
 
 
+def _public_base(url: str | None) -> None:
+    """Multi-user servers: a custom base URL must be a public http(s) host (no localhost / private / metadata IPs). No-op locally."""
+    if url and url.strip():
+        from ..core.netguard import NetworkBlocked, ensure_public_url
+        try:
+            ensure_public_url(url)
+        except NetworkBlocked as e:
+            raise HTTPException(400, f"Base URL not allowed: {e}") from e
+
+
 class ProviderIn(BaseModel):
     label: str
     provider: str
@@ -74,6 +84,7 @@ def list_providers():
 
 @router.post("/providers")
 def add_provider(body: ProviderIn):
+    _public_base(body.base_url)
     if body.is_default:
         store.execute("UPDATE ai_providers SET is_default = FALSE WHERE workspace_id = ?", [tenant.current()])
     return store.insert("ai_providers", body.model_dump())
@@ -85,6 +96,7 @@ def test_provider(body: ProviderTestIn):
         return ai_svc.test_provider(_get_provider(body.id))
     if not body.provider or not body.model:  # unsaved credentials from the "Add provider" form
         raise HTTPException(422, "provider and model are required to test credentials")
+    _public_base(body.base_url)
     return ai_svc.test_provider(body.model_dump(include={"provider", "model", "api_key", "base_url"}))
 
 
@@ -146,6 +158,7 @@ def edit_provider(provider_id: str, body: ProviderEditIn):
         patch["api_key"] = body.api_key.strip()
     if body.base_url is not None:
         patch["base_url"] = body.base_url.strip() or None
+        _public_base(patch["base_url"])
     if "api_key" in patch or "base_url" in patch:
         res = ai_svc.test_provider({**row, **patch, "id": None})
         if res.get("ok") is False:

@@ -67,3 +67,18 @@ def point_view(con: duckdb.DuckDBPyConnection, table: str) -> None:
     """(Re)create `table`'s view over its current Parquet file."""
     drop_relation(con, table)
     con.execute(f"CREATE VIEW {table} AS SELECT * FROM read_parquet('{_lit(parquet_path(table))}')")
+
+
+def sweep_orphans(con: duckdb.DuckDBPyConnection, folder: Path) -> None:
+    """Remove what an ingest killed mid-way (process crash / OOM) leaves behind: half-written `*.parquet.tmp` files
+    (they counted against the user's quota forever) and `*__stg` staging tables. Called once when the workspace's
+    DuckDB instance is opened, i.e. before any ingest of this process can be running in it."""
+    for f in folder.glob("*.parquet.tmp") if folder.is_dir() else ():
+        f.unlink(missing_ok=True)
+    try:
+        stale = [r[0] for r in con.execute(
+            "SELECT table_name FROM duckdb_tables() WHERE database_name = current_database()").fetchall() if r[0].endswith("__stg")]
+    except duckdb.Error:
+        return
+    for t in stale:
+        drop_relation(con, t)

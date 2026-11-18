@@ -29,6 +29,8 @@ def is_admin(user: dict) -> bool:
 
 
 async def require_admin(user: dict = Depends(require_user)) -> dict:
+    if user.get("token_id"):  # personal access tokens (handed to an AI client) never get backoffice powers
+        raise HTTPException(403, "Access tokens cannot use the backoffice. Sign in instead.")
     if not is_admin(user):
         raise HTTPException(403, "Backoffice access is for administrators only.")
     tenant.set_system()

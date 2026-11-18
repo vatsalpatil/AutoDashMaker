@@ -120,6 +120,7 @@ def stream(body: StreamIn):
     import time
     import httpx
     from fastapi.responses import StreamingResponse
+    from ..core.netguard import safe_client
     try:
         url = check_url(body.url)
     except ProxyError as e:
@@ -129,7 +130,7 @@ def stream(body: StreamIn):
     def gen():
         t0 = time.monotonic()
         try:
-            with httpx.Client(timeout=httpx.Timeout(limit, connect=15)) as client:
+            with safe_client(timeout=httpx.Timeout(limit, connect=15)) as client:  # re-checks the host per request
                 with client.stream("GET", url, headers={"Accept": "text/event-stream", **body.headers}) as resp:
                     if resp.status_code >= 400:
                         yield f"event: error\ndata: HTTP {resp.status_code}\n\n".encode()

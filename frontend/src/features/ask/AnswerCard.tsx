@@ -9,6 +9,7 @@ import { ChartView } from '@/features/charts/render/ChartView';
 import { autoEncode } from '@/features/charts/templates';
 import type { AnalystResponse, ChartSpec, ChartType } from '@/lib/types';
 import { AnswerActions } from './AnswerActions';
+import { LineagePanel } from './LineagePanel';
 import { countLabel } from '@/lib/utils';
 
 const CONFIDENCE = {
@@ -37,13 +38,22 @@ export function AnswerCard({ question, response, onFollowUp }: {
     );
   }
   if (response.status === 'clarify' || response.status === 'not_a_query') {
-    return <Card padding={4}><p className="text-sm">{response.status === 'clarify' ? <><span className="font-semibold">Quick question: </span>{response.detail}</> : response.detail}</p></Card>;
+    return (
+      <Card padding={4}>
+        <p className="text-sm">{response.status === 'clarify' ? <><span className="font-semibold">Quick question: </span>{response.detail}</> : response.detail}</p>
+        {response.reason === 'undefined_metric' && (
+          <Link to={`/metrics${response.term ? `?term=${encodeURIComponent(response.term)}` : ''}`} className="mt-2 inline-block text-sm font-medium text-primary hover:underline">
+            Define metric{response.term ? ` "${response.term}"` : ''} →
+          </Link>
+        )}
+      </Card>
+    );
   }
   if (response.status === 'sql_error') {
     return (
       <Card padding={4}>
         <h3 className="font-semibold text-destructive">That query didn't run</h3>
-        <p className="mt-1 text-sm text-muted-foreground">{response.detail}</p>
+        <p className="mt-1 text-sm text-muted-foreground">{response.error?.message || response.detail}</p>
         {response.sql && <pre className="mono mt-2 overflow-auto rounded-md bg-muted p-3 text-xs">{response.sql}</pre>}
       </Card>
     );
@@ -101,6 +111,8 @@ export function AnswerCard({ question, response, onFollowUp }: {
           </dl>
         )}
       </div>
+
+      {response.lineage && <LineagePanel lineage={response.lineage} />}
 
       {response.insights && response.insights.length > 0 && (
         <div className="border-t px-4 py-3">

@@ -11,7 +11,7 @@ import time
 from typing import Any
 
 from ..core.store import store
-from . import sql_errors
+from . import semantic, sql_errors
 from .column_kinds import IDLIKE, PER_UNIT, business_first
 from .engine import engine
 
@@ -55,7 +55,7 @@ def evaluate(dataset_id: str | None, expression: str, filters: Any = None) -> di
         return out
     where = _where(_filters(filters))
     src = _q(ds["physical_name"])
-    out["sql"] = f"SELECT {expression} AS value FROM {src}{where}"
+    out["sql"] = semantic.metric_sql({"expression": expression, "filters": filters}, ds["physical_name"])
     try:
         res = engine.execute(out["sql"], row_limit=1)
         out["value"] = res["rows"][0]["value"] if res["rows"] else None

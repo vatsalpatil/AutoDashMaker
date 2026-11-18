@@ -53,6 +53,8 @@ def _fetch_models(kind: str, api_key: str, base_url: str | None) -> list[dict[st
     base = base_url or OPENAI_COMPATIBLE_DEFAULTS.get(kind)
     if not base:
         raise AIError(f"unknown provider: {kind}")
+    from .ai import _guard_url
+    _guard_url(base)
     resp = httpx.get(f"{base.rstrip('/')}/models", headers={"Authorization": f"Bearer {api_key or 'none'}"}, timeout=20)
     resp.raise_for_status()
     free = bool(next((c["free"] for c in PROVIDER_CATALOG if c["id"] == kind), False))

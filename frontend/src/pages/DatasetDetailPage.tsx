@@ -44,7 +44,7 @@ export default function DatasetDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  if (!dataset) return <Loading />;
+  if (!dataset) return error ? <ErrorBanner message={error} /> : <Loading />;
 
   return (
     <div className="flex flex-col gap-4">

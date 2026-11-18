@@ -47,6 +47,8 @@ _SERIES_FUNCS = {"range", "generate_series"}
 _BLOCKED_FUNC_PREFIXES = (
     "read_", "parquet_", "duckdb_", "pragma_", "sniff_", "glob", "getenv", "current_setting", "query", "iceberg_",
     "delta_", "sqlite_", "postgres_", "mysql_", "st_read", "write_", "to_csv", "to_parquet", "list_files",
+    # defence in depth: extension loaders, network fetchers, session variables, secrets, exports
+    "load_", "install_", "http_", "set_variable", "getvariable", "which_secret", "export_", "checkpoint", "force_checkpoint",
 )
 
 
@@ -69,13 +71,19 @@ def _forbid_external_access(tree: exp.Expression) -> None:
                 raise UnsafeQueryError(f"Function not allowed: {name}")
 
 
+_WRITE_VERB = re.compile(r"\s*(drop|delete|insert|update|alter|create|truncate|merge|copy|attach|detach|grant|revoke)\b", re.I)
+
+
 def validate_readonly(sql: str, row_limit: int) -> str:
     """Return a safe, limited SQL string or raise UnsafeQueryError."""
     sql = sql.strip().rstrip(";")
     try:
         statements = [s for s in sqlglot.parse(sql) if s is not None]
     except Exception as e:
-        raise UnsafeQueryError(f"SQL does not parse: {e}") from e
+        if _WRITE_VERB.match(sql):
+            raise UnsafeQueryError("Only read-only queries (SELECT / WITH) are allowed") from e
+        msg = re.sub(r"\x1b\[[0-9;]*m", "", str(e)).splitlines()[0]
+        raise UnsafeQueryError(f"SQL does not parse: {msg}") from e
 
     if len(statements) != 1:
         raise UnsafeQueryError("Exactly one statement is allowed.")
