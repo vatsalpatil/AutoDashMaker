@@ -205,7 +205,10 @@ function onColor(hex: string): string {
   const m = hex.replace('#', '');
   const [r, g, b] = [0, 2, 4].map((i) => parseInt(m.slice(i, i + 2), 16) / 255)
     .map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.45 ? '#0f172a' : '#ffffff';
+  // pick whichever text colour reads better on this accent (WCAG contrast), not a fixed brightness cut-off
+  const L = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  const DARK = 0.0089;   // relative luminance of #0f172a
+  return (L + 0.05) / (DARK + 0.05) > 1.05 / (L + 0.05) ? '#0f172a' : '#ffffff';
 }
 
 function setAccent(hex: string, hover?: string): void {
