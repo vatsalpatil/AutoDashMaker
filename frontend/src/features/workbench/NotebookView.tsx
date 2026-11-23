@@ -8,6 +8,8 @@ import { useApi } from '@/hooks/useApi';
 import { sendToBuilder } from '@/features/query-builder/qbHandoff';
 import { NotebookCell } from './NotebookCell';
 import { cellNameProblem } from './notebookModel';
+import { HISTORY_KEY, makePredictor } from './sqlPredict';
+import { readStorage } from '@/hooks/useLocalStorage';
 import type { Notebook } from './useNotebook';
 import type { useSavedQueries } from './useSavedQueries';
 
@@ -32,6 +34,12 @@ export function NotebookView({ nb, saved, tableNames, error, onDismissError, aiO
   const columns = useApi<Record<string, string[]>>('/datasets/columns').data;
   const cellNames = nb.cells.filter((c) => c.kind !== 'md').map((c) => c.name).join(',');
   const schema = useMemo(() => ({ ...columns, ...Object.fromEntries(cellNames.split(',').filter(Boolean).map((n) => [n, [] as string[]])) }), [columns, cellNames]);
+  // inline suggestions learn from: queries you ran + every cell of every notebook (+ the schema and default rules)
+  const corpusKey = nb.cells.map((c) => c.sql).join('');
+  const suggest = useMemo(() => {
+    const corpus = [...readStorage<string[]>(HISTORY_KEY, []), ...nb.notebooks.items.flatMap((n) => n.cells.filter((c) => c.kind !== 'md').map((c) => c.sql ?? ''))];
+    return makePredictor(corpus, (columns ?? {}) as Record<string, string[]>);
+  }, [columns, nb.notebooks.items, corpusKey]);  // eslint-disable-line react-hooks/exhaustive-deps
   const chartCell = nb.cells.find((c) => c.id === chartFor);
 
   return (
@@ -66,6 +74,7 @@ export function NotebookView({ nb, saved, tableNames, error, onDismissError, aiO
             nameProblem={cellNameProblem(nb.cells, i, tableNames)}
             registerRef={nb.registerRef(c.id)}
             schema={schema}
+            suggest={suggest}
             onFocus={() => nb.setActiveId(c.id)}
             onName={(v) => nb.update(c.id, { name: v })}
             onSql={(v) => nb.update(c.id, { sql: v })}

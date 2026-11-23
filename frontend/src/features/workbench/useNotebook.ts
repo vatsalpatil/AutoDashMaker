@@ -4,6 +4,7 @@ import type { QueryResult } from '@/lib/types';
 import type { Cell } from './NotebookCell';
 import type { CodeEditorHandle } from '@/components/common/CodeEditor';
 import { useLibrary } from '@/hooks/useLibrary';
+import { rememberSql } from './sqlPredict';
 import { cellsFromStored, cellsToStored, makeCell, migrateNotebook, newNotebookBody, nextName, NOTEBOOKS_KEY, type NotebookItem } from './notebookModel';
 
 /**
@@ -97,6 +98,7 @@ export function useNotebook() {
     try {
       const r = await api.post<QueryResult & { chained?: boolean }>('/queries/run-cell', { cells: payload, index: sqlIdx });
       update(id, { running: false, result: r, error: null, runCount: n, hideOutput: false });
+      rememberSql(payload[sqlIdx].sql);  // learn from what works
       return true;
     } catch (e) {
       update(id, { running: false, result: null, error: (e as Error).message, runCount: n, hideOutput: false });

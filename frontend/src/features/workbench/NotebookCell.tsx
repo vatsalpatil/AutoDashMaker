@@ -32,6 +32,7 @@ interface Props {
   nameProblem: string | null;
   registerRef: (el: CodeEditorHandle | null) => void;
   schema: SQLNamespace;
+  suggest?: (before: string) => string | null;
   onFocus: () => void;
   onName: (v: string) => void;
   onSql: (v: string) => void;
@@ -119,6 +120,7 @@ export function NotebookCell(p: Props) {
           onChange={p.onSql}
           language="sql"
           schema={p.schema}
+          suggest={p.suggest}
           onRun={p.onRun}
           onRunNext={p.onRunAndNext}
           onFocus={p.onFocus}

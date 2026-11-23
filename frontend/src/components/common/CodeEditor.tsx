@@ -6,6 +6,7 @@ import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
 import { tags as t } from '@lezer/highlight';
 import { Prec, type Extension } from '@codemirror/state';
 import { sqlHints } from './sqlHints';
+import { ghostText } from './ghostText';
 
 export interface CodeEditorHandle {
   /** Insert text at the cursor (replacing any selection) and focus the editor. */
@@ -50,6 +51,8 @@ export const CodeEditor = forwardRef<CodeEditorHandle, {
   placeholder?: string;
   /** SQL completion: `{ table: ['col', …] }` */
   schema?: SQLNamespace;
+  /** Inline ghost-text suggestion for the text before the cursor (Tab accepts). */
+  suggest?: (before: string) => string | null;
   /** Ctrl/Cmd+Enter */
   onRun?: () => void;
   /** Shift+Enter (e.g. run and move to the next cell) */
@@ -61,10 +64,17 @@ export const CodeEditor = forwardRef<CodeEditorHandle, {
   lineNumbers?: boolean;
   className?: string;
 }>(function CodeEditor({
-  value, onChange, language = 'text', readOnly, placeholder, schema, onRun, onRunNext, onFocus,
+  value, onChange, language = 'text', readOnly, placeholder, schema, suggest, onRun, onRunNext, onFocus,
   minHeight, maxHeight, height, lineNumbers = true, className,
 }, ref) {
   const cm = useRef<ReactCodeMirrorRef>(null);
+  const suggestRef = useRef(suggest);
+  suggestRef.current = suggest;
+  const hasSuggest = !!suggest;
+  // callbacks live in a ref: new function identities each render must not rebuild the editor's extensions
+  const keys = useRef({ onRun, onRunNext });
+  keys.current = { onRun, onRunNext };
+  const hasRun = !!onRun, hasRunNext = !!onRunNext;
   useImperativeHandle(ref, () => ({
     insertText(text, spaced = false) {
       const view = cm.current?.view;
@@ -85,12 +95,13 @@ export const CodeEditor = forwardRef<CodeEditorHandle, {
       const lang = sql({ schema, upperCaseKeywords: true });
       ext.push(lang, lang.language.data.of({ autocomplete: sqlHints(schema) }));
     }
+    if (hasSuggest) ext.push(ghostText(() => suggestRef.current));
     ext.push(Prec.highest(keymap.of([
-      { key: 'Mod-Enter', run: () => { onRun?.(); return !!onRun; } },
-      { key: 'Shift-Enter', run: () => { onRunNext?.(); return !!onRunNext; } },
+      { key: 'Mod-Enter', run: () => { keys.current.onRun?.(); return hasRun; } },
+      { key: 'Shift-Enter', run: () => { keys.current.onRunNext?.(); return hasRunNext; } },
     ])));
     return ext;
-  }, [language, schema, onRun, onRunNext]);
+  }, [language, schema, hasRun, hasRunNext, hasSuggest]);
 
   return (
     <CodeMirror
