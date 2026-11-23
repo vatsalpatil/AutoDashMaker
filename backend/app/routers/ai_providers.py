@@ -69,7 +69,13 @@ def _get_provider(provider_id: str) -> dict:
 
 @router.get("/catalog")
 def catalog():
-    return ai_models.PROVIDER_CATALOG
+    """Local AI is offered only where this server actually runs Ollama with a model installed."""
+    from ..services import complete_local
+    try:
+        local_ok = complete_local.available() or bool(complete_local.list_models())
+    except Exception:  # noqa: BLE001
+        local_ok = False
+    return [c for c in ai_models.PROVIDER_CATALOG if c["id"] != "local" or local_ok]
 
 
 @router.get("/providers")

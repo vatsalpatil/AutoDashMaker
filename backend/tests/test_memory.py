@@ -11,6 +11,9 @@ os.environ.update(METADATA_DB=tmp + "/m.duckdb", ANALYTICS_DB=tmp + "/a.duckdb",
 from app.core import tenant
 from app.services import ai, memory as m
 
+# ---- first read of MEMORY.md (before any listing) creates the starter instead of failing ----
+assert m.read("MEMORY.md").startswith("# Memory")
+
 # ---- starter file exists, untouched starter adds nothing to prompts ----
 files = m.list_files()
 assert files[0]["name"] == "MEMORY.md" and files[0]["main"], files

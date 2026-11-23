@@ -81,4 +81,12 @@ with tenant.use("ws_adopt"):
     assert ai.resolve_provider()["provider"] == "openrouter"   # the user's later choice is kept
     assert len(store.list("ai_providers", where="provider = 'local'", order=None)) == 1
     settings.local_ai_default = False
+# the catalog hides Local AI when this server has no Ollama
+from app.routers.ai_providers import catalog
+L.available = lambda: False
+def _down(*a, **k): raise httpx.ConnectError("refused")
+L.httpx.get = _down
+assert all(c["id"] != "local" for c in catalog())
+L.httpx.get = lambda url, timeout: Resp(200, {"models": [{"name": "qwen2.5-coder:3b-instruct"}]})
+assert any(c["id"] == "local" for c in catalog())
 print("test_ai_local OK")

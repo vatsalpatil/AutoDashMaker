@@ -90,6 +90,8 @@ def list_files() -> list[dict]:
 
 def read(name: str) -> str:
     p = _path(name)
+    if p.name == MAIN and not p.exists():   # first visit: the page may ask for it before listing (which creates it)
+        p.write_text(STARTER, "utf-8")
     if not p.exists():
         raise MemoryError(f"no memory file {p.name}")
     return p.read_text("utf-8", errors="replace")
