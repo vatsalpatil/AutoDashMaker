@@ -57,8 +57,12 @@ def compile_(body: SpecIn):
 @router.post("/run")
 def run(body: SpecIn):
     sql = _compile(body.spec, body.upto)
+    from ..services import value_guard
+    fixed = value_guard.fix_literal_case(sql)   # a typed 'completed' when the data says 'Completed' would match nothing
     try:
-        result = engine.execute(sql, body.row_limit)
+        result = engine.execute(fixed or sql, body.row_limit)
+        if fixed:
+            result = {**result, "warnings": [*result["warnings"], "Matched your filter text to the data's exact spelling (upper/lower case)."]}
     except UnsafeQueryError as e:
         raise HTTPException(400, f"unsafe query: {e}")
     except Exception as e:

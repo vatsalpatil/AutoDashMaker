@@ -42,4 +42,10 @@ ai.chat = lambda msgs, *a, **k: next(replies) if "Summarize" not in str(msgs[0].
 out = analyst.answer("total revenue for completed orders", [], None, None)
 assert out["status"] == "ok", out
 assert "'Completed'" in out["sql"] and out["result"]["rows"][0]["revenue"] == 150.0, (out["sql"], out["result"]["rows"])
+# Query Builder: a typed filter value with the wrong case still matches, with a note
+from app.routers.qb import SpecIn, run as qb_run
+spec = {"stages": [{"table": "orders", "filters": [{"col": "status", "op": "=", "value": "completed"}],
+                    "aggregations": [{"fn": "sum", "col": "amount", "as": "total"}]}]}
+r = qb_run(SpecIn(spec=spec))
+assert r["rows"][0]["total"] == 150.0 and any("spelling" in w for w in r["warnings"]), r
 print("test_value_guard OK")
