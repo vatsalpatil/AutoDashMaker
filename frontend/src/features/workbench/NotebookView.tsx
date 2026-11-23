@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Eraser, Play, Plus, Sparkles } from 'lucide-react';
+import { Eraser, FileText, Play, Plus, Sparkles } from 'lucide-react';
 import { ErrorBanner } from '@/components/common/ErrorBanner';
 import { SaveChartModal } from '@/components/SaveChartModal';
 import { Button } from '@/components/ui/kit';
@@ -30,7 +30,7 @@ export function NotebookView({ nb, saved, tableNames, error, onDismissError, aiO
   };
   // SQL completion: every table's columns (metadata only) plus the cell names, which are queryable like tables
   const columns = useApi<Record<string, string[]>>('/datasets/columns').data;
-  const cellNames = nb.cells.map((c) => c.name).join(',');
+  const cellNames = nb.cells.filter((c) => c.kind !== 'md').map((c) => c.name).join(',');
   const schema = useMemo(() => ({ ...columns, ...Object.fromEntries(cellNames.split(',').filter(Boolean).map((n) => [n, [] as string[]])) }), [columns, cellNames]);
   const chartCell = nb.cells.find((c) => c.id === chartFor);
 
@@ -42,6 +42,7 @@ export function NotebookView({ nb, saved, tableNames, error, onDismissError, aiO
         <Button variant="primary" size="sm" label={nb.runningAll ? 'Running…' : 'Run all'} icon={<Play className="h-4 w-4" />}
           onClick={nb.runAll} isDisabled={nb.runningAll} />
         <Button variant="secondary" size="sm" label="Add cell" icon={<Plus className="h-4 w-4" />} onClick={() => nb.addCell(null)} />
+        <Button variant="secondary" size="sm" label="Add text" icon={<FileText className="h-4 w-4" />} onClick={() => nb.addCell(null, '', { kind: 'md' })} />
         <Button variant="secondary" size="sm" label="Clear outputs" icon={<Eraser className="h-4 w-4" />} onClick={nb.clearOutputs} />
         <Button variant="ghost" size="sm" label="New notebook" onClick={nb.notebooks.create} />
         <span className="hidden text-xs text-muted-foreground/70 lg:inline">
@@ -73,6 +74,7 @@ export function NotebookView({ nb, saved, tableNames, error, onDismissError, aiO
             onDelete={() => nb.removeCell(c.id)}
             onMove={(dir) => nb.moveCell(c.id, dir)}
             onAddBelow={() => nb.addCell(c.id)}
+            onToggleKind={() => nb.update(c.id, { kind: c.kind === 'md' ? 'sql' : 'md', result: null, error: null })}
             onFormat={() => nb.formatCell(c.id)}
             onToggleOutput={() => nb.update(c.id, { hideOutput: !c.hideOutput })}
             onToggleComposed={() => nb.update(c.id, { showComposed: !c.showComposed })}
@@ -81,7 +83,7 @@ export function NotebookView({ nb, saved, tableNames, error, onDismissError, aiO
             onDetach={() => nb.update(c.id, { saved: null })}
             onSaveChart={() => setChartFor(c.id)}
             onOpenBuilder={() => openInBuilder(c)}
-            assistCells={nb.cells.slice(0, i).map(({ name, sql }) => ({ name, sql }))}
+            assistCells={nb.cells.slice(0, i).filter((x) => x.kind !== 'md').map(({ name, sql }) => ({ name, sql }))}
           />
         ))}
         <button type="button" onClick={() => nb.addCell(null)}

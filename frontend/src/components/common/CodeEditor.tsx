@@ -5,6 +5,7 @@ import { sql, type SQLNamespace } from '@codemirror/lang-sql';
 import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
 import { tags as t } from '@lezer/highlight';
 import { Prec, type Extension } from '@codemirror/state';
+import { sqlHints } from './sqlHints';
 
 export interface CodeEditorHandle {
   /** Insert text at the cursor (replacing any selection) and focus the editor. */
@@ -80,7 +81,10 @@ export const CodeEditor = forwardRef<CodeEditorHandle, {
   const extensions = useMemo<Extension[]>(() => {
     const ext: Extension[] = [theme, highlight, EditorView.lineWrapping];
     if (language === 'json') ext.push(json());
-    if (language === 'sql') ext.push(sql({ schema, upperCaseKeywords: true }));
+    if (language === 'sql') {
+      const lang = sql({ schema, upperCaseKeywords: true });
+      ext.push(lang, lang.language.data.of({ autocomplete: sqlHints(schema) }));
+    }
     ext.push(Prec.highest(keymap.of([
       { key: 'Mod-Enter', run: () => { onRun?.(); return !!onRun; } },
       { key: 'Shift-Enter', run: () => { onRunNext?.(); return !!onRunNext; } },

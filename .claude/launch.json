@@ -30,6 +30,24 @@
         "--strictPort"
       ],
       "port": 5175
+    },
+    {
+      "name": "backend-noauth",
+      "runtimeExecutable": "cmd",
+      "runtimeArgs": [
+        "/c",
+        "set AUTH_ENABLED=false&& set DISK_USAGE_LIMIT_PCT=95&& cd backend&& .venv\\Scripts\\python.exe -m uvicorn Main:app --port 8011"
+      ],
+      "port": 8011
+    },
+    {
+      "name": "frontend-noauth",
+      "runtimeExecutable": "cmd",
+      "runtimeArgs": [
+        "/c",
+        "set API_TARGET=http://127.0.0.1:8011&& npm --prefix frontend run dev -- --port 5177 --strictPort"
+      ],
+      "port": 5177
     }
   ]
 }

@@ -48,7 +48,8 @@ export function useNotebook() {
 
   /** Insert a cell after `afterId` (or at the end) and make it active. */
   function addCell(afterId: string | null, sql = '', extra: Partial<Cell> = {}): string {
-    const cell = { ...makeCell(nextName(cellsRef.current), sql), ...extra };
+    const kind = extra.kind ?? 'sql';
+    const cell = { ...makeCell(kind === 'md' ? `note_${cellsRef.current.length + 1}` : nextName(cellsRef.current), sql, kind), ...extra };
     commit((cs) => {
       const at = afterId ? cs.findIndex((c) => c.id === afterId) + 1 : cs.length;
       return [...cs.slice(0, at), cell, ...cs.slice(at)];
@@ -86,11 +87,15 @@ export function useNotebook() {
     const snapshot = cellsRef.current;
     const idx = snapshot.findIndex((c) => c.id === id);
     if (idx < 0) return false;
-    const payload = snapshot.map((c) => ({ name: c.name, sql: c.id === id && sqlOverride !== undefined ? sqlOverride : c.sql }));
+    if (snapshot[idx].kind === 'md') return true;  // Markdown note: nothing to run
+    // Markdown cells are notes: the server only sees the SQL cells
+    const sqlCells = snapshot.filter((c) => c.kind !== 'md');
+    const payload = sqlCells.map((c) => ({ name: c.name, sql: c.id === id && sqlOverride !== undefined ? sqlOverride : c.sql }));
+    const sqlIdx = sqlCells.findIndex((c) => c.id === id);
     update(id, { running: true, error: null });
     const n = ++execRef.current;
     try {
-      const r = await api.post<QueryResult & { chained?: boolean }>('/queries/run-cell', { cells: payload, index: idx });
+      const r = await api.post<QueryResult & { chained?: boolean }>('/queries/run-cell', { cells: payload, index: sqlIdx });
       update(id, { running: false, result: r, error: null, runCount: n, hideOutput: false });
       return true;
     } catch (e) {
@@ -103,7 +108,8 @@ export function useNotebook() {
     setRunningAll(true);
     try {
       for (const id of cellsRef.current.map((c) => c.id)) {
-        if (!getCell(id)?.sql.trim()) continue;
+        const c = getCell(id);
+        if (!c?.sql.trim() || c.kind === 'md') continue;
         if (!(await runCell(id))) break; // stop at the first failing cell, like a notebook
       }
     } finally {

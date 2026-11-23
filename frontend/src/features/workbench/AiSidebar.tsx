@@ -14,7 +14,7 @@ export function AiSidebar({ open, onClose, datasets, nb }: { open: boolean; onCl
   // the assistant sees the active cell, its error and the cells above it
   const getContext = useCallback((): AgentContext => ({
     activeSql: active?.sql ?? '', error: active?.error ?? null,
-    cells: nb.cells.slice(0, nb.activeIndex).map(({ name, sql }) => ({ name, sql })),
+    cells: nb.cells.slice(0, nb.activeIndex).filter((c) => c.kind !== 'md').map(({ name, sql }) => ({ name, sql })),
   }), [active, nb.cells, nb.activeIndex]);
 
   const actions = useMemo<NotebookActions>(() => ({

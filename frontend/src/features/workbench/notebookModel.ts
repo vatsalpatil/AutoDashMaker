@@ -7,13 +7,13 @@ import type { Cell } from './NotebookCell';
 const NB_KEY = 'workbench.notebook';
 const NAME_RE = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
-type StoredCell = { id?: string; name?: string; sql?: string };
+type StoredCell = { id?: string; name?: string; sql?: string; kind?: 'sql' | 'md' };
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 
-export function makeCell(name: string, sql = ''): Cell {
+export function makeCell(name: string, sql = '', kind: 'sql' | 'md' = 'sql'): Cell {
   return {
-    id: uid(), name, sql, result: null, error: null, running: false,
+    id: uid(), name, sql, kind, result: null, error: null, running: false,
     runCount: null, hideOutput: false, showComposed: false, saved: null,
   };
 }
@@ -42,15 +42,16 @@ export function migrateNotebook(): { activeId: string; items: NotebookItem[] } |
 }
 
 export const cellsFromStored = (stored: StoredCell[]): Cell[] =>
-  (stored.length ? stored : STARTER).map((c, i) => ({ ...makeCell(c.name || `step_${i + 1}`, c.sql ?? ''), id: c.id || uid() }));
-export const cellsToStored = (cells: Cell[]): StoredCell[] => cells.map(({ id, name, sql }) => ({ id, name, sql }));
+  (stored.length ? stored : STARTER).map((c, i) => ({ ...makeCell(c.name || `step_${i + 1}`, c.sql ?? '', c.kind === 'md' ? 'md' : 'sql'), id: c.id || uid() }));
+export const cellsToStored = (cells: Cell[]): StoredCell[] => cells.map(({ id, name, sql, kind }) => (kind === 'md' ? { id, name, sql, kind } : { id, name, sql }));
 
 /** Why cell `i`'s name cannot be used, or null. Mirrors the server-side checks. */
 export function cellNameProblem(cells: Cell[], i: number, tableNames: Set<string>): string | null {
+  if (cells[i].kind === 'md') return null;
   const name = cells[i].name;
   if (!NAME_RE.test(name)) return 'start with a letter';
   if (tableNames.has(name.toLowerCase())) return 'is a table name';
-  if (cells.slice(0, i).some((o) => o.name.toLowerCase() === name.toLowerCase())) return 'name already used';
+  if (cells.slice(0, i).some((o) => o.kind !== 'md' && o.name.toLowerCase() === name.toLowerCase())) return 'name already used';
   return null;
 }
 

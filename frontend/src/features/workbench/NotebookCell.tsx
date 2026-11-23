@@ -1,9 +1,10 @@
-import { AlignLeft, BarChart3, ChevronDown, ChevronRight, ChevronUp, Code2, Copy, Loader2, Play, Plus, Save, Trash2, ArrowDown, ArrowUp, Blocks } from 'lucide-react';
+import { AlignLeft, BarChart3, ChevronDown, ChevronRight, ChevronUp, Code2, Copy, Loader2, Play, Plus, Save, Trash2, FileText, ArrowDown, ArrowUp, Blocks } from 'lucide-react';
 import { Badge } from '@/components/ui/kit';
 import type { QueryResult, SavedQuery } from '@/lib/types';
 import type { SQLNamespace } from '@codemirror/lang-sql';
 import { CodeEditor, type CodeEditorHandle } from '@/components/common/CodeEditor';
 import { CellAssist } from './CellAssist';
+import { MarkdownCell } from './MarkdownCell';
 import { DataGrid } from '@/components/common/DataGrid';
 import { useGridToolbar } from '@/hooks/useGridToolbar';
 import { countLabel } from '@/lib/utils';
@@ -13,6 +14,7 @@ export interface Cell {
   id: string;
   name: string;
   sql: string;
+  kind: 'sql' | 'md';      // 'md' = Markdown note (rendered, never run)
   result: (QueryResult & { chained?: boolean }) | null;
   error: string | null;
   running: boolean;
@@ -38,6 +40,7 @@ interface Props {
   onDelete: () => void;
   onMove: (dir: -1 | 1) => void;
   onAddBelow: () => void;
+  onToggleKind: () => void;
   onFormat: () => void;
   onToggleOutput: () => void;
   onToggleComposed: () => void;
@@ -51,8 +54,11 @@ interface Props {
 
 const iconBtn = 'rounded p-1 text-muted-foreground/70 hover:bg-accent hover:text-foreground disabled:opacity-30 disabled:hover:bg-transparent ';
 
+export type NotebookCellProps = Props;
+
 export function NotebookCell(p: Props) {
   const [toolbar, setToolbar] = useGridToolbar();
+  if (p.cell.kind === 'md') return <MarkdownCell {...p} />;
   const { cell, active } = p;
   const dirty = cell.saved && cell.sql.trim() !== cell.saved.sql.trim();
   const gutter = cell.running ? '[*]' : cell.runCount ? `[${cell.runCount}]` : '[ ]';
@@ -91,6 +97,7 @@ export function NotebookCell(p: Props) {
             <button type="button" className={iconBtn} onClick={p.onSaveChart} disabled={!cell.result} title="Save result as chart"><BarChart3 className="h-4 w-4" /></button>
             <button type="button" className={iconBtn} onClick={() => p.onMove(-1)} disabled={p.index === 0} title="Move up"><ArrowUp className="h-4 w-4" /></button>
             <button type="button" className={iconBtn} onClick={() => p.onMove(1)} disabled={p.index === p.total - 1} title="Move down"><ArrowDown className="h-4 w-4" /></button>
+            <button type="button" className={iconBtn} onClick={p.onToggleKind} title="Turn into a text (Markdown) cell"><FileText className="h-4 w-4" /></button>
             <button type="button" className={iconBtn} onClick={p.onAddBelow} title="Add cell below"><Plus className="h-4 w-4" /></button>
             <button type="button" className={`${iconBtn} hover:!text-destructive`} onClick={p.onDelete} title="Delete cell"><Trash2 className="h-4 w-4" /></button>
           </div>
