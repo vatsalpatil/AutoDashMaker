@@ -12,7 +12,7 @@ from typing import Any
 
 from ..core.store import store
 from . import semantic, sql_errors
-from .column_kinds import IDLIKE, PER_UNIT, business_first
+from .column_kinds import is_lookup, IDLIKE, PER_UNIT, business_first
 from .engine import engine
 
 _NUMERIC = re.compile(r"INT|DOUBLE|FLOAT|DECIMAL|REAL|NUMERIC", re.I)
@@ -92,8 +92,7 @@ def suggestions(max_per_dataset: int = 6) -> dict[str, list[dict[str, Any]]]:
         measures = business_first([c["name"] for c in cols if _NUMERIC.search(c.get("dtype") or "") and not IDLIKE.search(c["name"])])
         # a lookup table (one row per thing, no dates: products, customers) has attributes, not events: summing its
         # prices or costs means nothing, so only facts tables get totals
-        lookup = not any(_DATE.search(c.get("dtype") or "") for c in cols) and any(
-            _ID.search(c["name"]) and c.get("distinct_count") and c["distinct_count"] >= (ds.get("row_count") or 0) > 0 for c in cols)
+        lookup = is_lookup(cols, ds.get("row_count"))
         summable = [] if lookup else [n for n in measures if not PER_UNIT.search(n)]
         averaged = [n for n in measures if PER_UNIT.search(n)] + summable
         cand += [{"name": f"total_{n}", "label": f"Total {n}", "expression": f"SUM({_q(n)})", "description": f"Sum of {n}."} for n in summable[:3]]

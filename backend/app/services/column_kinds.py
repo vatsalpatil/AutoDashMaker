@@ -11,3 +11,15 @@ PER_UNIT = re.compile(r"price|rate|pct|percent|ratio|age|discount|score|avg|mean
 
 def business_first(names: list[str]) -> list[str]:
     return sorted(names, key=lambda n: not MONEY.search(n))   # stable: keeps column order within each group
+
+
+_DATEISH = re.compile(r"DATE|TIMESTAMP", re.IGNORECASE)
+_KEY = re.compile(r"(^|_)id$|^id$|uuid|key$", re.IGNORECASE)
+
+
+def is_lookup(cols: list[dict], row_count: int | None) -> bool:
+    """One row per thing (products, customers) rather than events: a unique id column and no date column.
+    Totals of such a table's prices/costs mean nothing; counts and breakdowns do."""
+    if any(_DATEISH.search(c.get("dtype") or "") for c in cols):
+        return False
+    return any(_KEY.search(c["name"]) and c.get("distinct_count") and c["distinct_count"] >= (row_count or 0) > 0 for c in cols)

@@ -22,4 +22,12 @@ labels = {(m["dataset_name"], m["label"]) for m in suggestions()["metrics"]}
 assert ("products", "Total unit_cost") not in labels and ("products", "Total unit_price") not in labels, labels
 assert ("products", "Row count") in labels
 assert ("sales", "Total revenue") in labels and ("sales", "Total unit_cost") not in labels, labels   # cost per unit isn't summed
+# starter questions (Ask / Query Builder chips): facts first, no totals of prices, lookup tables get counts
+store.insert("columns_meta", {"dataset_id": p["id"], "name": "category", "dtype": "VARCHAR", "distinct_count": 4})
+store.insert("columns_meta", {"dataset_id": o["id"], "name": "region", "dtype": "VARCHAR", "distinct_count": 4})
+from app.services.analyst import starter_questions
+qs = starter_questions()
+assert qs[0] == "Total revenue by region in sales", qs
+assert "How many products are in each category?" in qs, qs
+assert not any("unit_price" in q or "unit_cost" in q for q in qs), qs
 print("test_metric_suggestions OK")

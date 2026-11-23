@@ -9,7 +9,7 @@ from typing import Any
 from ..core.security import validate_readonly
 from ..core.store import store
 from . import ai as ai_svc, ask_lineage, assist as assist_svc, names, semantic, sql_errors, value_guard
-from .column_kinds import IDLIKE as _IDLIKE, business_first
+from .column_kinds import IDLIKE as _IDLIKE, PER_UNIT, business_first, is_lookup
 from .ai_context import semantic_context, with_notebook_steps, workbench_context
 from .chart_suggest import column_roles, suggest_chart
 from .engine import engine
@@ -41,19 +41,29 @@ def starter_questions(dataset_id: str | None = None, limit: int = 6) -> list[str
     out: list[str] = []
     for m in store.list("metrics", order=None)[:2]:
         out.append(f"What is {m['label'].lower()}?")
+    by_ds: dict[str, list[dict]] = {}
+    for c in cols:
+        by_ds.setdefault(c["dataset_id"], []).append(c)
+    # facts first (dates, many rows): that's where the interesting questions are
+    datasets.sort(key=lambda d: (not any(_TEMPORAL.search(c["dtype"] or "") for c in by_ds.get(d["id"], [])), -(d.get("row_count") or 0)))
     for d in datasets[:3]:
-        mine = [c for c in cols if c["dataset_id"] == d["id"]]
-        measures = [c["name"] for c in mine if _NUMERIC.search(c["dtype"] or "") and not _IDLIKE.search(c["name"])]
-        measures = business_first(measures)
-        dims = [c["name"] for c in mine if "VARCHAR" in (c["dtype"] or "").upper() and not _IDLIKE.search(c["name"])]
-        times = [c["name"] for c in mine if _TEMPORAL.search(c["dtype"] or "")]
+        mine = by_ds.get(d["id"], [])
         t = names.label(d)
+        # low-cardinality text columns make good breakdowns (region, category), not names or emails
+        dims = [c["name"] for c in mine if "VARCHAR" in (c["dtype"] or "").upper() and not _IDLIKE.search(c["name"])
+                and 2 <= (c.get("distinct_count") or 0) <= 50]
+        if is_lookup(mine, d.get("row_count")):
+            out.append(f"How many {t} are in each {dims[0]}?" if dims else f"How many {t} are there?")
+            continue
+        measures = business_first([c["name"] for c in mine if _NUMERIC.search(c["dtype"] or "") and not _IDLIKE.search(c["name"])
+                                   and not PER_UNIT.search(c["name"])])
+        times = [c["name"] for c in mine if _TEMPORAL.search(c["dtype"] or "")]
         if measures and dims:
             out += [f"Total {measures[0]} by {dims[0]} in {t}", f"Top 10 {dims[0]} by {measures[0]}"]
         if measures and times:
             out.append(f"How does {measures[0]} change over {times[0]}?")
         if not measures:
-            out.append(f"How many rows are in {t}?")
+            out.append(f"How many rows are in {t}?" if not dims else f"How many rows in {t} per {dims[0]}?")
     seen: set[str] = set()
     return [q for q in out if not (q in seen or seen.add(q))][:limit]
 
