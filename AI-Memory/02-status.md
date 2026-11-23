@@ -83,3 +83,8 @@ Live site down (Cloudflare 522): Oracle instance gone after trial ended. Data sa
 
 ## 2026-11-23 Local AI
 Ollama on the user's PC: qwen2.5-coder:3b-base (autocomplete), 3b-instruct (Local AI provider, all features), 7b-instruct (escalation). The live server has NO Ollama: Local AI there fails with a clear message and autocomplete uses the cloud model. To use it live: install Ollama on the server + pull models (Oracle A1 has no GPU: CPU-only, expect slow).
+
+## 2026-11-24 Overnight live hardening (details: sessions/2026-11-24-overnight-live-hardening.md)
+Full lifecycle verified live with a 5-table sales demo: upload → relationships → quality/tests → Ask (correct joins +
+'Completed') → notebook + agent → Query Builder → combine → 33-widget AI dashboard (score 100) → key number → alert →
+report → share link (revoked). Live AI model: OpenRouter gemma-4-26b free (≈50 req/day). Open: see session file.
