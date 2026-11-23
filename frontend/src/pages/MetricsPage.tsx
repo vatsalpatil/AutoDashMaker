@@ -68,7 +68,7 @@ export default function MetricsPage() {
       </TabList>
       {tab !== 'numbers' && <p className="-mt-2 text-xs text-muted-foreground">These teach Ask your vocabulary: which columns to group by, what your terms mean and how tables connect.</p>}
 
-      {tab === 'numbers' && (d.datasets.length === 0 ? <EmptyState title="Add data first" description="Key numbers are calculated from your datasets." isCompact /> : (
+      {tab === 'numbers' && (d.datasetsKnown && d.datasets.length === 0 ? <EmptyState title="Add data first" description="Key numbers are calculated from your datasets." isCompact /> : (
         <>
           {d.metrics.length > 0 && (
             <section className="flex flex-col gap-2">

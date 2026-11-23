@@ -28,6 +28,10 @@ OPENAI_COMPATIBLE_DEFAULTS = {
 }
 
 
+OPENROUTER_FREE_FALLBACKS = [   # fast, instruction-following, good at SQL (benchmarked 2026-11-24)
+    "google/gemma-4-26b-a4b-it:free", "google/gemma-4-31b-it:free", "nvidia/nemotron-3-ultra-550b-a55b:free",
+]
+
 # Greedy decoding: the same question over the same data gets the same SQL / answer (analytics needs repeatability).
 TEMPERATURE = 0
 
@@ -81,6 +85,10 @@ def _call_openai_compatible(base_url: str, api_key: str, model: str,
     if "openrouter.ai" in base_url:
         # Reasoning models otherwise spend most of the time (and tokens) "thinking"; SQL needs little of it.
         payload["reasoning"] = {"effort": "low"}
+        # free models are shared by everyone and hit per-minute limits often: let OpenRouter fall back to other
+        # good free models instead of failing the feature (it uses the first that answers)
+        if model.endswith(":free"):
+            payload["models"] = [model] + [m for m in OPENROUTER_FREE_FALLBACKS if m != model][:2]
     _guard_url(base_url)
     resp = httpx.post(
         f"{base_url.rstrip('/')}/chat/completions",

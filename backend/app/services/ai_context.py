@@ -2,7 +2,7 @@
 import re
 
 from ..core.store import store
-from . import column_values, names, semantic
+from . import column_stats, column_values, names, semantic
 from .engine import engine
 
 FULL_SCHEMA_TABLES = 12   # up to this many tables every table lists its columns
@@ -54,6 +54,7 @@ def workbench_context(selected_id: str | None, question: str | None = None) -> s
     best matches for the question list their columns; the rest appear by name only, keeping the prompt small.
     """
     datasets = [d for d in store.list("datasets", order=None) if d.get("physical_name")]
+    column_stats.ensure(datasets)   # older imports only stored names + types
     by_id = {d["id"]: d for d in datasets}
     cols: dict[str, list[str]] = {}
     for c in store.list("columns_meta", order=None):

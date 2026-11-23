@@ -100,4 +100,15 @@ orig = ai._call_once
 ai._call_once = think
 assert ai._call({"provider": "groq", "model": "m"}, [{"role": "user", "content": "q"}], 2048) == "SELECT 1" and budgets == [2048, 8192], budgets
 ai._call_once = orig
+# OpenRouter free models get fallback models (OpenRouter switches when one is rate-limited)
+sentp = []
+class _R:
+    status_code = 200; headers = {}
+    def json(self): return {"choices": [{"message": {"content": "ok"}}]}
+ai.httpx.post = lambda url, headers, json, timeout: (sentp.append(json), _R())[1]
+ai._guard_url = lambda u: None
+ai._call_openai_compatible("https://openrouter.ai/api/v1", "k", "google/gemma-4-26b-a4b-it:free", [{"role": "user", "content": "x"}])
+assert sentp[-1]["models"][0] == "google/gemma-4-26b-a4b-it:free" and len(sentp[-1]["models"]) == 3, sentp[-1]
+ai._call_openai_compatible("https://openrouter.ai/api/v1", "k", "openai/gpt-4o", [{"role": "user", "content": "x"}])
+assert "models" not in sentp[-1]   # paid models: exactly what the user picked
 print("test_ai_local OK")

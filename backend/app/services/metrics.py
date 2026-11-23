@@ -85,7 +85,10 @@ def suggestions(max_per_dataset: int = 6) -> dict[str, list[dict[str, Any]]]:
     have_d = {(d.get("dataset_id"), (d.get("column_name") or "").lower()) for d in store.list("dimensions", order=None)}
     metrics: list[dict[str, Any]] = []
     dims: list[dict[str, Any]] = []
-    for ds in store.list("datasets", order=None)[:12]:
+    from . import column_stats
+    datasets = store.list("datasets", order=None)[:12]
+    column_stats.ensure([d for d in datasets if d.get("physical_name")])
+    for ds in datasets:
         cols = _columns(ds["id"])
         base = {"dataset_id": ds["id"], "dataset_name": ds["name"]}
         cand = [{"name": "row_count", "label": "Row count", "expression": "COUNT(*)", "description": f"Number of rows in {ds['name']}."}]

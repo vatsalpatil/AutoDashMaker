@@ -32,11 +32,14 @@ SUMMARY_SYSTEM = (
 
 _NUMERIC = re.compile(r"INT|DOUBLE|DECIMAL|FLOAT|REAL|NUMERIC|HUGEINT", re.IGNORECASE)
 _TEMPORAL = re.compile(r"DATE|TIMESTAMP", re.IGNORECASE)
+_BREAKDOWN = re.compile(r"region|category|segment|channel|country|state|city|department|type|group|team", re.IGNORECASE)
 
 
 def starter_questions(dataset_id: str | None = None, limit: int = 6) -> list[str]:
     """Clickable first questions built from the schema and defined metrics (no model call)."""
     datasets = [d for d in store.list("datasets", order=None) if d.get("physical_name") and (not dataset_id or d["id"] == dataset_id)]
+    from . import column_stats
+    column_stats.ensure(datasets)
     cols = store.list("columns_meta", order=None)
     out: list[str] = []
     for m in store.list("metrics", order=None)[:2]:
@@ -50,8 +53,10 @@ def starter_questions(dataset_id: str | None = None, limit: int = 6) -> list[str
         mine = by_ds.get(d["id"], [])
         t = names.label(d)
         # low-cardinality text columns make good breakdowns (region, category), not names or emails
-        dims = [c["name"] for c in mine if "VARCHAR" in (c["dtype"] or "").upper() and not _IDLIKE.search(c["name"])
-                and 2 <= (c.get("distinct_count") or 0) <= 50]
+        dims = sorted((c for c in mine if "VARCHAR" in (c["dtype"] or "").upper() and not _IDLIKE.search(c["name"])
+                       and 2 <= (c.get("distinct_count") or 0) <= 50),
+                      key=lambda c: (not _BREAKDOWN.search(c["name"]), c.get("distinct_count") or 0))
+        dims = [c["name"] for c in dims]
         if is_lookup(mine, d.get("row_count")):
             out.append(f"How many {t} are in each {dims[0]}?" if dims else f"How many {t} are there?")
             continue

@@ -16,6 +16,8 @@ export function useMetricsData() {
     metrics: metrics.data ?? [], values: values.data ?? {}, valuesLoading: values.loading, dimensions: dimensions.data ?? [],
     definitions: definitions.data ?? [], synonyms: synonyms.data ?? [], suggestions: suggestions.data ?? { metrics: [], dimensions: [] },
     datasets: datasets.data ?? [], relationships: relationships.data ?? [],
-    loading: metrics.loading && !metrics.data, error: metrics.error, reload,
+    loading: metrics.loading && !metrics.data, error: metrics.error || datasets.error,
+    datasetsKnown: datasets.data !== null && !datasets.error,   // 'no datasets' only when the list really loaded empty
+    reload,
   };
 }

@@ -58,8 +58,10 @@ def ingest_source(src: dict, friendly_name: str, discover_name: str | None = Non
         "kind": src["type"], "physical_name": table,
         "row_count": result["row_count"], "column_count": len(result["columns"]),
     })
-    for c in result["columns"]:
-        store.insert("columns_meta", {"dataset_id": ds["id"], **c})
+    from . import column_stats
+    if not column_stats.refresh(ds):   # full stats (distinct counts, samples); bare names + types if that fails
+        for c in result["columns"]:
+            store.insert("columns_meta", {"dataset_id": ds["id"], **c})
     ds["columns"] = result["columns"]
     return ds
 
