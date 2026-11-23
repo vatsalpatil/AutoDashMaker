@@ -23,6 +23,12 @@ from ..core.config import settings
 from ..core.security import validate_readonly
 from .engine import engine
 
+
+def frame(cursor):
+    """A DuckDB result as a Polars frame via Arrow (`.pl()` is missing on some DuckDB versions' connections)."""
+    import polars as pl
+    return pl.from_arrow(cursor.fetch_arrow_table())
+
 ALLOWED_IMPORTS = {
     "polars": "pl",
     "numpy": "np",
@@ -114,13 +120,13 @@ def run_python(code: str, df: pl.DataFrame, timeout_rows: int = 50_000) -> pl.Da
 def _table_to_polars(table: str) -> pl.DataFrame:
     from . import remote
     with engine.connect(read_only=True, hint=table) as con:  # linked datasets: attach the remote source, read its table
-        return con.execute(f"SELECT * FROM {remote.table_ref(table)}").pl()
+        return frame(con.execute(f"SELECT * FROM {remote.table_ref(table)}"))
 
 
 def _sql_to_polars(sql: str) -> pl.DataFrame:
     safe = validate_readonly(sql, 1_000_000)
     with engine.connect(read_only=True) as con:
-        return con.execute(safe).pl()
+        return frame(con.execute(safe))
 
 
 def run_pipeline(base_table: str, layers: list[dict[str, Any]]) -> pl.DataFrame:
@@ -135,7 +141,7 @@ def run_pipeline(base_table: str, layers: list[dict[str, Any]]) -> pl.DataFrame:
             with engine.connect(hint=raw) as con:  # hint attaches remote sources when the SQL names a linked dataset
                 con.register(f"layer_{i}", current.to_arrow())
                 try:
-                    current = con.execute(remote.rewrite_sql(validate_readonly(raw, 1_000_000))).pl()
+                    current = frame(con.execute(remote.rewrite_sql(validate_readonly(raw, 1_000_000))))
                 finally:
                     con.unregister(f"layer_{i}")
         elif kind == "python":

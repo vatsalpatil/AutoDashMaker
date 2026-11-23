@@ -20,7 +20,7 @@ async function request<T>(method: string, path: string, body?: unknown, isForm =
   }
   const res = await authFetch(`${BASE}${path}`, init);
   if (!res.ok) {
-    let detail = `${res.status} ${res.statusText}`;
+    let detail = statusMessage(res.status, res.statusText);
     try {
       const data = await res.json();
       if (typeof data?.detail === 'string') detail = data.detail;
@@ -33,6 +33,15 @@ async function request<T>(method: string, path: string, body?: unknown, isForm =
   if (!isRead(method, path)) writeListeners.forEach((fn) => fn());
   if (res.status === 204) return undefined as T;
   return (await res.json()) as T;
+}
+
+/** Plain-language text for HTTP failures that carry no message of their own (gateway errors during a deploy, etc.). */
+export function statusMessage(status: number, text = ''): string {
+  if (status === 502 || status === 503 || status === 504) return 'The server is restarting or busy (an update may be rolling out). Wait a few seconds and try again.';
+  if (status === 401) return 'Your session has ended. Sign in again.';
+  if (status === 413) return 'That is too large to send. Try a smaller file.';
+  if (status === 429) return 'Too many requests right now. Wait a moment and try again.';
+  return `${status} ${text}`.trim();
 }
 
 export const api = {

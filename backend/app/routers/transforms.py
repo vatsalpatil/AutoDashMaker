@@ -10,6 +10,7 @@ from pydantic import BaseModel
 from ..core.store import store, DEFAULT_ORG, DEFAULT_WS, DEFAULT_USER
 from ..services.engine import engine
 from ..services.transforms import (
+    frame,
     run_pipeline, preview_transform, SNIPPETS, SandboxError,
 )
 
@@ -144,7 +145,7 @@ def blend(body: BlendIn):
     from ..core.security import validate_readonly
     try:
         with engine.connect(read_only=True) as con:
-            df = con.execute(validate_readonly(sql, 1_000_000)).pl()
+            df = frame(con.execute(validate_readonly(sql, 1_000_000)))
     except Exception as e:
         raise HTTPException(400, str(e)[:400])
     ds = _materialize(df, body.name, kind="blend",
@@ -172,7 +173,7 @@ def blend_many(body: BlendManyIn):
     try:
         p = bm.plan(body.dataset_ids)
         with engine.connect(read_only=True) as con:
-            df = con.execute(validate_readonly(p["sql"], 5_000_000)).pl()
+            df = frame(con.execute(validate_readonly(p["sql"], 5_000_000)))
     except bm.BlendError as e:
         raise HTTPException(400, str(e))
     except Exception as e:  # noqa: BLE001
