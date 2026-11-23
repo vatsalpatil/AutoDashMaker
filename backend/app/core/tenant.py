@@ -61,7 +61,8 @@ def run_as(ws: str, fn: Callable[..., Any], *args: Any, **kwargs: Any) -> Any:
 def bind(fn: Callable[..., Any]) -> Callable[..., Any]:
     """Wrap fn so it runs in the caller's workspace even from a plain thread / executor (those don't inherit context)."""
     ctx = copy_context()
-    return lambda *a, **k: ctx.run(fn, *a, **k)
+    # a fresh copy per call: several threads may run the bound function at once, and one Context can't be entered twice
+    return lambda *a, **k: ctx.copy().run(fn, *a, **k)
 
 
 def workspace_for_user(user_id: str) -> str:

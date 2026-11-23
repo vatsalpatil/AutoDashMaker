@@ -257,4 +257,24 @@ def delete_dataset(dataset_id: str):
             invalidate()
         store.execute("DELETE FROM columns_meta WHERE dataset_id = ?", [dataset_id])
         store.execute("DELETE FROM dataset_tests WHERE dataset_id = ?", [dataset_id])
+        # relationships to a table that no longer exists would mislead the AI and the combine step
+        store.execute("DELETE FROM relationships WHERE left_dataset_id = ? OR right_dataset_id = ?", [dataset_id, dataset_id])
+        _drop_orphan_upload(ds.get("source_id"))
     return {"ok": True}
+
+
+def _drop_orphan_upload(source_id: str | None) -> None:
+    """An uploaded file's source exists only for its dataset: once no dataset uses it, remove it and the file on disk.
+    Database / API connections stay (you may add more tables from them)."""
+    src = store.get("datasources", source_id) if source_id else None
+    if not src or src.get("type") != "file" or store.list("datasets", where="source_id = ?", params=[source_id], order=None):
+        return
+    from pathlib import Path
+    from ..core import tenant
+    path = (src.get("config") or {}).get("path") if isinstance(src.get("config"), dict) else None
+    try:
+        if path and Path(path).resolve().is_relative_to(tenant.upload_dir().resolve()):
+            Path(path).unlink(missing_ok=True)
+    except OSError:
+        pass
+    store.delete("datasources", source_id)
