@@ -157,7 +157,8 @@ export function TabList({ value, onChange, children, ...rest }: {
 }) {
   return (
     <Tabs value={value} onValueChange={(v) => onChange(String(v))}>
-      <TabsList aria-label={rest['aria-label']}>{children}</TabsList>
+      {/* scrolls sideways on phones instead of pushing the page wider */}
+      <div className="max-w-full overflow-x-auto"><TabsList aria-label={rest['aria-label']}>{children}</TabsList></div>
     </Tabs>
   );
 }

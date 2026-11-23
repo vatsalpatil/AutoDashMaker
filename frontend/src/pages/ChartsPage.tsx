@@ -76,7 +76,7 @@ export default function ChartsPage() {
         </>} />
       <div className="flex flex-wrap items-center gap-3">
         <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Saved charts <Badge label={String(charts.length)} /></span>
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex min-w-0 max-w-full flex-wrap items-center gap-2">
           <SearchBox value={query} onChange={setQuery} placeholder="Search by name, type or column…" />
           <ViewToggle value={view} onChange={setView} />
         </div>

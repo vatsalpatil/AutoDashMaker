@@ -95,7 +95,7 @@ export default function DashboardsPage() {
 
       <div className="flex flex-wrap items-center gap-3">
         <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Saved dashboards <Badge label={String(dashboards.length)} /></span>
-        <div className="ml-auto flex items-center gap-2"><SearchBox value={query} onChange={setQuery} placeholder="Search dashboards…" /><ViewToggle value={view} onChange={setView} /></div>
+        <div className="ml-auto flex min-w-0 max-w-full flex-wrap items-center gap-2"><SearchBox value={query} onChange={setQuery} placeholder="Search dashboards…" /><ViewToggle value={view} onChange={setView} /></div>
       </div>
       <QuickChips value={quick} onChange={setQuick} options={[
         { id: 'all', label: 'All', count: dashboards.length },

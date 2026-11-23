@@ -11,14 +11,14 @@ export function SearchBox({ value, onChange, placeholder }: {
   placeholder: string;
 }) {
   return (
-    <div className="relative flex items-center">
+    <div className="relative flex min-w-0 max-w-full items-center">
       <Search className="absolute left-3 h-4 w-4 text-muted-foreground/70" />
       <input
         type="text"
         value={value}
         placeholder={placeholder}
         onChange={(e) => onChange(e.target.value)}
-        className="h-9 w-60 rounded-md border border-input bg-card pl-9 pr-3 text-xs shadow-xs focus:border-ring focus:outline-hidden focus:ring-1 focus:ring-ring"
+        className="h-9 w-60 max-w-full rounded-md border border-input bg-card pl-9 pr-3 text-xs shadow-xs focus:border-ring focus:outline-hidden focus:ring-1 focus:ring-ring"
       />
     </div>
   );
