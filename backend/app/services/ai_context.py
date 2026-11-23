@@ -2,7 +2,7 @@
 import re
 
 from ..core.store import store
-from . import names, semantic
+from . import column_values, names, semantic
 from .engine import engine
 
 FULL_SCHEMA_TABLES = 12   # up to this many tables every table lists its columns
@@ -53,10 +53,12 @@ def workbench_context(selected_id: str | None, question: str | None = None) -> s
     Column lists come from metadata (no table scans). With many tables, only the selected one and the
     best matches for the question list their columns; the rest appear by name only, keeping the prompt small.
     """
+    datasets = [d for d in store.list("datasets", order=None) if d.get("physical_name")]
+    by_id = {d["id"]: d for d in datasets}
     cols: dict[str, list[str]] = {}
     for c in store.list("columns_meta", order=None):
-        cols.setdefault(c["dataset_id"], []).append(f"{c['name']} {c['dtype']}")
-    datasets = [d for d in store.list("datasets", order=None) if d.get("physical_name")]
+        d = by_id.get(c["dataset_id"])   # text columns with few values list them, so filters use the exact spelling
+        cols.setdefault(c["dataset_id"], []).append(column_values.describe(d, c) if d else f"{c['name']} {c['dtype']}")
     full_ids = {d["id"] for d in datasets}
     if len(datasets) > FULL_SCHEMA_TABLES:
         ranked = sorted(datasets, key=lambda d: (d["id"] != selected_id,
@@ -67,7 +69,8 @@ def workbench_context(selected_id: str | None, question: str | None = None) -> s
         + (f": {', '.join(cols.get(d['id'], [])[:40])}" if d["id"] in full_ids else " (columns omitted: not relevant to this question)")
         for d in datasets
     ]
-    text = "All tables you may query:\n" + "\n".join(table_lines)[:6000]
+    text = ("All tables you may query (`col TYPE = 'a'|'b'` lists every value of that column; text comparisons are "
+            "case-sensitive, so use those exact values):\n" + "\n".join(table_lines)[:7000])
 
     saved, seen = [], set()
     for q in store.list("queries", order="created_at DESC"):
