@@ -47,7 +47,7 @@ export interface GhostSource {
   remote?: (before: string, after: string, signal: AbortSignal) => Promise<string | null>;
 }
 
-const REMOTE_PAUSE = 350;   // ms of no typing before asking the remote source
+const REMOTE_PAUSE = 150;   // ms of no typing before asking the remote source
 const LOCAL_ENOUGH = 14;    // a local suggestion at least this long is kept without asking the remote one
 
 export function ghostText(getSource: () => GhostSource | undefined): Extension {

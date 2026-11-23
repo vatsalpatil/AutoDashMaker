@@ -104,7 +104,7 @@ function nextClause(stmt: string, schema: Record<string, string[]>, favTable: (e
 /** AI completion on the server's fast model (POST /ai/complete). Empty / failed → null, never throws. */
 export async function aiComplete(prefix: string, suffix: string, cells: { name: string; sql: string }[], signal: AbortSignal): Promise<string | null> {
   try {
-    const r = await api.post<{ completion: string }>('/ai/complete', { prefix, suffix, cells }, signal);
+    const r = await api.post<{ completion: string }>('/ai/complete', { prefix, suffix, cells, examples: readStorage<string[]>(HISTORY_KEY, []).slice(0, 5) }, signal);
     return r.completion || null;
   } catch { return null; }
 }

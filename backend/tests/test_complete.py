@@ -5,7 +5,7 @@ import tempfile
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 tmp = tempfile.mkdtemp()
-os.environ.update(METADATA_DB=tmp + "/m.duckdb", ANALYTICS_DB=tmp + "/a.duckdb", DUCKDB_TEMP_DIR=tmp + "/s")
+os.environ.update(METADATA_DB=tmp + "/m.duckdb", ANALYTICS_DB=tmp + "/a.duckdb", DUCKDB_TEMP_DIR=tmp + "/s", LOCAL_AI_URL="")  # cloud path; local model tested live
 
 from app.core.store import store
 from app.services import ai, complete as c
@@ -43,10 +43,32 @@ def fake(cfg, messages, max_tokens, timeout=60):
     calls.append((cfg["model"], max_tokens, timeout))
     return "ion, SUM(amount) FROM sales GROUP BY ALL"
 ai._call = fake
+from app.services.engine import engine
+engine.check_sql = lambda sql: None   # binds
 r1 = c.complete("SELECT reg", "", [])
 r2 = c.complete("SELECT reg", "", [])
 assert r1["completion"] == "ion, SUM(amount) FROM sales GROUP BY ALL" and r2["cached"] and len(calls) == 1, (r1, r2, calls)
 assert calls[0][0] == c.FAST_MODELS["groq"] and calls[0][1] <= 128 and calls[0][2] <= 10
+
+# ---- bind check: a made-up column is dropped, unfinished SQL (parse error) is kept, junk is dropped ----
+engine.check_sql = lambda sql: "Binder Error: Referenced column \"hello\" not found" if "hello" in sql else ("Parser Error: syntax error at end of input" if "WHERE" in sql else None)
+assert c.checked("b.hello", "SELECT b.", " FROM sales b", []) == ""
+assert c.checked("region = ", "SELECT * FROM sales WHERE ", "", []) == "region = "
+assert c.checked("2025-2020 > 1 GROUP BY ALL", "SELECT * FROM sales WHERE ", "", []) == ""
+assert c.checked("1=1", "SELECT * FROM sales WHERE ", "", []) == ""
+assert c.checked("1, 2, 3, 4, 5, 6", "SELECT * FROM sales ORDER BY ", "", []) == ""
+
+# ---- token healing: the half-typed word is cut from the prompt and must start the answer ----
+from app.services import complete_local as L
+sent = []
+class R:
+    def __init__(self, t): self.t = t
+    def raise_for_status(self): pass
+    def json(self): return {"response": self.t}
+L._client.post = lambda url, json: (sent.append(json), R("region, revenue"))[1]
+assert L.generate("SELECT reg", "", "sales(region VARCHAR)", []) == "ion, revenue" and sent[-1]["prompt"].endswith("SELECT ")
+L._client.post = lambda url, json: R("units")
+assert L.generate("SELECT reg", "", "", []) == ""
 
 # ---- route never raises ----
 from app.routers.ai_complete import complete as route, CompleteIn

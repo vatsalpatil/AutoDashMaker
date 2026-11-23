@@ -95,10 +95,23 @@ def clean(text: str, prefix: str, suffix: str) -> str:
     return t[:400].rstrip()
 
 
-def complete(prefix: str, suffix: str = "", cells: list[dict] | None = None) -> dict[str, Any]:
+def complete(prefix: str, suffix: str = "", cells: list[dict] | None = None, examples: list[str] | None = None) -> dict[str, Any]:
     from . import ai
     if not prefix.strip():
         return {"completion": "", "model": None, "ms": 0, "cached": False}
+    from . import complete_local as local
+    if local.available():   # local open-source model first: fastest, free, private
+        key = f'local|{local.model()}|{prefix[-2000:]}|{suffix[:500]}|{hash(str(cells))}'
+        if key in _cache:
+            _cache.move_to_end(key)
+            return {"completion": _cache[key], "model": local.model(), "ms": 0, "cached": True}
+        t0 = time.perf_counter()
+        try:
+            out = checked(clean(local.generate(prefix, suffix, schema_text(), cells or [], examples), prefix, suffix), prefix, suffix, cells or [])
+            _remember(key, out)
+            return {"completion": out, "model": local.model(), "ms": round((time.perf_counter() - t0) * 1000), "cached": False}
+        except Exception:  # noqa: BLE001  — fall through to the cloud model
+            pass
     cfg = pick_provider()
     if not cfg:
         return {"completion": "", "model": None, "ms": 0, "cached": False, "error": "no AI provider"}
@@ -108,8 +121,35 @@ def complete(prefix: str, suffix: str = "", cells: list[dict] | None = None) -> 
         return {"completion": _cache[key], "model": cfg["model"], "ms": 0, "cached": True}
     t0 = time.perf_counter()
     raw = ai._call(cfg, build_messages(prefix, suffix, cells or []), MAX_TOKENS, TIMEOUT)
-    out = clean(raw, prefix, suffix)
+    out = checked(clean(raw, prefix, suffix), prefix, suffix, cells or [])
+    _remember(key, out)
+    return {"completion": out, "model": cfg["model"], "ms": round((time.perf_counter() - t0) * 1000), "cached": False}
+
+
+def _remember(key: str, out: str) -> None:
     _cache[key] = out
     if len(_cache) > _CACHE_MAX:
         _cache.popitem(last=False)
-    return {"completion": out, "model": cfg["model"], "ms": round((time.perf_counter() - t0) * 1000), "cached": False}
+
+
+_JUNK = re.compile(r"^\s*(1\s*=\s*1|true)\b|(\d+\s*,\s*){4,}", re.I)
+# a WHERE / HAVING condition made only of numbers ("2025-2020 > 1") filters nothing useful
+_NUMERIC_COND = re.compile(r"\b(where|having|and|or)\s*$", re.I)
+_ONLY_NUMBERS = re.compile(r"^\s*[\d\s+\-*/<>=.()']+(?=\b(group|order|limit)\b|$)", re.I)
+_UNKNOWN = re.compile(r"Referenced (column|table)|does not exist|not found|Binder Error", re.I)
+
+
+def checked(out: str, prefix: str, suffix: str, cells: list[dict]) -> str:
+    """Drop junk, and suggestions that name a column/table the data does not have (DuckDB bind check, no execution).
+    Unfinished SQL (a parse error) is fine — the user is still typing."""
+    if not out or _JUNK.search(out) or (_NUMERIC_COND.search(prefix) and _ONLY_NUMBERS.match(out)):
+        return ""
+    from .compose import compose_cell_sql
+    from .engine import engine
+    full = prefix + out + suffix
+    try:
+        sql = compose_cell_sql([*cells, {"name": "__cursor_cell", "sql": full}], len(cells), set(engine.list_tables()))
+    except Exception:  # noqa: BLE001  (cell naming problems are not the suggestion's fault)
+        sql = full
+    err = engine.check_sql(sql)
+    return "" if err and _UNKNOWN.search(err) else out
