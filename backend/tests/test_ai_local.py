@@ -89,4 +89,15 @@ L.httpx.get = _down
 assert all(c["id"] != "local" for c in catalog())
 L.httpx.get = lambda url, timeout: Resp(200, {"models": [{"name": "qwen2.5-coder:3b-instruct"}]})
 assert any(c["id"] == "local" for c in catalog())
+# a thinking model that returns nothing within the budget gets one retry with 4x the tokens
+budgets = []
+def think(*a, **k):
+    budgets.append(a[2] if len(a) > 2 else k.get("max_tokens"))
+    if budgets[-1] <= 2048:
+        raise ai.AIError("empty content from model (finish_reason=length)")
+    return "SELECT 1"
+orig = ai._call_once
+ai._call_once = think
+assert ai._call({"provider": "groq", "model": "m"}, [{"role": "user", "content": "q"}], 2048) == "SELECT 1" and budgets == [2048, 8192], budgets
+ai._call_once = orig
 print("test_ai_local OK")

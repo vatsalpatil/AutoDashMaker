@@ -217,6 +217,20 @@ def chat(messages: list[dict], provider_id: str | None = None,
 
 
 def _call(cfg: dict[str, Any], messages: list[dict], max_tokens: int, timeout: float = 60) -> str:
+    """One call; a "thinking" model that spent the whole budget reasoning (empty reply, finish_reason=length) gets one
+    retry with 4x the budget instead of failing the feature."""
+    try:
+        return _call_once(cfg, messages, max_tokens, timeout)
+    except AIError as e:
+        if "empty content" not in str(e) or "length" not in str(e) or max_tokens >= THINKING_CAP:
+            raise
+        return _call_once(cfg, messages, min(max_tokens * 4, THINKING_CAP), timeout * 2)
+
+
+THINKING_CAP = 16384
+
+
+def _call_once(cfg: dict[str, Any], messages: list[dict], max_tokens: int, timeout: float = 60) -> str:
     """One provider call, checked against its usage limits first and logged after (tokens, time, errors, rate-limit headers)."""
     from . import ai_limits, ai_vision   # lazy: ai_limits imports the store
     from .admin.controls import check_ai
