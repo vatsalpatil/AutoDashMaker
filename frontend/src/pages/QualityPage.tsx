@@ -27,17 +27,25 @@ export default function QualityPage() {
     await api.post(`/quality/run/${datasetId}`);
     reload();
   });
+  // every dataset in one go (one after another, so a big workspace doesn't overload the server)
+  const [checkAll, all] = useAsyncAction(async () => {
+    const datasets = await api.get<{ id: string }[]>('/datasets');
+    for (const d of datasets) await api.post(`/quality/run/${d.id}`);
+    reload();
+  });
 
   if (!rows) return loadError ? <ErrorBanner message={loadError} /> : <Loading />;
   const shown = filters.apply(rows);
 
   return (
     <div className="flex flex-col gap-4">
-      <PageHeader title="Data Quality" description="Completeness, uniqueness and validity of every dataset, from its latest check." />
-      <ErrorBanner message={error} />
+      <PageHeader title="Data Quality" description="Completeness, uniqueness and validity of every dataset, from its latest check."
+        actions={<Button variant="primary" size="sm" label={all.busy ? 'Checking…' : 'Check all datasets'} icon={<RefreshCw className={`size-3.5 ${all.busy ? 'animate-spin' : ''}`} />}
+          onClick={() => checkAll()} isDisabled={all.busy || busy} />} />
+      <ErrorBanner message={error || all.error} />
       <div className="flex flex-wrap items-center gap-2">{filters.bar}</div>
       {shown.length === 0
-        ? <EmptyState title={rows.length ? 'No datasets match the filters' : 'No quality runs yet'} description={rows.length ? undefined : "Quality checks score each dataset for completeness (nulls), uniqueness (duplicates) and validity. Open a dataset in Data Sources, go to its Quality tab and run a check; results appear here."} />
+        ? <EmptyState title={rows.length ? 'No datasets match the filters' : 'No quality runs yet'} description={rows.length ? undefined : "Quality checks score each dataset for completeness (nulls), uniqueness (duplicates) and validity. Click Check all datasets above (or run one from a dataset's Quality tab)."} />
         : (
           <div className="overflow-auto rounded-xl border bg-card shadow-xs">
             <table className="min-w-full divide-y text-sm">
@@ -54,7 +62,7 @@ export default function QualityPage() {
                     <td className="px-3 py-2 tabular-nums">{r.row_count?.toLocaleString() ?? '—'}</td>
                     <td className="px-3 py-2">
                       <Button variant="ghost" size="sm" label="Run check" icon={<RefreshCw className="size-3.5" />}
-                        onClick={() => check(r.dataset_id)} isDisabled={busy} />
+                        onClick={() => check(r.dataset_id)} isDisabled={busy || all.busy} />
                     </td>
                   </tr>
                 ))}

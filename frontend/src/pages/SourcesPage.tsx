@@ -64,7 +64,7 @@ export default function SourcesPage() {
 
       <SourcePanel open={dialog.open} editing={dialog.editing} onClose={() => setDialog({ open: false, editing: null })} onSaved={s.reload} onFile={setPendingFile} />
 
-      {!dialog.open && <UploadDropzone onFile={setPendingFile} busy={s.uploading} title="Drag a CSV, Parquet, Excel, or JSON file here" busyTitle="Uploading and ingesting dataset…" />}
+      {!dialog.open && <UploadDropzone onFile={(f) => { if (!pendingFile && !s.uploading) setPendingFile(f); }} busy={s.uploading} title="Drag a CSV, Parquet, Excel, or JSON file here" busyTitle="Uploading and ingesting dataset…" />}
 
       <div className="flex flex-wrap items-center justify-between gap-3 border-b pb-3">
         <UnderlineTabs<Tab>
