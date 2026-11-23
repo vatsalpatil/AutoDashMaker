@@ -74,3 +74,13 @@ assert dash_ai.widgets_of(dash_ai.parse_json(quoted))[0]["title"] == "A"
 loose = dash_ai.parse_json('{"title":"A","type":"kpi","sql":"SELECT 1"} and {"title":"B","type":"bar","sql":"SELECT 2"}')
 assert [w["title"] for w in dash_ai.widgets_of(loose)] == ["A", "B"]
 print("dash_ai parser OK")
+
+# a KPI computed for the latest period only gets that period in its title (never looks like an all-time total)
+from app.services.dash_gen import period_title
+_sql = ("WITH base AS (SELECT DATE_TRUNC('month', d) AS month, COUNT(*) AS cnt FROM t GROUP BY 1), "
+        "max_month AS (SELECT MAX(month) AS cur_month FROM base) SELECT SUM(CASE WHEN b.month = m.cur_month THEN b.cnt END) AS value FROM base b, max_month m")
+assert period_title("Order Lines Count", "kpi", _sql) == "Order Lines Count · Latest Month"
+assert period_title("Revenue This Month", "kpi", _sql) == "Revenue This Month"            # already says it
+assert period_title("Total Revenue", "kpi", "SELECT SUM(x) AS value FROM t") == "Total Revenue"   # whole data
+assert period_title("Elastic Orders", "kpi", _sql).endswith("Latest Month")                # 'last' inside a word is not a period
+print("period title OK")

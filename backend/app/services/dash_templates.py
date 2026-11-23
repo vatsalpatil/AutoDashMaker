@@ -129,6 +129,8 @@ DATA_BASICS = """Data basics to reason with:
 NAMING_RULES = """Naming rules (every title is shown to business users):
 - Titles are short business phrases in Title Case, 2-6 words, that say WHAT is measured and HOW it is cut. Never a column name, alias or snake_case.
 - KPI: the measure and aggregation, e.g. "Total Revenue", "Average Order Value", "Orders This Month", "Revenue Growth vs Last Month".
+- A KPI whose SQL covers only part of the data (latest month/week/year, a date range) MUST say that period in its title,
+  e.g. "Revenue · Latest Month", "Orders in 2025"; a title without a period promises the whole dataset.
 - Trend: "<Measure> by <Grain>", e.g. "Monthly Revenue Trend". Ranking: "Top 10 <Dimension> by <Measure>". Share: "<Measure> Share by <Dimension>". Table: "<What> Detail".
 - Every title is unique in the dashboard. Page names are 1-2 words (Overview, Regions, Products, Details).
 - Output column aliases are readable snake_case of the same idea (total_revenue, order_month)."""

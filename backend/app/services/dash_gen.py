@@ -7,6 +7,8 @@ without pausing for the user (API use and tests).
 """
 from __future__ import annotations
 
+import re
+
 import contextvars
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -120,7 +122,7 @@ def build(dataset_id: str, name: str, pages: list[dict[str, str]], widgets: list
                 yield {"type": "widget", "title": title, "status": "skipped", "detail": str(e)}
             else:
                 page = spec.get("page") if spec.get("page") in page_name else next(iter(page_name))
-                w["title"], w["page"] = title, page
+                w["title"], w["page"] = period_title(title, w["chart"]["type"], w["sql"]), page
                 done_by_idx[i] = w
                 yield {"type": "widget", "title": title, "status": "ok", "page": page_name[page], "chart": w["chart"]["type"], "ms": w.get("ms"), "fixed": w.get("fixed", 0),
                        "notes": w.get("notes", []), "why": str(spec.get("why") or ""), "formula": str(spec.get("formula") or ""), "sql": w["sql"]}
@@ -177,3 +179,15 @@ def generate(dataset_id: str, template: str, focus: str, provider_id: str | None
         if ev["type"] == "done":
             final = ev
     return final
+
+
+_LATEST = re.compile(r"\bmax\s*\(\s*(?:\w+\.)?\w*(month|week|year|quarter|day|date)\w*\s*\)|\bcur_(month|week|year|quarter)|current_date|now\(\)", re.I)
+_PERIOD_WORDS = re.compile(r"\b(month|week|year|quarter|today|daily|weekly|monthly|yearly|ytd|mtd|20\d\d|latest|current|this|last)\b", re.I)
+
+
+def period_title(title: str, chart_type: str, sql: str) -> str:
+    """A KPI computed for the latest period only must not look like an all-time total: add '· Latest <period>'."""
+    if chart_type != "kpi" or _PERIOD_WORDS.search(title) or not _LATEST.search(sql or ""):
+        return title
+    grain = next((g for g in ("month", "week", "quarter", "year", "day") if re.search(rf"'{g}'|cur_{g}|max\([^)]*{g}", sql, re.I)), "period")
+    return f"{title} · Latest {grain.title()}"
