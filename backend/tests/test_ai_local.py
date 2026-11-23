@@ -68,4 +68,17 @@ assert used == ["qwen2.5-coder:3b-instruct"], used
 # with a cloud provider connected, the escalation goes there instead of the big local model
 store.insert("ai_providers", {"provider": "groq", "model": "llama-3.3-70b-versatile", "api_key": "k", "label": "g", "is_default": False})
 assert ai._stronger_local(None)["provider"] == "groq"
+# LOCAL_AI_DEFAULT: a workspace without a Local AI row gets one as default, once
+from app.core import tenant
+with tenant.use("ws_adopt"):
+    store.insert("ai_providers", {"provider": "openrouter", "model": "m", "api_key": "k", "label": "or", "is_default": True})
+    L.available = lambda: True
+    from app.core.config import settings
+    settings.local_ai_default = True
+    cfg = ai.resolve_provider()
+    assert cfg["provider"] == "local" and cfg["model"] == "qwen2.5-coder:3b-instruct", cfg
+    store.execute("UPDATE ai_providers SET is_default = (provider = 'openrouter') WHERE workspace_id = 'ws_adopt'")
+    assert ai.resolve_provider()["provider"] == "openrouter"   # the user's later choice is kept
+    assert len(store.list("ai_providers", where="provider = 'local'", order=None)) == 1
+    settings.local_ai_default = False
 print("test_ai_local OK")

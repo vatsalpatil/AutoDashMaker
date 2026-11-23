@@ -98,6 +98,7 @@ class Settings(BaseSettings):
     twilio_account_sid: str = ""
     twilio_auth_token: str = ""
     twilio_from: str = ""                  # your Twilio number or messaging service sender
+    local_ai_default: bool = False         # this machine runs Ollama: make "Local AI" each workspace's default provider (once)
 
     class Config:
         env_file = _env_file()

@@ -18,6 +18,7 @@ import time
 import httpx
 
 from ..core.config import settings
+from ..core import tenant
 from ..core.store import store
 
 OPENAI_COMPATIBLE_DEFAULTS = {
@@ -164,6 +165,7 @@ def resolve_provider(provider_id: str | None = None) -> dict[str, Any] | None:
     """Pick the requested provider, else the user's default, else env default."""
     if provider_id:
         return store.get("ai_providers", provider_id)
+    _adopt_local_default()
     defaults = store.list("ai_providers", where="is_default = TRUE", order=None)
     if defaults:
         return defaults[0]
@@ -172,6 +174,22 @@ def resolve_provider(provider_id: str | None = None) -> dict[str, Any] | None:
         return {"provider": "gemini", "model": settings.default_ai_model,
                 "api_key": env_key, "label": "Gemini (env default)"}
     return None
+
+
+def _adopt_local_default() -> None:
+    """LOCAL_AI_DEFAULT=true (this machine runs Ollama): a workspace that has never had a Local AI provider gets one, as its
+    default. Only once — if the user later picks another default or removes it, that choice stands."""
+    if not settings.local_ai_default:
+        return
+    from . import complete_local
+    try:
+        if store.list("ai_providers", where="provider = 'local'", order=None) or not complete_local.available():
+            return
+        store.execute("UPDATE ai_providers SET is_default = FALSE WHERE workspace_id = ?", [tenant.current()])
+        store.insert("ai_providers", {"provider": "local", "model": os.environ.get("LOCAL_AI_CHAT_MODEL", "qwen2.5-coder:3b-instruct"),
+                                      "label": "Local AI", "api_key": "", "is_default": True})
+    except Exception:  # noqa: BLE001  (never block an AI call over this)
+        pass
 
 
 def chat(messages: list[dict], provider_id: str | None = None,
