@@ -209,6 +209,12 @@ def _call(cfg: dict[str, Any], messages: list[dict], max_tokens: int, timeout: f
     try:
         if kind == "anthropic":
             text = _call_anthropic(cfg["api_key"], cfg["model"], messages, max_tokens, timeout, meta)
+        elif kind == "local":   # open-source model on this server's Ollama (address from server config, never from users)
+            from . import complete_local
+            try:
+                text = complete_local.chat(cfg["model"], messages, max_tokens, timeout, meta, cpu=bool(cfg.get("_cpu")))
+            except RuntimeError as e:
+                raise AIError(str(e)) from e
         elif kind == "gemini":
             text = _call_gemini(cfg["api_key"], cfg["model"], messages, max_tokens, meta)
         else:
@@ -274,7 +280,41 @@ def _repair(messages: list[dict], sql: str, provider_id: str | None, check) -> s
                                     "Use only the listed tables, columns and the current SQL's CTEs. "
                                     "Reply with ONLY the corrected DuckDB query."},
     ], provider_id=provider_id, max_tokens=2048))
-    return fixed if _parses(fixed) else sql
+    if not _parses(fixed):
+        fixed = sql
+    still = check(fixed)
+    strong = _stronger_local(provider_id) if still else None
+    if strong:  # cascade: the fast local model could not fix it → ask the bigger local model once
+        better = extract_sql(_call(strong, messages + [
+            {"role": "assistant", "content": fixed},
+            {"role": "user", "content": f"That query failed with: {still}\n"
+                                        "Use only the listed tables, columns and the current SQL's CTEs (join a CTE before "
+                                        "using its columns). Reply with ONLY the corrected DuckDB query."},
+        ], 2048))
+        if _parses(better) and not check(better):
+            return better
+    return fixed
+
+
+def _stronger_local(provider_id: str | None) -> dict[str, Any] | None:
+    """Local AI only: who gets one more try at a query the fast local model could not fix —
+    a connected cloud provider (fast and strong) if the user has one, else the bigger local model (LOCAL_AI_STRONG_MODEL)."""
+    cfg = resolve_provider(provider_id)
+    if not cfg or cfg.get("provider") != "local":
+        return None
+    cloud = [p for p in store.list("ai_providers", order="created_at") if p.get("provider") != "local"]
+    if cloud:
+        return cloud[0]
+    strong = os.environ.get("LOCAL_AI_STRONG_MODEL", "qwen2.5-coder:7b-instruct")
+    if cfg.get("model") == strong:
+        return None
+    from .complete_local import list_models
+    try:
+        installed = {m["id"] for m in list_models()}
+    except Exception:  # noqa: BLE001
+        return None
+    # GPU by default (on CPU a 7B is too slow); LOCAL_AI_STRONG_CPU=1 keeps it off a GPU shared with the fast models
+    return dict(cfg, model=strong, _cpu=os.environ.get("LOCAL_AI_STRONG_CPU") == "1") if strong in installed else None
 
 
 def test_provider(cfg: dict[str, Any]) -> dict[str, Any]:

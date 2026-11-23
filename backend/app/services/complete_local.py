@@ -98,3 +98,46 @@ def generate(prefix: str, suffix: str, schema: str, cells: list[dict], examples:
             return ""
         out = out[len(partial):]
     return out
+
+
+# ---- general chat on a local instruct model (the "Local AI" provider: Ask, SQL, charts, dashboards, agent…) ----
+CHAT_CTX = 4096   # fixed (a change reloads the model); 4K keeps a 7B model fully on a 6 GB GPU
+
+
+def _text(content) -> str:
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):   # OpenAI-style parts: keep the text ones (local models here are text-only)
+        return "\n".join(p.get("text", "") for p in content if isinstance(p, dict) and p.get("type") == "text")
+    return str(content or "")
+
+
+def chat(model_name: str, messages: list[dict], max_tokens: int = 2048, timeout: float = 60, meta: dict | None = None,
+         cpu: bool = False) -> str:
+    """`cpu=True` keeps the model off the GPU (a rarely used bigger model must not evict the fast ones from VRAM)."""
+    if not url():
+        raise RuntimeError("Local AI is not set up on this server (LOCAL_AI_URL is empty)")
+    try:
+        r = httpx.post(f"{url()}/api/chat", timeout=timeout, json={
+            "model": model_name,
+            "messages": [{"role": m.get("role", "user"), "content": _text(m.get("content"))} for m in messages],
+            "stream": False,
+            "keep_alive": "60m",
+            "options": {"temperature": 0, "num_ctx": CHAT_CTX, "num_predict": max_tokens, **({"num_gpu": 0} if cpu else {})},
+        })
+    except httpx.ConnectError as e:
+        raise RuntimeError("Local AI (Ollama) is not running on this server. Start Ollama, or pick another provider.") from e
+    if r.status_code == 404:
+        raise RuntimeError(f"Local model '{model_name}' is not installed. Run: ollama pull {model_name}")
+    r.raise_for_status()
+    data = r.json()
+    if meta is not None:
+        meta.update(usage=(data.get("prompt_eval_count"), data.get("eval_count")))
+    return (data.get("message") or {}).get("content", "")
+
+
+def list_models() -> list[dict]:
+    """Installed instruct/chat models (base models only do autocomplete, so they are left out)."""
+    tags = httpx.get(f"{url()}/api/tags", timeout=5).json().get("models", [])
+    return [{"id": m["name"], "name": f'{m["name"]} ({m.get("size", 0) / 1e9:.1f} GB)', "free": True}
+            for m in tags if "-base" not in m["name"] and "embed" not in m["name"]]

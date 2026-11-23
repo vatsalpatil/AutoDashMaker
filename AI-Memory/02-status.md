@@ -80,3 +80,6 @@ Pages: Overview, Users (detail: suspend, delete, AI on/off, own storage/dataset 
 
 ## OUTAGE 2026-11-13 (read first)
 Live site down (Cloudflare 522): Oracle instance gone after trial ended. Data safe on preserved 200GB boot volume; new instance blocked by A1 service limits (see 05-changelog last line). Next: user upgrades OCI to Pay As You Go (stays $0 inside Always Free), recreate instance from the boot volume with key ~/.ssh/dashtor_oci, repoint Cloudflare DNS, check Dokploy + Supabase come up.
+
+## 2026-11-23 Local AI
+Ollama on the user's PC: qwen2.5-coder:3b-base (autocomplete), 3b-instruct (Local AI provider, all features), 7b-instruct (escalation). The live server has NO Ollama: Local AI there fails with a clear message and autocomplete uses the cloud model. To use it live: install Ollama on the server + pull models (Oracle A1 has no GPU: CPU-only, expect slow).

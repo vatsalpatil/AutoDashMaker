@@ -49,6 +49,9 @@ def _fetch_models(kind: str, api_key: str, base_url: str | None) -> list[dict[st
                  "free": True, "context": m.get("inputTokenLimit")}
                 for m in resp.json().get("models", [])
                 if "generateContent" in m.get("supportedGenerationMethods", [])]
+    if kind == "local":
+        from .complete_local import list_models as local_models
+        return local_models()
     # OpenAI-compatible (openai, groq, custom): GET {base}/models
     base = base_url or OPENAI_COMPATIBLE_DEFAULTS.get(kind)
     if not base:
@@ -94,6 +97,9 @@ PROVIDER_CATALOG = [
      "models": ["claude-sonnet-4-5", "claude-haiku-4-5"]},
     {"id": "groq", "label": "Groq", "free": True,
      "models": ["llama-3.3-70b-versatile"], "note": "Free tier, very fast"},
+    {"id": "local", "label": "Local AI (open-source, on this server)", "free": True,
+     "models": ["qwen2.5-coder:3b-instruct", "qwen2.5-coder:7b-instruct"],
+     "note": "Runs on this computer with Ollama: no key, no cost, data stays here. Fast 3B model; hard SQL escalates to 7B when installed"},
     {"id": "openrouter", "label": "OpenRouter", "free": True,
      "models": ["openrouter/free"], "note": "Free models with :free suffix"},
 ]

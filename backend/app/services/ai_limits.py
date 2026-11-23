@@ -173,7 +173,7 @@ class LimitReached(AIError):
 
 
 def label_of(cfg: dict[str, Any]) -> str:
-    return {"openrouter": "OpenRouter", "gemini": "Google Gemini", "groq": "Groq", "openai": "OpenAI", "anthropic": "Anthropic"}.get(cfg.get("provider"), str(cfg.get("provider")))
+    return {"local": "Local AI", "openrouter": "OpenRouter", "gemini": "Google Gemini", "groq": "Groq", "openai": "OpenAI", "anthropic": "Anthropic"}.get(cfg.get("provider"), str(cfg.get("provider")))
 
 
 def check(cfg: dict[str, Any]) -> None:

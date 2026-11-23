@@ -22,6 +22,7 @@ export function AddProviderDialog({ open, catalog, connected, isFirst, onClose, 
   useEffect(() => { if (open) { setEntry(null); setApiKey(''); setBaseUrl(''); setName(''); setError(null); } }, [open]);
   const available = catalog;
   const n = entry ? (connected.get(entry.id) ?? 0) : 0;
+  const local = entry?.id === 'local';   // Ollama on the server: no key, no URL
 
   async function connect() {
     if (!entry) return;
@@ -77,14 +78,16 @@ export function AddProviderDialog({ open, catalog, connected, isFirst, onClose, 
               {entry.note && <p className="mt-1 text-sm text-muted-foreground">{entry.note}</p>}
             </div>
             <ErrorBanner message={error} onDismiss={() => setError(null)} />
-            <TextInput label="API key" type="password" value={apiKey} onChange={setApiKey} />
+            {!local && <TextInput label="API key" type="password" value={apiKey} onChange={setApiKey} />}
             <TextInput label="Name (optional)" value={name} onChange={setName} placeholder={n ? `${entry.label} · key ${n + 1}` : 'e.g. Personal key'} />
-            <TextInput label="Custom base URL (optional)" value={baseUrl} onChange={setBaseUrl} />
-            <p className="text-xs text-muted-foreground">The key is stored on this server only and is never shown again.</p>
+            {!local && <TextInput label="Custom base URL (optional)" value={baseUrl} onChange={setBaseUrl} />}
+            <p className="text-xs text-muted-foreground">{local
+              ? 'No key needed: the model runs on this server with Ollama. Pick a different installed model afterwards under the provider.'
+              : 'The key is stored on this server only and is never shown again.'}</p>
             <div className="flex justify-between">
               <Button variant="ghost" label="Back" onClick={() => setEntry(null)} />
               <Button variant="primary" label={busy ? 'Testing…' : 'Test & connect'} onClick={connect}
-                isDisabled={busy || !apiKey.trim()} />
+                isDisabled={busy || (!local && !apiKey.trim())} />
             </div>
           </>
         )}
