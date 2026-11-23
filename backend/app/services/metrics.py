@@ -90,7 +90,11 @@ def suggestions(max_per_dataset: int = 6) -> dict[str, list[dict[str, Any]]]:
         base = {"dataset_id": ds["id"], "dataset_name": ds["name"]}
         cand = [{"name": "row_count", "label": "Row count", "expression": "COUNT(*)", "description": f"Number of rows in {ds['name']}."}]
         measures = business_first([c["name"] for c in cols if _NUMERIC.search(c.get("dtype") or "") and not IDLIKE.search(c["name"])])
-        summable = [n for n in measures if not PER_UNIT.search(n)]
+        # a lookup table (one row per thing, no dates: products, customers) has attributes, not events: summing its
+        # prices or costs means nothing, so only facts tables get totals
+        lookup = not any(_DATE.search(c.get("dtype") or "") for c in cols) and any(
+            _ID.search(c["name"]) and c.get("distinct_count") and c["distinct_count"] >= (ds.get("row_count") or 0) > 0 for c in cols)
+        summable = [] if lookup else [n for n in measures if not PER_UNIT.search(n)]
         averaged = [n for n in measures if PER_UNIT.search(n)] + summable
         cand += [{"name": f"total_{n}", "label": f"Total {n}", "expression": f"SUM({_q(n)})", "description": f"Sum of {n}."} for n in summable[:3]]
         cand += [{"name": f"avg_{n}", "label": f"Average {n}", "expression": f"AVG({_q(n)})", "description": f"Average {n} per row."} for n in averaged[:1]]
