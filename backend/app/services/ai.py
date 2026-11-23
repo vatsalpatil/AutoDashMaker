@@ -178,6 +178,8 @@ def chat(messages: list[dict], provider_id: str | None = None,
          max_tokens: int = 2048, timeout: float = 60) -> str:
     """Call the requested (or active) provider. With no explicit provider, a failure falls back to the
     user's other connected providers in turn, so one dead key or exhausted free quota doesn't stop the app."""
+    from . import memory
+    messages = memory.inject(messages)   # the user's editable AI memory (Markdown files) rides along on every request
     cfg = resolve_provider(provider_id)
     if not cfg:
         raise AIError(

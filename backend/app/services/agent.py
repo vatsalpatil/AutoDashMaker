@@ -162,6 +162,12 @@ def _decide(messages: list[dict], provider_id: str | None) -> dict[str, Any] | N
 def run(task: str, history: list[dict], mode: str, ctx: str, provider_id: str | None = None) -> Iterator[dict[str, Any]]:
     """Yield events: step / observation / action / final / error."""
     t0 = time.time()
+    from . import memory
+    note = memory.remember_command(task)
+    if note:  # "remember …" is saved to the user's memory files without a model call
+        saved = memory.remember(note)
+        yield {"type": "final", "text": f"Saved to your AI memory ({saved['name']}): {saved['note']}", "sql": None, "seconds": 0}
+        return
     messages: list[dict] = [{"role": "system", "content": SYSTEM % MAX_STEPS + "\n\n" + ctx}]
     for h in history[-8:]:
         if h.get("role") in ("user", "assistant") and str(h.get("content", "")).strip():

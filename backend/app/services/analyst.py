@@ -132,6 +132,12 @@ def _sql_error(e: Exception, sql: str, attempts: int, stage: str) -> dict[str, A
 
 def answer(question: str, history: list[dict], dataset_id: str | None, provider_id: str | None, cells: list[dict] | None = None) -> dict[str, Any]:
     """One analyst turn. `history` = previous [{question, sql}] turns, oldest first."""
+    from . import memory
+    note = memory.remember_command(question)
+    if note:  # "remember that …" goes to the user's memory files, not to the model
+        saved = memory.remember(note)
+        return {"status": "not_a_query", "detail": f"Saved to your AI memory ({saved['name']}): {saved['note']}" if not saved["duplicate"]
+                else f"Already in your AI memory: {saved['note']}"}
     term = semantic.undefined_metric(question, dataset_id)
     if term:  # deterministic: never let the model guess a formula for an undefined business metric
         return {"status": "clarify", "reason": "undefined_metric", "term": term, "detail": semantic.clarify_text(term)}

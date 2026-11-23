@@ -20,7 +20,7 @@ from app.core.config import settings
 from app.core.store import store  # noqa: F401  (initializes metadata schema)
 from app.routers import (
     datasources, dataset_meta, datasets, dataset_versions, data_tests, queries, charts, dash_ai, dashboards, quality, ai, studio, semantic,
-    alerts, why, transforms, audit, attention, reports, qb, auth, system, metrics, verify, account, shares, voice, admin, mcp, oauth,
+    alerts, why, transforms, audit, attention, reports, qb, auth, system, metrics, verify, account, shares, voice, admin, mcp, oauth, memory,
 )
 from app.services.admin.activity import ActivityMiddleware
 from app.services.admin.controls import MaintenanceMiddleware
@@ -53,7 +53,7 @@ app.add_middleware(
 )
 
 for r in (datasources, dataset_meta, datasets, dataset_versions, data_tests, queries, charts, dash_ai, dashboards, quality, ai, studio,
-          metrics, semantic, alerts, why, transforms, audit, attention, reports, qb, system, voice):
+          metrics, semantic, alerts, why, transforms, audit, attention, reports, qb, system, voice, memory):
     app.include_router(r.router, dependencies=[Depends(require_verified)])
 app.include_router(account.router)  # delete my account: signed-in only, needs an emailed code
 app.include_router(verify.router)  # signed-in only, but never blocked by verification itself

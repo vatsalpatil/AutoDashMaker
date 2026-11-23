@@ -1,5 +1,5 @@
 import {
-  BarChart3, BookOpen, Bell, Database, HelpCircle, FileClock, History, Home, LayoutDashboard, Settings, ShieldCheck, Sparkles, TerminalSquare, Blocks,
+  BarChart3, BookOpen, Brain, Bell, Database, HelpCircle, FileClock, History, Home, LayoutDashboard, Settings, ShieldCheck, Sparkles, TerminalSquare, Blocks,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -22,6 +22,7 @@ export const NAV: NavItem[] = [
   { to: '/reports', label: 'Reports', icon: FileClock, group: 'Monitor', hint: 'Run a query on a schedule and deliver results' },
   { to: '/activity', label: 'Activity', icon: History, group: 'Monitor', hint: 'Who ran, changed or shared what' },
   { to: '/guide', label: 'Guide', icon: HelpCircle, group: 'Help', hint: 'How the whole workflow fits together' },
+  { to: '/memory', label: 'AI Memory', icon: Brain, group: 'Help', hint: 'What the AI remembers about you: editable Markdown files' },
   { to: '/settings', label: 'Settings', icon: Settings, group: 'Help', hint: 'AI providers, appearance and account' },
 ];
 
@@ -29,7 +30,7 @@ export const GROUPS: NavGroup[] = ['Start', 'Connect', 'Explore', 'Define & visu
 
 export const CRUMB_LABELS: Record<string, string> = {
   ask: 'Ask', sources: 'Data Sources', datasets: 'Data Sources', workbench: 'Workbench', builder: 'Query Builder', metrics: 'Key Numbers', charts: 'Charts',
-  dashboards: 'Dashboards', alerts: 'Alerts', reports: 'Reports', quality: 'Quality', activity: 'Activity', settings: 'Settings', guide: 'Guide', new: 'New', generate: 'Generate with AI', studio: 'API Studio',
+  dashboards: 'Dashboards', alerts: 'Alerts', reports: 'Reports', quality: 'Quality', activity: 'Activity', settings: 'Settings', memory: 'AI Memory', guide: 'Guide', new: 'New', generate: 'Generate with AI', studio: 'API Studio',
 };
 
 /** Pages that own the whole viewport (their own scroll regions) instead of scrolling as a document. */

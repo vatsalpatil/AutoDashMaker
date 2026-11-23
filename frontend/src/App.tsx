@@ -22,6 +22,7 @@ const ReportsPage = lazy(() => import('@/pages/ReportsPage'));
 const AlertsPage = lazy(() => import('@/pages/AlertsPage'));
 const QualityPage = lazy(() => import('@/pages/QualityPage'));
 const ActivityPage = lazy(() => import('@/pages/ActivityPage'));
+const MemoryPage = lazy(() => import('@/pages/MemoryPage'));
 const GuidePage = lazy(() => import('@/pages/GuidePage'));
 const SettingsPage = lazy(() => import('@/pages/SettingsPage'));
 const ConsentPage = lazy(() => import('@/features/oauth/ConsentPage'));
@@ -57,6 +58,7 @@ export default function App() {
         <Route path="/reports" element={<ReportsPage />} />
         <Route path="/quality" element={<QualityPage />} />
         <Route path="/activity" element={<ActivityPage />} />
+        <Route path="/memory" element={<MemoryPage />} />
         <Route path="/guide" element={<GuidePage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
