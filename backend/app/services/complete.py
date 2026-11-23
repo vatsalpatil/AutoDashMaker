@@ -22,6 +22,7 @@ FAST_MODELS = {
 }
 PREFERENCE = ["groq", "gemini", "anthropic", "openai", "openrouter"]   # fastest first
 MAX_TOKENS = 96
+THINKING_TOKENS = 1024   # retry budget for reasoning models that return nothing within MAX_TOKENS
 TIMEOUT = 8.0
 
 _cache: OrderedDict[str, str] = OrderedDict()
@@ -120,7 +121,14 @@ def complete(prefix: str, suffix: str = "", cells: list[dict] | None = None, exa
         _cache.move_to_end(key)
         return {"completion": _cache[key], "model": cfg["model"], "ms": 0, "cached": True}
     t0 = time.perf_counter()
-    raw = ai._call(cfg, build_messages(prefix, suffix, cells or []), MAX_TOKENS, TIMEOUT)
+    msgs = build_messages(prefix, suffix, cells or [])
+    try:
+        raw = ai._call(cfg, msgs, MAX_TOKENS, TIMEOUT)
+    except ai.AIError as e:
+        if "empty content" not in str(e):
+            raise
+        # a "thinking" model spent the short budget on reasoning: once more with room to think, then answer
+        raw = ai._call(cfg, msgs, THINKING_TOKENS, TIMEOUT + 7)
     out = checked(clean(raw, prefix, suffix), prefix, suffix, cells or [])
     _remember(key, out)
     return {"completion": out, "model": cfg["model"], "ms": round((time.perf_counter() - t0) * 1000), "cached": False}

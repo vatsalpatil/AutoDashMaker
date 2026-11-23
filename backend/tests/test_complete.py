@@ -70,6 +70,16 @@ assert L.generate("SELECT reg", "", "sales(region VARCHAR)", []) == "ion, revenu
 L._client.post = lambda url, json: R("units")
 assert L.generate("SELECT reg", "", "", []) == ""
 
+# ---- a reasoning model that runs out of budget gets one retry with room to think ----
+c._cache.clear(); budgets = []
+def thinker(cfg, messages, max_tokens, timeout=60):
+    budgets.append(max_tokens)
+    if max_tokens < 200:
+        raise ai.AIError("empty content from model (finish_reason=length)")
+    return "ion FROM sales"
+ai._call = thinker
+assert c.complete("SELECT reg", "", [])["completion"] == "ion FROM sales" and budgets == [c.MAX_TOKENS, c.THINKING_TOKENS], budgets
+
 # ---- route never raises ----
 from app.routers.ai_complete import complete as route, CompleteIn
 ai._call = lambda *a, **k: (_ for _ in ()).throw(ai.AIError("rate limited"))
