@@ -25,6 +25,10 @@ assert "'Returned'" in vg.fix_literal_case("SELECT * FROM ds_orders WHERE status
 assert vg.fix_literal_case("SELECT * FROM ds_orders WHERE status = 'Completed'") is None          # already right
 assert vg.fix_literal_case("SELECT * FROM ds_orders WHERE status = 'shipped'") is None            # no such value: leave it
 
+# the AI writes the dataset's own name (resolved to the physical table later): still fixed
+fixed = vg.fix_literal_case("SELECT SUM(amount) FROM orders AS o WHERE o.status = 'completed'")
+assert fixed and "'Completed'" in fixed, fixed
+
 # ---- dropped filter ----
 assert vg.missing_values("revenue for completed orders", "SELECT SUM(amount) FROM ds_orders") == ["orders.status = 'Completed'"]
 assert vg.missing_values("revenue for completed orders", "SELECT SUM(amount) FROM ds_orders WHERE status = 'Completed'") == []

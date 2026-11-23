@@ -17,13 +17,18 @@ from . import column_values
 
 def _catalog() -> tuple[dict, dict]:
     """physical table → dataset, and physical table → {column (lower) → columns_meta row}."""
-    ds = {d["physical_name"].lower(): d for d in store.list("datasets", order=None) if d.get("physical_name")}
+    from .names import label
+    ds: dict[str, dict] = {}
+    for d in store.list("datasets", order=None):
+        if d.get("physical_name"):   # the AI writes the dataset's own name; resolved SQL has the physical one: accept both
+            for key in {d["physical_name"].lower(), d["name"].lower(), label(d).lower()}:
+                ds[key] = d
     by_id = {d["id"]: d for d in ds.values()}
-    cols: dict[str, dict] = {}
+    meta: dict[str, dict] = {}
     for c in store.list("columns_meta", order=None):
-        d = by_id.get(c["dataset_id"])
-        if d:
-            cols.setdefault(d["physical_name"].lower(), {})[c["name"].lower()] = c
+        if c["dataset_id"] in by_id:
+            meta.setdefault(c["dataset_id"], {})[c["name"].lower()] = c
+    cols = {key: meta.get(d["id"], {}) for key, d in ds.items()}
     return ds, cols
 
 
@@ -72,7 +77,11 @@ def missing_values(question: str, sql: str) -> list[str]:
     q, s = question.lower(), sql.lower()
     ds, cols = _catalog()
     out: list[str] = []
+    seen: set[str] = set()
     for table, columns in cols.items():
+        if ds[table]["id"] in seen:
+            continue
+        seen.add(ds[table]["id"])
         for c in columns.values():
             for v in _values(ds, cols, table, c["name"]) or []:
                 lv = v.lower()
