@@ -64,7 +64,7 @@ def run(body: SpecIn):
         if fixed:
             result = {**result, "warnings": [*result["warnings"], "Matched your filter text to the data's exact spelling (upper/lower case)."]}
     except UnsafeQueryError as e:
-        raise HTTPException(400, f"unsafe query: {e}")
+        raise HTTPException(400, sql_errors.unsafe(e))
     except Exception as e:
         audit.record("qb.run", detail=f"{sql} -- {e}", status="error")
         raise HTTPException(400, sql_errors.friendly(str(e))[:500])

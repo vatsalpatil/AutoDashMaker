@@ -45,7 +45,7 @@ def update_query(query_id: str, body: QueryPatch):
             raise HTTPException(400, str(e))
         except UnsafeQueryError as e:
             audit.record("query.update", entity_type="query", entity_id=query_id, detail=body.sql, status="blocked")
-            raise HTTPException(400, f"unsafe query: {e}")
+            raise HTTPException(400, sql_errors.unsafe(e))
         patch["sql"] = body.sql.strip().rstrip(";").strip()
     if patch:
         store.update("queries", query_id, patch)
@@ -121,7 +121,7 @@ def run_query(body: QueryIn):
         result = engine.execute(body.sql if "{{" in body.sql else resolve(body.sql), body.row_limit)
     except UnsafeQueryError as e:
         audit.record("query.run", detail=body.sql, status="blocked")
-        raise HTTPException(400, f"unsafe query: {e}")
+        raise HTTPException(400, sql_errors.unsafe(e))
     except Exception as e:
         audit.record("query.run", detail=f"{body.sql} -- {e}", status="error")
         raise HTTPException(400, sql_errors.friendly(str(e))[:500])
