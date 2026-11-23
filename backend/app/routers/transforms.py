@@ -45,6 +45,26 @@ def _materialize(df, name: str, kind: str, source_id: str | None,
     return ds
 
 
+def _materialize_sql(sql: str, name: str, kind: str, parents: list[str]) -> dict:
+    """Run a (validated, read-only) SELECT straight into a new table inside DuckDB and register it as a dataset.
+    Nothing passes through Python, so it is fast and independent of DuckDB's Python result API."""
+    from ..core.security import validate_readonly
+    table = _safe_name(name)
+    select = validate_readonly(sql, 5_000_000)
+    with engine.writer() as con:
+        con.execute(f"CREATE OR REPLACE TABLE {table} AS {select}")
+    schema = engine.describe_table(table)
+    ds = store.insert("datasets", {
+        "organization_id": DEFAULT_ORG, "workspace_id": DEFAULT_WS, "created_by": DEFAULT_USER,
+        "source_id": None, "name": name, "kind": kind, "physical_name": table,
+        "description": f"Derived from: {', '.join(parents)}" if parents else "",
+        "row_count": schema["row_count"], "column_count": len(schema["columns"]), "layers": [],
+    })
+    for c in schema["columns"]:   # with distinct counts + samples, so the AI sees exact values here too
+        store.insert("columns_meta", {"dataset_id": ds["id"], **c})
+    return ds
+
+
 # ------------------------------------------------------------- single layer
 
 class PreviewIn(BaseModel):
@@ -144,13 +164,9 @@ def blend(body: BlendIn):
     '''
     from ..core.security import validate_readonly
     try:
-        with engine.connect(read_only=True) as con:
-            df = frame(con.execute(validate_readonly(sql, 1_000_000)))
-    except Exception as e:
+        ds = _materialize_sql(sql, body.name, "blend", [left["name"], right["name"]])
+    except Exception as e:  # noqa: BLE001
         raise HTTPException(400, str(e)[:400])
-    ds = _materialize(df, body.name, kind="blend",
-                      source_id=None,
-                      parents=[left["name"], right["name"]], layers=None)
     store.insert("relationships", {
         "workspace_id": DEFAULT_WS,
         "left_dataset_id": left["id"], "left_column": body.left_column,
@@ -172,13 +188,11 @@ def blend_many(body: BlendManyIn):
     from ..services import blend_many as bm
     try:
         p = bm.plan(body.dataset_ids)
-        with engine.connect(read_only=True) as con:
-            df = frame(con.execute(validate_readonly(p["sql"], 5_000_000)))
+        ds = _materialize_sql(p["sql"], body.name, "blend", p["used"])
     except bm.BlendError as e:
         raise HTTPException(400, str(e))
     except Exception as e:  # noqa: BLE001
         raise HTTPException(400, str(e)[:400])
-    ds = _materialize(df, body.name, kind="blend", source_id=None, parents=p["used"], layers=None)
     return {**ds, "used": p["used"], "skipped": p["skipped"]}
 
 

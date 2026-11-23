@@ -49,4 +49,11 @@ try:
     blend_many(BlendManyIn(name="x", dataset_ids=[items["id"]])); raise SystemExit("one dataset accepted")
 except HTTPException as e:
     assert e.status_code == 400
+# transforms.frame works on any DuckDB result API (falls back to plain rows)
+import duckdb
+from app.services.transforms import frame
+class Bare:
+    def __init__(self, c): self.c, self.description = c, c.description
+    def fetchall(self): return self.c.fetchall()
+assert frame(Bare(duckdb.connect().execute("SELECT 2 AS a, 'y' AS b"))).to_dicts() == [{"a": 2, "b": "y"}]
 print("test_blend_many OK")

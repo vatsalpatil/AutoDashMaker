@@ -25,9 +25,19 @@ from .engine import engine
 
 
 def frame(cursor):
-    """A DuckDB result as a Polars frame via Arrow (`.pl()` is missing on some DuckDB versions' connections)."""
+    """A DuckDB result as a Polars frame, on any DuckDB version: the Python result API has been renamed across releases
+    (`.pl()`, `.fetch_arrow_table()`, `.arrow()`), so try them in turn and fall back to plain rows."""
     import polars as pl
-    return pl.from_arrow(cursor.fetch_arrow_table())
+    for name in ("pl", "fetch_arrow_table", "arrow", "to_arrow_table"):
+        fn = getattr(cursor, name, None)
+        if callable(fn):
+            try:
+                out = fn()
+                return out if isinstance(out, pl.DataFrame) else pl.from_arrow(out)
+            except (AttributeError, TypeError, NotImplementedError):
+                continue
+    cols = [d[0] for d in cursor.description]
+    return pl.DataFrame([dict(zip(cols, r)) for r in cursor.fetchall()], schema=cols, orient="row") if cols else pl.DataFrame()
 
 ALLOWED_IMPORTS = {
     "polars": "pl",
