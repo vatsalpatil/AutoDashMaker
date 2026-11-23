@@ -30,4 +30,13 @@ assert store.get("datasources", db["id"]) is not None                          #
 # health check with several sources (threads) no longer crashes
 store.insert("datasources", {"name": "c.csv", "type": "file", "config": {"path": t + "/u/c.csv"}})
 assert len(sources_health()["sources"]) == 2
+# an uploaded file whose original was deleted after import (hosted) is healthy while its stored copy exists
+from app.services import columnar
+gone = store.insert("datasources", {"name": "d.csv", "type": "file", "config": {"path": t + "/u/d.csv"}})
+store.insert("datasets", {"name": "d", "physical_name": "ds_d", "source_id": gone["id"]})
+columnar.parquet_path("ds_d").parent.mkdir(parents=True, exist_ok=True)
+columnar.parquet_path("ds_d").write_bytes(b"x")
+h = {s["name"]: s["connection"] for s in sources_health()["sources"]}
+assert h["d.csv"]["ok"] and "Stored in Dashtor" in h["d.csv"]["detail"], h
+assert h["c.csv"]["ok"] is False                                               # no stored copy, no file: really missing
 print("test_dataset_delete OK")

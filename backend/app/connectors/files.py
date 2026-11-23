@@ -34,7 +34,7 @@ class FileConnector(DataConnector):
     def test_connection(self) -> dict[str, Any]:
         p = self._path()
         ok = p.exists()
-        return {"ok": ok, "detail": f"{p.name} found" if ok else f"file missing: {p}"}
+        return {"ok": ok, "detail": f"{p.name} found" if ok else f"{p.name} is not stored any more"}   # never show server paths
 
     def discover(self) -> list[dict[str, Any]]:
         p = self._path()
@@ -43,7 +43,8 @@ class FileConnector(DataConnector):
     def ingest(self, name: str, target_table: str, analytics_con) -> dict[str, Any]:
         path = self._path()
         if not path.exists():
-            raise ConnectorError(f"file missing: {path}")
+            raise ConnectorError(f"{path.name} is not stored any more: Dashtor keeps the imported data, not the uploaded "
+                                 "original. To update this dataset, upload the new version of the file.")
         reader = self._reader(path)
         analytics_con.execute(f"CREATE OR REPLACE TABLE {target_table} AS SELECT * FROM {reader}")
         info = analytics_con.execute(f"PRAGMA table_info('{target_table}')").fetchall()

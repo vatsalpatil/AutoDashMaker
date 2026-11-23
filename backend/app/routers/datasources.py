@@ -56,6 +56,20 @@ async def upload_cert(file: UploadFile):
     return {"path": str(dest), "name": name}
 
 
+def _stored_upload(src: dict, datasets: list[dict]) -> str | None:
+    """For an uploaded file whose original is gone: a note when every dataset from it is safely stored, else None."""
+    if src.get("type") != "file":
+        return None
+    from ..services import columnar
+    mine = [d for d in datasets if d.get("source_id") == src["id"] and d.get("physical_name")]
+    if mine and all(columnar.parquet_path(d["physical_name"]).exists() for d in mine):
+        path = (src.get("config") or {}).get("path") if isinstance(src.get("config"), dict) else None
+        from pathlib import Path
+        if not path or not Path(path).exists():
+            return "Stored in Dashtor (the uploaded original is not kept)"
+    return None
+
+
 @router.get("/health")
 def sources_health(check: bool = True):
     """One-glance connectivity view: live-tests every source (in parallel, 10s cap each)
@@ -65,6 +79,9 @@ def sources_health(check: bool = True):
 
     def probe(src: dict) -> dict[str, Any]:
         t0 = time.perf_counter()
+        stored = _stored_upload(src, datasets)
+        if stored:   # hosted mode deletes uploaded originals after import (D24): the data lives in Dashtor's own copy
+            return {"ok": True, "detail": stored, "latency_ms": 0.0}
         try:
             res = get_connector(src["type"], src["config"]).test_connection()
         except Exception as e:
