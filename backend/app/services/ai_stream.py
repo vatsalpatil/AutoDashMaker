@@ -59,8 +59,8 @@ def _stream_body(base_url: str, cfg: dict[str, Any], messages: list[dict], max_t
                  label: str | None) -> tuple[str, dict, Any]:
     payload: dict[str, Any] = {"model": cfg["model"], "messages": messages, "max_tokens": max_tokens, "stream": True,
                                "stream_options": {"include_usage": True}}
-    if "openrouter.ai" in base_url:
-        payload["reasoning"] = {"effort": "low"}
+    from .ai import openrouter_extras
+    openrouter_extras(base_url, cfg["model"], payload)
     batch, parts, finish, usage, headers = _Batcher(step, lane, label), [], None, {}, None
     live.push(step, "reset", "", lane, label)
     with httpx.stream("POST", f"{base_url.rstrip('/')}/chat/completions", headers={"Authorization": f"Bearer {cfg.get('api_key') or 'none'}"},

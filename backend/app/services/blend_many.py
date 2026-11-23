@@ -34,7 +34,8 @@ def plan(dataset_ids: list[str]) -> dict[str, Any]:
     by_id = {d["id"]: d for d in ds}
     edges = [r for r in store.list("relationships", order=None)
              if r["left_dataset_id"] in by_id and r["right_dataset_id"] in by_id]
-    base = max(ds, key=lambda d: d.get("row_count") or 0)
+    links = {d["id"]: sum(d["id"] in (r["left_dataset_id"], r["right_dataset_id"]) for r in edges) for d in ds}
+    base = max(ds, key=lambda d: (links[d["id"]] > 0, d.get("row_count") or 0, links[d["id"]]))   # a linked facts table
     alias = {base["id"]: "t0"}
     cols_seen = {c["name"].lower() for c in store.list("columns_meta", where="dataset_id = ?", params=[base["id"]], order=None)}
     selects = [f"t0.{quote_ident(c['name'])}" for c in store.list("columns_meta", where="dataset_id = ?", params=[base["id"]], order=None)]

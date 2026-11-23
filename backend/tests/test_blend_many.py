@@ -30,7 +30,7 @@ orders = ds("orders", "ds_orders", 2, ["order_id", "customer_id", "status"])
 products = ds("products", "ds_products", 2, ["product_id", "name", "unit_price"])
 customers = ds("customers", "ds_customers", 2, ["customer_id", "name", "region"])
 targets = ds("sales_targets", "ds_targets", 3, ["region", "month", "target"])
-other = ds("unrelated", "ds_targets", 3, ["region"])
+other = ds("unrelated", "ds_targets", 99, ["region"])   # bigger than the facts but linked to nothing: never the start
 for l, lc, r, rc in [(orders, "order_id", items, "order_id"), (products, "product_id", items, "product_id"),
                      (customers, "customer_id", orders, "customer_id"), (customers, "region", targets, "region")]:
     store.insert("relationships", {"left_dataset_id": l["id"], "left_column": lc, "right_dataset_id": r["id"], "right_column": rc})

@@ -29,7 +29,7 @@ OPENAI_COMPATIBLE_DEFAULTS = {
 
 
 OPENROUTER_FREE_FALLBACKS = [   # fast, instruction-following, good at SQL (benchmarked 2026-11-24)
-    "google/gemma-4-26b-a4b-it:free", "google/gemma-4-31b-it:free", "nvidia/nemotron-3-ultra-550b-a55b:free",
+    "google/gemma-4-26b-a4b-it:free", "nvidia/nemotron-3-ultra-550b-a55b:free", "google/gemma-4-31b-it:free",   # 1.5 s, 19 s, 49 s
 ]
 
 # Greedy decoding: the same question over the same data gets the same SQL / answer (analytics needs repeatability).
@@ -70,6 +70,16 @@ NOT_A_QUERY_RULE = (
 )
 
 
+def openrouter_extras(base_url: str, model: str, payload: dict[str, Any]) -> None:
+    """OpenRouter only: low reasoning effort (SQL needs little "thinking"), and for shared free models a fallback list,
+    so a per-minute rate limit on one model switches to the next instead of failing the feature."""
+    if "openrouter.ai" not in base_url:
+        return
+    payload["reasoning"] = {"effort": "low"}
+    if model.endswith(":free"):
+        payload["models"] = [model] + [m for m in OPENROUTER_FREE_FALLBACKS if m != model][:2]
+
+
 def _guard_url(base_url: str) -> None:
     """SSRF check at call time too (providers saved before the router check, or edited in the DB)."""
     from ..core.netguard import NetworkBlocked, ensure_public_url
@@ -82,13 +92,7 @@ def _guard_url(base_url: str) -> None:
 def _call_openai_compatible(base_url: str, api_key: str, model: str,
                             messages: list[dict], max_tokens: int = 2048, timeout: float = 60, meta: dict | None = None) -> str:
     payload: dict[str, Any] = {"model": model, "messages": messages, "max_tokens": max_tokens, "temperature": TEMPERATURE}
-    if "openrouter.ai" in base_url:
-        # Reasoning models otherwise spend most of the time (and tokens) "thinking"; SQL needs little of it.
-        payload["reasoning"] = {"effort": "low"}
-        # free models are shared by everyone and hit per-minute limits often: let OpenRouter fall back to other
-        # good free models instead of failing the feature (it uses the first that answers)
-        if model.endswith(":free"):
-            payload["models"] = [model] + [m for m in OPENROUTER_FREE_FALLBACKS if m != model][:2]
+    openrouter_extras(base_url, model, payload)
     _guard_url(base_url)
     resp = httpx.post(
         f"{base_url.rstrip('/')}/chat/completions",
