@@ -3,6 +3,7 @@ import { ArrowDown, ArrowUp, Check, Code2, Pencil, Plus, Trash2 } from 'lucide-r
 import { CodeEditor } from '@/components/common/CodeEditor';
 import { Markdown } from '@/components/common/Markdown';
 import type { NotebookCellProps } from './NotebookCell';
+import { CellGutter } from './CellGutter';
 
 const iconBtn = 'rounded p-1 text-muted-foreground/70 hover:bg-accent hover:text-foreground disabled:opacity-30 disabled:hover:bg-transparent ';
 
@@ -15,9 +16,7 @@ export function MarkdownCell(p: NotebookCellProps) {
   return (
     <section onFocusCapture={p.onFocus} onMouseDown={p.onFocus}
       className={`group flex border-b border-border border-l-[3px] ${active ? 'border-l-blue-500 bg-blue-50/20 dark:bg-blue-950/10' : 'border-l-transparent'}`}>
-      <div className="flex w-16 shrink-0 flex-col items-end border-r border-border px-2 pt-3">
-        <span className="mono text-xs text-muted-foreground/70">Md:</span>
-      </div>
+      <CellGutter index={p.index} kind="md" />
       <div className="min-w-0 flex-1">
         <div className={`flex items-center px-3 pt-1 ${editing ? '' : 'opacity-0 group-hover:opacity-100 focus-within:opacity-100'}`}>
           <span className="text-[11px] text-muted-foreground">Text · Markdown</span>

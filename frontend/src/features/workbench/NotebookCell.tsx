@@ -1,4 +1,4 @@
-import { AlignLeft, BarChart3, ChevronDown, ChevronRight, ChevronUp, Code2, Copy, Loader2, Play, Plus, Save, Trash2, FileText, ArrowDown, ArrowUp, Blocks } from 'lucide-react';
+import { AlignLeft, BarChart3, ChevronDown, ChevronRight, ChevronUp, Code2, Copy, Plus, Save, Trash2, FileText, ArrowDown, ArrowUp, Blocks } from 'lucide-react';
 import { Badge } from '@/components/ui/kit';
 import type { QueryResult, SavedQuery } from '@/lib/types';
 import type { SQLNamespace } from '@codemirror/lang-sql';
@@ -6,6 +6,7 @@ import { CodeEditor, type CodeEditorHandle } from '@/components/common/CodeEdito
 import type { GhostSource } from '@/components/common/ghostText';
 import { CellAssist } from './CellAssist';
 import { MarkdownCell } from './MarkdownCell';
+import { CellGutter } from './CellGutter';
 import { DataGrid } from '@/components/common/DataGrid';
 import { useGridToolbar } from '@/hooks/useGridToolbar';
 import { countLabel } from '@/lib/utils';
@@ -63,7 +64,6 @@ export function NotebookCell(p: Props) {
   if (p.cell.kind === 'md') return <MarkdownCell {...p} />;
   const { cell, active } = p;
   const dirty = cell.saved && cell.sql.trim() !== cell.saved.sql.trim();
-  const gutter = cell.running ? '[*]' : cell.runCount ? `[${cell.runCount}]` : '[ ]';
 
   return (
     <section
@@ -71,14 +71,8 @@ export function NotebookCell(p: Props) {
       onMouseDown={p.onFocus}
       className={`flex border-b border-border border-l-[3px] ${active ? 'border-l-blue-500 bg-blue-50/20 dark:bg-blue-950/10' : 'border-l-transparent'}`}
     >
-      {/* Jupyter-style gutter */}
-      <div className="flex w-16 shrink-0 flex-col items-end gap-1 border-r border-border px-2 pt-3">
-        <span className="mono text-xs text-muted-foreground/70">In {gutter}:</span>
-        <button type="button" onClick={p.onRun} disabled={cell.running || !cell.sql.trim()} title="Run cell (Ctrl+Enter)"
-          className="rounded-full bg-primary p-1.5 text-primary-foreground hover:bg-primary/85 disabled:opacity-40">
-          {cell.running ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
-        </button>
-      </div>
+      <CellGutter index={p.index} running={cell.running} runCount={cell.runCount} ms={cell.result?.duration_ms ?? null}
+        error={!!cell.error} canRun={!!cell.sql.trim()} onRun={p.onRun} />
 
       <div className="min-w-0 flex-1">
         {/* cell header: name + actions */}
@@ -139,7 +133,7 @@ export function NotebookCell(p: Props) {
               <button type="button" onClick={p.onToggleOutput} className="text-muted-foreground/70 hover:text-foreground" aria-label={cell.hideOutput ? 'Show output' : 'Hide output'}>
                 {cell.hideOutput ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
               </button>
-              <span className="mono text-xs text-muted-foreground/70">Out {cell.runCount ? `[${cell.runCount}]` : ''}:</span>
+              <span className="text-xs font-medium text-muted-foreground">Result</span>
               {cell.error && <Badge variant="red" label="error" />}
               {cell.result && (
                 <>
