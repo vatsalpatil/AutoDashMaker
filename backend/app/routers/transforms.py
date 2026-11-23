@@ -159,6 +159,28 @@ def blend(body: BlendIn):
     return ds
 
 
+class BlendManyIn(BaseModel):
+    name: str
+    dataset_ids: list[str]
+
+
+@router.post("/blend-many")
+def blend_many(body: BlendManyIn):
+    """Combine several datasets along their saved relationships into one analysis dataset (services/blend_many.py)."""
+    from ..core.security import validate_readonly
+    from ..services import blend_many as bm
+    try:
+        p = bm.plan(body.dataset_ids)
+        with engine.connect(read_only=True) as con:
+            df = con.execute(validate_readonly(p["sql"], 5_000_000)).pl()
+    except bm.BlendError as e:
+        raise HTTPException(400, str(e))
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(400, str(e)[:400])
+    ds = _materialize(df, body.name, kind="blend", source_id=None, parents=p["used"], layers=None)
+    return {**ds, "used": p["used"], "skipped": p["skipped"]}
+
+
 # ------------------------------------------------------------- relationships
 
 class RelationshipIn(BaseModel):

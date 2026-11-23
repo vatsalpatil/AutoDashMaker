@@ -273,7 +273,7 @@ def generate_sql(messages: list[dict], provider_id: str | None = None, check=Non
     if not _parses(sql) and NOT_A_QUERY in _THINK.sub("", _ANSI.sub("", raw)).upper():
         raise NotAQuery()
     if _parses(sql):
-        return _repair(messages, sql, provider_id, check)
+        return _fix_case(_repair(messages, sql, provider_id, check))
     retry = messages + [
         {"role": "assistant", "content": sql[:500]},
         {"role": "user", "content": "That was not a single SQL statement. Reply with ONLY the DuckDB SELECT "
@@ -283,7 +283,16 @@ def generate_sql(messages: list[dict], provider_id: str | None = None, check=Non
     if not _parses(sql):
         raise AIError("Couldn't turn that into a query. If it is about your data, try rewording it with a table or "
                       "column name; if it keeps happening, pick a non-reasoning model in Settings → AI models.")
-    return sql
+    return _fix_case(sql)
+
+
+def _fix_case(sql: str) -> str:
+    """Every AI-written query: 'completed' → 'Completed' when only the case differs from the real column value."""
+    from . import value_guard
+    try:
+        return value_guard.fix_literal_case(sql) or sql
+    except Exception:  # noqa: BLE001  (a safety net, never a failure)
+        return sql
 
 
 def _repair(messages: list[dict], sql: str, provider_id: str | None, check) -> str:

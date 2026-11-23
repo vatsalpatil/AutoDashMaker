@@ -8,7 +8,7 @@ from typing import Any
 
 from ..core.security import validate_readonly
 from ..core.store import store
-from . import ai as ai_svc, ask_lineage, assist as assist_svc, names, semantic, sql_errors
+from . import ai as ai_svc, ask_lineage, assist as assist_svc, names, semantic, sql_errors, value_guard
 from .column_kinds import IDLIKE as _IDLIKE, business_first
 from .ai_context import semantic_context, with_notebook_steps, workbench_context
 from .chart_suggest import column_roles, suggest_chart
@@ -154,6 +154,8 @@ def answer(question: str, history: list[dict], dataset_id: str | None, provider_
         return {"status": "clarify", "detail": str(e.args[0])}
     except ai_svc.NotAQuery:
         return {"status": "not_a_query", "detail": "That doesn't look like a question about your data. Try one of the suggestions below."}
+    sql = _cover_values(question, sql, messages, provider_id)
+    sql = value_guard.fix_literal_case(sql) or sql   # deterministic: 'completed' when the data only has 'Completed'
     safe = validate_readonly(sql, 10000)
 
     attempts, result = 0, None
@@ -179,3 +181,18 @@ def answer(question: str, history: list[dict], dataset_id: str | None, provider_
         "provenance": {"tables": explain_sql(result["sql"]).get("tables", []), "rows": result["row_count"],
                        "duration_ms": result["duration_ms"], "warnings": result["warnings"]},
     }
+
+
+def _cover_values(question: str, sql: str, messages: list[dict], provider_id: str | None) -> str:
+    """The question names a real value ("completed orders") the SQL never uses → one retry with that exact hint."""
+    missing = value_guard.missing_values(question, sql)
+    if not missing:
+        return sql
+    hint = ("Your query ignores part of the question. The question names these values, so the query should use them "
+            "(join the table if needed): " + "; ".join(missing) + ". Reply with ONLY the corrected DuckDB query.")
+    try:
+        better = ai_svc.generate_sql(messages + [{"role": "assistant", "content": sql}, {"role": "user", "content": hint}],
+                                     provider_id=provider_id, check=engine.check_sql)
+    except Exception:  # noqa: BLE001  (keep the first query)
+        return sql
+    return better if not value_guard.missing_values(question, better) or len(value_guard.missing_values(question, better)) < len(missing) else sql

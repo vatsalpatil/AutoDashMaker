@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 import { streamPost } from '@/lib/sse';
+import { combinedNote, combineDatasets } from './combine';
 import type { ReviewCheck } from '../ai/ReviewChecklist';
 import { appendLog, applyStep, applyThink, stopSteps, type StepEvent, type ThinkEntry, type ThinkEvent } from './streamState';
 
@@ -16,7 +17,8 @@ export interface GenResult { dashboard_id: string; name: string; pages: string[]
 export interface LiveText { reasoning: string; answer: string; label: string }
 /** step number -> lane (one per parallel model call, e.g. one per page) -> that call's streaming text */
 export type LiveLanes = Record<number, Record<string, LiveText>>
-export interface Setup { dataset_id: string; template: string; focus: string; images?: string[] }
+/** `dataset_ids` (2+) = combine those tables first (along saved relationships) and build from the result. */
+export interface Setup { dataset_id: string; dataset_ids?: string[]; template: string; focus: string; images?: string[] }
 /** setup -> understand (AI studies the data) -> questions (you answer) -> plan (you review) -> build -> done */
 export type Phase = 'setup' | 'understanding' | 'questions' | 'planning' | 'plan' | 'building' | 'done';
 
@@ -98,8 +100,22 @@ export function useGenerateSession() {
     return failed;
   }, [handle]);
 
-  const start = useCallback((s: Setup) => {
+  const start = useCallback(async (s: Setup) => {
     setSetup(s); setSteps([]); setEvidence(null); setUnderstanding(null); setAnswers({}); setPlan(null); setWidgets([]); setResult(null); setLog([]);
+    setError(null);
+    if ((s.dataset_ids?.length ?? 0) > 1) {   // several tables: combine them into one analysis dataset first
+      setPhase('understanding');
+      setSteps([{ n: 0, title: 'Combining your tables', detail: 'Joining the chosen datasets along their relationships', done: false, spentMs: 0, startedAt: Date.now() }]);
+      try {
+        const ds = await combineDatasets(s.dataset_ids!);
+        s = { ...s, dataset_id: ds.id };
+        setSetup(s);
+        setSteps([{ n: 0, title: 'Combined your tables', detail: combinedNote(ds), done: true, spentMs: 0 }]);
+      } catch (e) {
+        setError({ message: (e as Error).message, noProvider: false }); setSteps([]); setPhase('setup'); setSetup(null);
+        return;
+      }
+    }
     // a failed first step unlocks the setup card again, so the user can change the choices or simply retry
     return run(`${BASE}/understand`, s, 'understanding', 'setup').then((failed) => { if (failed) setSetup(null); });
   }, [run]);

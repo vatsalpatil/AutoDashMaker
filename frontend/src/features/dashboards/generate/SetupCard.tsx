@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { SelectField } from '@/components/common/SelectField';
+import { DatasetPicker } from './DatasetPicker';
 import { Button, Card, TextArea } from '@/components/ui/kit';
 import { CopyLiveData } from '@/features/sources/CopyLiveData';
 import { useApi } from '@/hooks/useApi';
@@ -15,22 +15,26 @@ export function SetupCard({ initialDataset, locked, onStart, onDraft }: { initia
   const datasetsApi = useApi<Dataset[]>('/datasets');
   const datasets = datasetsApi.data ?? [];
   const templates = useApi<Template[]>('/dashboards/ai/templates').data ?? [];
-  const [datasetId, setDatasetId] = useState(initialDataset ?? '');
+  const [picked, setPicked] = useState<string[]>(initialDataset ? [initialDataset] : []);
+  const datasetId = picked[0] ?? '';
+  const setup = (): Setup => ({ dataset_id: datasetId, dataset_ids: picked.length > 1 ? picked : undefined, template, focus });
   const [template, setTemplate] = useState('auto');
   const [focus, setFocus] = useState('');
   // pick the first dataset when none is chosen or the chosen one no longer exists (e.g. an old ?dataset= link)
   useEffect(() => {
-    if (datasets.length > 0 && !datasets.some((d) => d.id === datasetId)) setDatasetId(datasets[0].id);
-  }, [datasets, datasetId]);
-  useEffect(() => { onDraft?.({ dataset_id: datasetId, template, focus }); }, [onDraft, datasetId, template, focus]);
+    const valid = picked.filter((id) => datasets.some((d) => d.id === id));
+    if (datasets.length > 0 && valid.length !== picked.length || (datasets.length > 0 && valid.length === 0)) setPicked(valid.length ? valid : [datasets[0].id]);
+  }, [datasets, picked]);
+  useEffect(() => { onDraft?.(setup()); }, [onDraft, picked, template, focus]);  // eslint-disable-line react-hooks/exhaustive-deps
 
   if (locked && onDraft) return null;   // in the chat, the choice shows as your message instead
   if (locked) {
-    const ds = datasets.find((d) => d.id === locked.dataset_id);
+    const ids = locked.dataset_ids ?? [locked.dataset_id];
+    const names = ids.map((id) => datasets.find((d) => d.id === id)?.name ?? 'Dataset').join(' + ');
     const tpl = templates.find((t) => t.id === locked.template);
     return (
       <Card padding={3}>
-        <p className="text-sm"><span className="font-semibold">{ds?.name ?? 'Dataset'}</span> · {tpl?.name ?? locked.template}{locked.focus ? ` · “${locked.focus}”` : ''}</p>
+        <p className="text-sm"><span className="font-semibold">{names}</span> · {tpl?.name ?? locked.template}{locked.focus ? ` · “${locked.focus}”` : ''}</p>
       </Card>
     );
   }
@@ -48,10 +52,8 @@ export function SetupCard({ initialDataset, locked, onStart, onDraft }: { initia
             <Link to="/sources" className="font-medium text-primary underline">Add data</Link> first, then come back here.
           </p>
         ) : null}
-        <SelectField label="Dataset" value={datasetId} placeholder="Choose a dataset" onChange={(e) => setDatasetId(e.target.value)}>
-          {datasets.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-        </SelectField>
-        {datasets.find((d) => d.id === datasetId)?.remote_table && <CopyLiveData datasetId={datasetId} variant="notice" onDone={datasetsApi.reload} />}
+        {datasets.length > 0 && <DatasetPicker datasets={datasets} value={picked} onChange={(ids) => setPicked(ids.length ? ids : picked)} />}
+        {picked.length === 1 && datasets.find((d) => d.id === datasetId)?.remote_table && <CopyLiveData datasetId={datasetId} variant="notice" onDone={datasetsApi.reload} />}
         <div role="radiogroup" aria-label="Template" className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {templates.map((t) => (
             <button key={t.id} type="button" role="radio" aria-checked={template === t.id} onClick={() => setTemplate(t.id)}
@@ -64,7 +66,7 @@ export function SetupCard({ initialDataset, locked, onStart, onDraft }: { initia
         </div>
         {!onDraft && <>
           <TextArea label="Anything specific? (optional)" value={focus} onChange={setFocus} rows={2} placeholder="e.g. focus on profit by region and highlight the weakest months" />
-          <div className="flex justify-end"><Button variant="primary" label="Start" onClick={() => onStart({ dataset_id: datasetId, template, focus })} isDisabled={!datasetId} /></div>
+          <div className="flex justify-end"><Button variant="primary" label="Start" onClick={() => onStart(setup())} isDisabled={!datasetId} /></div>
         </>}
       </div>
     </Card>
