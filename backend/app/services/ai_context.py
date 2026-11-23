@@ -72,6 +72,8 @@ def workbench_context(selected_id: str | None, question: str | None = None) -> s
     text = ("All tables you may query (`col TYPE = 'a'|'b'` lists every value of that column; text comparisons are "
             "case-sensitive, so use those exact values):\n" + "\n".join(table_lines)[:7000])
 
+    text += relationships_text(datasets)
+
     saved, seen = [], set()
     for q in store.list("queries", order="created_at DESC"):
         sql = (q.get("sql") or "").strip()
@@ -96,3 +98,28 @@ def with_notebook_steps(ctx: str, cells: list[dict]) -> str:
         return ctx
     return ctx + ("\n\nNotebook steps (earlier cells; query any of them by name exactly like a table, e.g. "
                   "SELECT * FROM step_1):\n" + "\n".join(steps))
+
+
+def relationships_text(datasets: list[dict] | None = None) -> str:
+    """The user's saved relationships, with how many rows match on each side, so the model joins the way the user defined
+    and knows when a join repeats rows (aggregate the 'many' side first). '' when there are none."""
+    datasets = datasets if datasets is not None else [d for d in store.list("datasets", order=None) if d.get("physical_name")]
+    by_id = {d["id"]: d for d in datasets}
+    rels = [r for r in store.list("relationships", order=None) if r["left_dataset_id"] in by_id and r["right_dataset_id"] in by_id]
+    if not rels:
+        return ""
+    meta = {(c["dataset_id"], c["name"].lower()): c for c in store.list("columns_meta", order=None)}
+
+    def unique(ds_id: str, col: str) -> bool | None:
+        c, rows = meta.get((ds_id, col.lower())), by_id[ds_id].get("row_count")
+        return None if not c or not c.get("distinct_count") or not rows else c["distinct_count"] >= rows
+
+    lines = []
+    for r in rels[:25]:
+        l, rt = by_id[r["left_dataset_id"]], by_id[r["right_dataset_id"]]
+        lu, ru = unique(l["id"], r["left_column"]), unique(rt["id"], r["right_column"])
+        kind = {(True, True): "one-to-one", (True, False): f"one {names.label(l)} row ↔ many {names.label(rt)} rows",
+                (False, True): f"many {names.label(l)} rows ↔ one {names.label(rt)} row"}.get((lu, ru), "many-to-many: aggregate one side before joining")
+        lines.append(f"- {names.label(l)}.{r['left_column']} = {names.label(rt)}.{r['right_column']} ({kind})")
+    return ("\n\nHow the tables join (saved by the user; use these join keys. When a join is one-to-many, totals from the "
+            "'one' side repeat: aggregate the 'many' side in a CTE first):\n" + "\n".join(lines))

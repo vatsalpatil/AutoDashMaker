@@ -87,6 +87,8 @@ def context(active_sql: str, error: str | None, cells: list[dict], mode: str, ta
     text = "Tables:\n" + "\n".join(lines)[:6000]
     if rest:
         text += "\nOther tables (use describe_table first): " + ", ".join(rest)[:1500]
+    from .ai_context import relationships_text
+    text += relationships_text(ds)
     steps = [f"- {c.get('name')}: {str(c.get('sql', '')).strip()[:300]}" for c in cells[:12] if c.get("name") and str(c.get("sql", "")).strip()]
     if steps:
         text += "\n\nEarlier notebook steps (query them by name like tables):\n" + "\n".join(steps)
