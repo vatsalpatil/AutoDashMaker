@@ -8,7 +8,7 @@ import { useApi } from '@/hooks/useApi';
 import { sendToBuilder } from '@/features/query-builder/qbHandoff';
 import { NotebookCell } from './NotebookCell';
 import { cellNameProblem } from './notebookModel';
-import { HISTORY_KEY, makePredictor } from './sqlPredict';
+import { aiComplete, HISTORY_KEY, makePredictor } from './sqlPredict';
 import { readStorage } from '@/hooks/useLocalStorage';
 import type { Notebook } from './useNotebook';
 import type { useSavedQueries } from './useSavedQueries';
@@ -40,6 +40,7 @@ export function NotebookView({ nb, saved, tableNames, error, onDismissError, aiO
     const corpus = [...readStorage<string[]>(HISTORY_KEY, []), ...nb.notebooks.items.flatMap((n) => n.cells.filter((c) => c.kind !== 'md').map((c) => c.sql ?? ''))];
     return makePredictor(corpus, (columns ?? {}) as Record<string, string[]>);
   }, [columns, nb.notebooks.items, corpusKey]);  // eslint-disable-line react-hooks/exhaustive-deps
+  const sqlCellsBefore = (i: number) => nb.cells.slice(0, i).filter((x) => x.kind !== 'md').map(({ name, sql }) => ({ name, sql }));
   const chartCell = nb.cells.find((c) => c.id === chartFor);
 
   return (
@@ -74,7 +75,7 @@ export function NotebookView({ nb, saved, tableNames, error, onDismissError, aiO
             nameProblem={cellNameProblem(nb.cells, i, tableNames)}
             registerRef={nb.registerRef(c.id)}
             schema={schema}
-            suggest={suggest}
+            suggest={{ local: suggest, remote: (before, after, signal) => aiComplete(before, after, sqlCellsBefore(i), signal) }}
             onFocus={() => nb.setActiveId(c.id)}
             onName={(v) => nb.update(c.id, { name: v })}
             onSql={(v) => nb.update(c.id, { sql: v })}
@@ -92,7 +93,7 @@ export function NotebookView({ nb, saved, tableNames, error, onDismissError, aiO
             onDetach={() => nb.update(c.id, { saved: null })}
             onSaveChart={() => setChartFor(c.id)}
             onOpenBuilder={() => openInBuilder(c)}
-            assistCells={nb.cells.slice(0, i).filter((x) => x.kind !== 'md').map(({ name, sql }) => ({ name, sql }))}
+            assistCells={sqlCellsBefore(i)}
           />
         ))}
         <button type="button" onClick={() => nb.addCell(null)}

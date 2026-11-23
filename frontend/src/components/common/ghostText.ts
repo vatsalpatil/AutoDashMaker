@@ -41,31 +41,55 @@ function accept(view: EditorView): boolean {
   return true;
 }
 
-export function ghostText(getSuggest: () => ((before: string) => string | null) | undefined): Extension {
+/** Instant (local) suggestion, plus an optional slower one (e.g. an AI model) asked after a short pause. */
+export interface GhostSource {
+  local?: (before: string) => string | null;
+  remote?: (before: string, after: string, signal: AbortSignal) => Promise<string | null>;
+}
+
+const REMOTE_PAUSE = 350;   // ms of no typing before asking the remote source
+const LOCAL_ENOUGH = 14;    // a local suggestion at least this long is kept without asking the remote one
+
+export function ghostText(getSource: () => GhostSource | undefined): Extension {
   const plugin = ViewPlugin.fromClass(class {
     timer: ReturnType<typeof setTimeout> | undefined;
+    remoteTimer: ReturnType<typeof setTimeout> | undefined;
+    abort: AbortController | undefined;
     constructor(readonly view: EditorView) {}
     update(u: ViewUpdate) {
       if (!u.docChanged && !u.selectionSet && !u.focusChanged) return;
-      clearTimeout(this.timer);
-      this.timer = setTimeout(() => this.compute(), 90);
+      this.cancel();
+      this.timer = setTimeout(() => this.compute(), 60);
+    }
+    cancel() { clearTimeout(this.timer); clearTimeout(this.remoteTimer); this.abort?.abort(); this.abort = undefined; }
+    show(ghost: Ghost) {
+      const cur = this.view.state.field(ghostField, false);
+      if (cur?.text !== ghost?.text || cur?.pos !== ghost?.pos) this.view.dispatch({ effects: setGhost.of(ghost) });
     }
     compute() {
       const { view } = this;
       const { state } = view;
       const sel = state.selection.main;
-      const suggest = getSuggest();
-      let ghost: Ghost = null;
+      const src = getSource();
       const line = state.doc.lineAt(sel.head);
       const after = state.sliceDoc(sel.head, line.to);
-      if (suggest && view.hasFocus && sel.empty && !after.trim()) {
-        const text = suggest(state.sliceDoc(0, sel.head));
-        if (text) ghost = { pos: sel.head, text };
-      }
-      const cur = state.field(ghostField, false);
-      if (cur?.text !== ghost?.text || cur?.pos !== ghost?.pos) view.dispatch({ effects: setGhost.of(ghost) });
+      if (!src || !view.hasFocus || !sel.empty || after.trim()) return this.show(null);
+      const before = state.sliceDoc(0, sel.head);
+      const local = src.local?.(before) ?? null;
+      this.show(local ? { pos: sel.head, text: local } : null);
+      if (!src.remote || (local && local.length >= LOCAL_ENOUGH) || !before.trim()) return;
+      const doc = state.doc, head = sel.head;
+      this.remoteTimer = setTimeout(() => {
+        const ctl = new AbortController();
+        this.abort = ctl;
+        src.remote!(before, state.sliceDoc(sel.head), ctl.signal).then((text) => {
+          // only if nothing changed while the model was thinking
+          if (ctl.signal.aborted || !text || view.state.doc !== doc || view.state.selection.main.head !== head) return;
+          this.show({ pos: head, text });
+        }).catch(() => { /* autocomplete fails quietly */ });
+      }, REMOTE_PAUSE);
     }
-    destroy() { clearTimeout(this.timer); }
+    destroy() { this.cancel(); }
   });
 
   return [

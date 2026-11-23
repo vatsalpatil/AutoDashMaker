@@ -22,7 +22,7 @@ feature: ContextVar[str] = ContextVar("ai_feature", default="Other")
 run_id: ContextVar[str] = ContextVar("ai_run", default="")
 
 _FEATURES = [("/generate", "Generate dashboard"), ("/ai/create", "Create with AI"), ("ai-edit", "Edit with AI"), ("/api/ai/ask", "Ask"),
-             ("/api/ai/sql", "SQL assistant"), ("/api/ai/assist", "Workbench assistant"), ("/api/ai/agent", "Workbench assistant"),
+             ("/api/ai/sql", "SQL assistant"), ("/api/ai/complete", "SQL autocomplete"), ("/api/ai/assist", "Workbench assistant"), ("/api/ai/agent", "Workbench assistant"),
              ("/api/ai/providers", "Connection tests"), ("/api/qb", "Query builder"), ("/api/studio", "API studio"), ("/api/why", "Why? engine"),
              ("/api/semantic", "Metrics"), ("/api/reports", "Reports")]
 

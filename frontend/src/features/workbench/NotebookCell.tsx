@@ -3,6 +3,7 @@ import { Badge } from '@/components/ui/kit';
 import type { QueryResult, SavedQuery } from '@/lib/types';
 import type { SQLNamespace } from '@codemirror/lang-sql';
 import { CodeEditor, type CodeEditorHandle } from '@/components/common/CodeEditor';
+import type { GhostSource } from '@/components/common/ghostText';
 import { CellAssist } from './CellAssist';
 import { MarkdownCell } from './MarkdownCell';
 import { DataGrid } from '@/components/common/DataGrid';
@@ -32,7 +33,7 @@ interface Props {
   nameProblem: string | null;
   registerRef: (el: CodeEditorHandle | null) => void;
   schema: SQLNamespace;
-  suggest?: (before: string) => string | null;
+  suggest?: GhostSource;
   onFocus: () => void;
   onName: (v: string) => void;
   onSql: (v: string) => void;

@@ -6,7 +6,7 @@ import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
 import { tags as t } from '@lezer/highlight';
 import { Prec, type Extension } from '@codemirror/state';
 import { sqlHints } from './sqlHints';
-import { ghostText } from './ghostText';
+import { ghostText, type GhostSource } from './ghostText';
 
 export interface CodeEditorHandle {
   /** Insert text at the cursor (replacing any selection) and focus the editor. */
@@ -52,7 +52,7 @@ export const CodeEditor = forwardRef<CodeEditorHandle, {
   /** SQL completion: `{ table: ['col', …] }` */
   schema?: SQLNamespace;
   /** Inline ghost-text suggestion for the text before the cursor (Tab accepts). */
-  suggest?: (before: string) => string | null;
+  suggest?: GhostSource;
   /** Ctrl/Cmd+Enter */
   onRun?: () => void;
   /** Shift+Enter (e.g. run and move to the next cell) */

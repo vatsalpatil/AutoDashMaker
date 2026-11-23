@@ -1,4 +1,5 @@
 import { readStorage } from '@/hooks/useLocalStorage';
+import { api } from '@/lib/api';
 
 /**
  * Inline "ghost text" SQL suggestions (pure, no React, no AI call → instant).
@@ -98,4 +99,12 @@ function nextClause(stmt: string, schema: Record<string, string[]>, favTable: (e
     return AGG.test(s) && !/\bgroup by\b/i.test(s) ? 'GROUP BY ALL' : 'LIMIT 100';
   }
   return null;
+}
+
+/** AI completion on the server's fast model (POST /ai/complete). Empty / failed → null, never throws. */
+export async function aiComplete(prefix: string, suffix: string, cells: { name: string; sql: string }[], signal: AbortSignal): Promise<string | null> {
+  try {
+    const r = await api.post<{ completion: string }>('/ai/complete', { prefix, suffix, cells }, signal);
+    return r.completion || null;
+  } catch { return null; }
 }
