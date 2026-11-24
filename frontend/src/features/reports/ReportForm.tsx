@@ -23,7 +23,7 @@ export function ReportForm({ onCreated }: { onCreated: () => void }) {
         <TextInput label="Name" value={form.name} onChange={(v) => set({ name: v })} placeholder="e.g. Weekly revenue by region" />
         <TextInput label="Run every (minutes)" value={form.schedule_minutes} onChange={(v) => set({ schedule_minutes: v })} placeholder="1440 = daily, 10080 = weekly" />
         <div className="md:col-span-2">
-          <TextArea label="Query" value={form.sql} onChange={(v) => set({ sql: v })} rows={3} placeholder="SELECT region, SUM(amount) AS revenue FROM ds_sample_sales GROUP BY region" />
+          <TextArea label="Query" value={form.sql} onChange={(v) => set({ sql: v })} rows={3} placeholder="SELECT region, SUM(amount) AS revenue FROM orders GROUP BY region" />
         </div>
         <div className="md:col-span-2">
           <TextInput label="Webhook (optional)" value={form.webhook_url} onChange={(v) => set({ webhook_url: v })} placeholder="https://hooks.slack.com/… — receives a summary after each run" />

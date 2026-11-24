@@ -22,7 +22,7 @@ export const plainDate = (s: string): string => s.replace(/^(\d{4}-\d{2}-\d{2})T
 
 export function fmt(n: unknown): string {
   if (n === null || n === undefined) return '—';
-  if (typeof n === 'number') return n.toLocaleString();
+  if (typeof n === 'number') return n.toLocaleString(undefined, { maximumFractionDigits: 2 });
   return plainDate(String(n));
 }
 

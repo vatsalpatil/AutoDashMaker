@@ -50,6 +50,25 @@ def _table_of(metric: dict) -> str | None:
     return ds.get("physical_name") if ds else None
 
 
+def applicable_metric_lines(dataset_id: str, table: str) -> list[str]:
+    """Defined key numbers that also fit this dataset (every column they use exists here), e.g. one defined on
+    sales_combined applies to a fresh combine of the same tables. Rewritten against `table`."""
+    def cols_of(ds_id: str | None) -> set[str]:
+        return {c["name"].lower() for c in store.list("columns_meta", where="dataset_id = ?", params=[ds_id], order=None)}
+    cols = cols_of(dataset_id)
+    out = []
+    for m in store.list("metrics", order=None):
+        if m.get("dataset_id") != dataset_id:
+            text = " ".join([m.get("expression") or ""] + filters_of(m))
+            idents = {w.lower() for w in re.findall(r"[A-Za-z_]\w*", re.sub(r"'[^']*'", "", text))}
+            used = idents & cols_of(m.get("dataset_id"))
+            if not used or not used <= cols:
+                continue
+        line = f"- {m.get('label') or m['name']}: {metric_sql(m, table)}"
+        out.append(line + (f"  -- {m['description']}" if m.get("description") else ""))
+    return out[:20]
+
+
 def metrics_in_scope(dataset_id: str | None) -> list[dict]:
     where, params = ("dataset_id = ?", [dataset_id]) if dataset_id else ("", None)
     return store.list("metrics", where=where, params=params, order=None)

@@ -126,6 +126,10 @@ def run_query(body: QueryIn):
         audit.record("query.run", detail=f"{body.sql} -- {e}", status="error")
         raise HTTPException(400, sql_errors.friendly(str(e))[:500])
     audit.record("query.run", detail=result["sql"], duration_ms=result["duration_ms"])
+    if not result.get("row_count"):
+        hint = _case_hint(result["sql"])
+        if hint:
+            result = {**result, "warnings": [*(w for w in result.get("warnings") or [] if not w.startswith("empty_result")), hint]}
     if body.save:
         q = store.insert("queries", {
             "dataset_id": body.dataset_id, "name": body.name,
@@ -135,6 +139,19 @@ def run_query(body: QueryIn):
         })
         result["query_id"] = q["id"]
     return result
+
+
+def _case_hint(sql: str) -> str | None:
+    """No rows because a text filter differs from the data only in upper/lower case: say which value matches (never rewrite)."""
+    from ..services import value_guard
+    fixed = value_guard.fix_literal_case(sql)
+    if not fixed:
+        return None
+    lits = lambda s: re.findall(r"'((?:[^']|'')*)'", s)
+    pairs = [(a, b) for a, b in zip(lits(sql), lits(fixed)) if a != b]
+    if not pairs:
+        return None
+    return "No rows: text matches are case-sensitive. " + "; ".join(f"did you mean '{b}' instead of '{a}'?" for a, b in pairs[:3])
 
 
 class CellIn(BaseModel):

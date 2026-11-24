@@ -48,4 +48,27 @@ spec = {"stages": [{"table": "orders", "filters": [{"col": "status", "op": "=", 
                     "aggregations": [{"fn": "sum", "col": "amount", "as": "total"}]}]}
 r = qb_run(SpecIn(spec=spec))
 assert r["rows"][0]["total"] == 150.0 and any("spelling" in w for w in r["warnings"]), r
+# Workbench: never rewrites hand-written SQL, but an empty result names the matching spelling
+from app.routers.queries import QueryIn, run_query
+r = run_query(QueryIn(sql="SELECT * FROM orders WHERE status = 'completed'", save=False))
+assert r["row_count"] == 0 and any("did you mean 'Completed'" in w for w in r["warnings"]), r["warnings"]
+assert not any(w.startswith("empty_result") for w in r["warnings"])
+# Ask shows dataset names as sources, not ds_ tables
+assert analyst._shown_tables(["ds_orders"]) == ["orders"]
+# a key number defined on one dataset applies to another with the same columns (e.g. a fresh combine)
+from app.services import semantic
+store.insert("columns_meta", {"dataset_id": d["id"], "name": "amount", "dtype": "DOUBLE"})
+store.insert("metrics", {"dataset_id": d["id"], "name": "net", "label": "Net revenue", "expression": "SUM(amount)", "filters": ["status = 'Completed'"]})
+d2 = store.insert("datasets", {"name": "orders_combined", "physical_name": "ds_orders_combined", "row_count": 3, "kind": "blend"})
+for c in ("order_id", "status", "amount"):
+    store.insert("columns_meta", {"dataset_id": d2["id"], "name": c, "dtype": "VARCHAR"})
+lines = semantic.applicable_metric_lines(d2["id"], "ds_orders_combined")
+assert lines and "Net revenue" in lines[0] and "ds_orders_combined" in lines[0] and "Completed" in lines[0], lines
+d3 = store.insert("datasets", {"name": "other", "physical_name": "ds_other", "row_count": 1})
+store.insert("columns_meta", {"dataset_id": d3["id"], "name": "status", "dtype": "VARCHAR"})
+assert semantic.applicable_metric_lines(d3["id"], "ds_other") == []      # no amount column: does not apply
+# blends are never suggested as join partners of their own source tables
+from app.routers.transforms import _free_name, suggest_relationships
+assert all("orders_combined" not in (s["left_dataset"], s["right_dataset"]) for s in suggest_relationships())
+assert _free_name("orders_combined") == "orders_combined_2" and _free_name("fresh_combined") == "fresh_combined"
 print("test_value_guard OK")

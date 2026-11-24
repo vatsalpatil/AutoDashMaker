@@ -4,8 +4,7 @@ export interface CombinedDataset { id: string; name: string; row_count: number; 
 
 /** Join several datasets along their saved relationships into one analysis dataset (POST /transforms/blend-many). */
 export function combineDatasets(ids: string[]): Promise<CombinedDataset> {
-  const stamp = new Date().toISOString().slice(0, 16).replace(/[-:T]/g, '');
-  return api.post<CombinedDataset>('/transforms/blend-many', { name: `combined_${stamp}`, dataset_ids: ids });
+  return api.post<CombinedDataset>('/transforms/blend-many', { dataset_ids: ids });   // named <main table>_combined
 }
 
 export const combinedNote = (d: CombinedDataset) =>

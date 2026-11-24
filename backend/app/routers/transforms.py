@@ -177,8 +177,14 @@ def blend(body: BlendIn):
 
 
 class BlendManyIn(BaseModel):
-    name: str
+    name: str | None = None
     dataset_ids: list[str]
+
+
+def _free_name(base: str) -> str:
+    """A readable dataset name not taken yet: orders_combined, orders_combined_2, ..."""
+    taken = {d["name"] for d in store.list("datasets", order=None)}
+    return next(n for n in (base if i == 1 else f"{base}_{i}" for i in range(1, 999)) if n not in taken)
 
 
 @router.post("/blend-many")
@@ -188,7 +194,7 @@ def blend_many(body: BlendManyIn):
     from ..services import blend_many as bm
     try:
         p = bm.plan(body.dataset_ids)
-        ds = _materialize_sql(p["sql"], body.name, "blend", p["used"])
+        ds = _materialize_sql(p["sql"], body.name or _free_name(f"{p['used'][0]}_combined"), "blend", p["used"])
     except bm.BlendError as e:
         raise HTTPException(400, str(e))
     except Exception as e:  # noqa: BLE001
@@ -229,7 +235,8 @@ def delete_relationship(rel_id: str):
 @router.get("/relationships/suggest")
 def suggest_relationships():
     """Auto-suggest join keys: same column name + compatible dtype across datasets."""
-    datasets = store.list("datasets", order=None)
+    # a blend already contains the tables it was joined from: linking it back to them would double-count
+    datasets = [d for d in store.list("datasets", order=None) if d.get("kind") != "blend"]
     suggestions = []
     for i, a in enumerate(datasets):
         cols_a = store.list("columns_meta", where="dataset_id = ?", params=[a["id"]], order=None)

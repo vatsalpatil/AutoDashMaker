@@ -5,6 +5,7 @@ import { Loading } from '@/components/common/Loading';
 import { Badge, Button, Card } from '@/components/ui/kit';
 import { useAsyncAction } from '@/hooks/useAsyncAction';
 import { api } from '@/lib/api';
+import { fmt } from '@/lib/utils';
 import type { Alert, AlertRun, AlertRunResult } from '@/lib/types';
 import { StatusBadge, opLabel } from './alertOps';
 
@@ -17,7 +18,7 @@ export function AlertCard({ alert, datasetName, onChanged }: { alert: Alert; dat
   const [runNow, run] = useAsyncAction(async () => {
     setRunMsg(null);
     const r = await api.post<AlertRunResult>(`/alerts/${alert.id}/run`);
-    setRunMsg(`${r.status.toUpperCase()}: ${r.message ?? `value ${r.value ?? '—'}`}`);
+    setRunMsg(`${r.status.toUpperCase()}: ${r.message ?? `value ${fmt(r.value)}`}`);
     onChanged();
     setTimeout(() => setRunMsg(null), 8000);
   });
@@ -43,11 +44,11 @@ export function AlertCard({ alert, datasetName, onChanged }: { alert: Alert; dat
             {!alert.active && <Badge variant="neutral" label="paused" />}
           </div>
           <p className="mt-1 text-sm text-muted-foreground">
-            {datasetName ?? alert.dataset_id} — {opLabel(alert.operator)} {alert.threshold} · every {alert.schedule_minutes} min
+            {datasetName ?? alert.dataset_id} — {opLabel(alert.operator)} {fmt(alert.threshold)} · every {alert.schedule_minutes} min
           </p>
           {alert.last_value != null && (
             <p className="mt-0.5 text-sm text-muted-foreground">
-              Last value: <span className="font-medium text-foreground">{alert.last_value}</span>
+              Last value: <span className="font-medium text-foreground">{fmt(alert.last_value)}</span>
               {alert.last_run_at && <span className="text-xs"> · {new Date(alert.last_run_at).toLocaleString()}</span>}
             </p>
           )}
@@ -70,7 +71,7 @@ export function AlertCard({ alert, datasetName, onChanged }: { alert: Alert; dat
                 {runs.map((r) => (
                   <tr key={r.id}>
                     <td className="px-3 py-1.5">{new Date(r.ran_at ?? r.created_at ?? '').toLocaleString()}</td>
-                    <td className="px-3 py-1.5">{r.value ?? '—'}</td>
+                    <td className="px-3 py-1.5">{fmt(r.value)}</td>
                     <td className="px-3 py-1.5"><StatusBadge status={r.status} /></td>
                     <td className="max-w-xs truncate px-3 py-1.5 text-muted-foreground">{r.message ?? ''}</td>
                   </tr>

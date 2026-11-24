@@ -193,7 +193,7 @@ def answer(question: str, history: list[dict], dataset_id: str | None, provider_
         "chart": suggest_chart(result["columns"], result["rows"], result["sql"]), "explanation": explain_sql(result["sql"]),
         "insights": insights, "confidence": _confidence(result, result["sql"]),
         "lineage": ask_lineage.build(result["sql"], result, dataset_id, attempts),
-        "provenance": {"tables": explain_sql(result["sql"]).get("tables", []), "rows": result["row_count"],
+        "provenance": {"tables": _shown_tables(explain_sql(result["sql"]).get("tables", [])), "rows": result["row_count"],
                        "duration_ms": result["duration_ms"], "warnings": result["warnings"]},
     }
 
@@ -211,3 +211,9 @@ def _cover_values(question: str, sql: str, messages: list[dict], provider_id: st
     except Exception:  # noqa: BLE001  (keep the first query)
         return sql
     return better if not value_guard.missing_values(question, better) or len(value_guard.missing_values(question, better)) < len(missing) else sql
+
+
+def _shown_tables(tables: list[str]) -> list[str]:
+    """Physical ds_ tables -> the dataset names the user knows."""
+    by_phys = {d.get("physical_name"): d["name"] for d in store.list("datasets", order=None)}
+    return [by_phys.get(t, t) for t in tables]

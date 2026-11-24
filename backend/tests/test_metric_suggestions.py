@@ -20,7 +20,7 @@ for n, dt, d in [("order_id", "VARCHAR", 300), ("order_date", "DATE", 200), ("re
 
 labels = {(m["dataset_name"], m["label"]) for m in suggestions()["metrics"]}
 assert ("products", "Total unit_cost") not in labels and ("products", "Total unit_price") not in labels, labels
-assert ("products", "Row count") in labels
+assert ("products", "Number of products") in labels and not any(d == "products" and l.startswith(("Average", "Unique")) for d, l in labels), labels
 assert ("sales", "Total revenue") in labels and ("sales", "Total unit_cost") not in labels, labels   # cost per unit isn't summed
 # starter questions (Ask / Query Builder chips): facts first, no totals of prices, lookup tables get counts
 store.insert("columns_meta", {"dataset_id": p["id"], "name": "category", "dtype": "VARCHAR", "distinct_count": 4})

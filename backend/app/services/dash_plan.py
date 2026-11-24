@@ -186,6 +186,12 @@ def plan(dataset_id: str, template: str, focus: str, understanding: str, answers
         context.append("The user answered:\n" + "\n".join(f"- {q}: {a}" for q, a in answers.items() if a))
     if focus.strip():
         context.append(f"The user's focus: {focus.strip()[:400]}")
+    from .semantic import applicable_metric_lines
+    defined = applicable_metric_lines(dataset_id, ds.get("physical_name") or ds["name"])
+    if defined:
+        context.append("The user's DEFINED key numbers (use exactly these formulas and filters whenever the widget shows that "
+                       "measure, and keep their filters in breakdowns and trends of it; title the KPI with the defined name):\n"
+                       + "\n".join(defined))
 
     from .dash_pages import plan_in_parallel, revise_pages   # lazy: dash_pages imports this module
     page_list = None
@@ -203,7 +209,8 @@ def plan(dataset_id: str, template: str, focus: str, understanding: str, answers
         else:
             result = ev
     specs, pages, thinking = result["specs"], result["pages"], result["notes"]
-    model_name = f"{clean_title(ds['name'])} Dashboard" if template == "auto" else f"{clean_title(ds['name'])} {tpl['name']}"
+    base = clean_title(re.sub(r"_?\d{8,}", "", ds["name"]))   # no timestamps in a dashboard name
+    model_name = f"{base} Dashboard" if template == "auto" else f"{base} {tpl['name']}"
 
     page_name = {p["id"]: p["name"] for p in pages}
     seen: set[str] = set()

@@ -32,7 +32,7 @@ export function AlertForm({ datasets, onCreated }: { datasets: Dataset[]; onCrea
         </SelectField>
         <div className="md:col-span-2">
           <TextArea label="Metric SQL" value={form.metric_sql} onChange={(v) => set({ metric_sql: v })} rows={2}
-            placeholder="SELECT COUNT(*) FROM ds_sample_sales WHERE status='refunded'" />
+            placeholder="SELECT COUNT(*) FROM orders WHERE status='refunded'" />
           <p className="mt-1 text-xs text-muted-foreground">A single SELECT returning one numeric value.</p>
         </div>
         <SelectField label="Operator" value={form.operator} onChange={(e) => set({ operator: e.target.value })}>
