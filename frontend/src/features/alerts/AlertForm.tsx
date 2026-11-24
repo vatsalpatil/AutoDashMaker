@@ -15,8 +15,10 @@ export function AlertForm({ datasets, onCreated }: { datasets: Dataset[]; onCrea
   const set = (patch: Partial<typeof EMPTY>) => setForm((f) => ({ ...f, ...patch }));
   useEffect(() => { if (!form.dataset_id && datasets.length > 0) set({ dataset_id: datasets[0].id }); }, [datasets, form.dataset_id]);
 
+  const [note, setNote] = useState<string | null>(null);
   const [create, { busy, error }] = useAsyncAction(async () => {
-    await api.post('/alerts', { ...form, threshold: Number(form.threshold), schedule_minutes: Number(form.schedule_minutes) });
+    const saved = await api.post<{ note?: string }>('/alerts', { ...form, threshold: Number(form.threshold), schedule_minutes: Number(form.schedule_minutes) });
+    setNote(saved.note ?? null);   // e.g. the text value's spelling was matched to the data
     set({ name: '', metric_sql: '', threshold: '' });
     onCreated();
   });
@@ -25,6 +27,7 @@ export function AlertForm({ datasets, onCreated }: { datasets: Dataset[]; onCrea
     <Card padding={4}>
       <h2 className="mb-3 font-semibold">Create alert</h2>
       <ErrorBanner message={error} />
+      {note && <p className="mb-3 rounded-lg bg-info/10 px-3 py-2 text-sm text-info">Alert saved. {note}</p>}
       <div className="grid gap-3 md:grid-cols-2">
         <TextInput label="Name" value={form.name} onChange={(v) => set({ name: v })} placeholder="e.g. Refund spike" />
         <SelectField label="Dataset" value={form.dataset_id} onChange={(e) => set({ dataset_id: e.target.value })}>

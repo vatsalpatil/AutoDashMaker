@@ -30,6 +30,17 @@ def _check(body: AlertIn):
         validate_readonly(body.metric_sql, 1)
     except UnsafeQueryError as e:
         raise HTTPException(400, f"metric_sql must be a safe read-only SELECT: {e}")
+    from ..services import value_guard
+    from ..services.alerts import measure
+    # 'present' when the data says 'Present' would silently measure 0 and raise false alarms: use the data's spelling
+    fixed = value_guard.fix_literal_case(body.metric_sql)
+    note = "Matched your text values to the data's exact spelling (upper/lower case)." if fixed else None
+    if fixed:
+        body.metric_sql = fixed
+    _, error = measure(body.metric_sql)   # test-run once, so a broken query is caught when saving, not at 3 am
+    if error:
+        raise HTTPException(400, error)
+    return note
 
 
 @router.get("")
@@ -39,8 +50,9 @@ def list_alerts():
 
 @router.post("")
 def create_alert(body: AlertIn):
-    _check(body)
-    return store.insert("alerts", {"workspace_id": DEFAULT_WS, **body.model_dump()})
+    note = _check(body)
+    a = store.insert("alerts", {"workspace_id": DEFAULT_WS, **body.model_dump()})
+    return {**a, "note": note} if note else a
 
 
 @router.patch("/{alert_id}")

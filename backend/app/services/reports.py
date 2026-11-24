@@ -18,9 +18,11 @@ from ..core.store import DEFAULT_WS, store
 from .engine import engine
 from ..core import tenant
 
+from . import sql_errors
+
 log = logging.getLogger("reports")
 KEEP_RUNS = 10
-MAX_ROWS = 100_000
+MAX_ROWS = 250_000
 
 
 def reports_dir() -> Path:
@@ -44,10 +46,12 @@ def run_report(report: dict[str, Any]) -> dict[str, Any]:
     try:
         result = engine.execute(report["sql"], row_limit=MAX_ROWS)
         file_name = _write_csv(report, result)
+        cut = result["row_count"] >= MAX_ROWS   # the query has more rows than one file keeps: say so, never silently
         run = {"report_id": report["id"], "status": "ok", "row_count": result["row_count"], "file_name": file_name,
-               "message": f"{report['name']}: {result['row_count']:,} rows"}
+               "message": f"{report['name']}: {result['row_count']:,} rows" + (
+                   f" (only the first {MAX_ROWS:,}: add a filter or GROUP BY to export everything)" if cut else "")}
     except Exception as e:  # report SQL can break when a dataset changes: record it instead of killing the scheduler
-        run = {"report_id": report["id"], "status": "error", "row_count": 0, "file_name": "", "message": f"{report['name']} failed: {e}"}
+        run = {"report_id": report["id"], "status": "error", "row_count": 0, "file_name": "", "message": f"{report['name']} failed: {sql_errors.friendly(str(e))[:300]}"}
     saved = store.insert("report_runs", run)
     store.update("reports", report["id"], {"last_run_at": datetime.now(timezone.utc), "last_status": run["status"], "last_rows": run["row_count"]})
     store.insert("notifications", {"workspace_id": DEFAULT_WS, "alert_id": None, "message": f"Report ready — {run['message']}" if run["status"] == "ok" else run["message"]})

@@ -29,19 +29,42 @@ OPERATORS = {
 }
 
 
-def evaluate_alert(alert: dict[str, Any]) -> dict[str, Any]:
-    """Run the metric query once and evaluate the rule."""
-    result = engine.execute(alert["metric_sql"], row_limit=1)
-    if result["row_count"] == 0:
-        return {"status": "error", "message": "metric query returned no rows", "value": None}
+def measure(sql: str) -> tuple[float | None, str | None]:
+    """The metric query's single number, or why it can't be used (said so a person can fix the SQL)."""
+    from . import sql_errors
     try:
-        value = float(result["rows"][0][result["columns"][0]])
+        result = engine.execute(sql, row_limit=2)
+    except Exception as e:  # noqa: BLE001 - a broken query is a failed check, not a crash
+        return None, sql_errors.friendly(str(e))[:300]
+    if result["row_count"] == 0:
+        return None, "The query returned no rows. Use an aggregate such as COUNT(*) or SUM(...) so it always returns one number."
+    if result["row_count"] > 1:
+        return None, "The query returned several rows. An alert needs one number: use COUNT / SUM / AVG without GROUP BY."
+    raw = result["rows"][0][result["columns"][0]]
+    if raw is None:
+        return None, "The query returned an empty value (NULL), e.g. SUM over no rows. Wrap it: COALESCE(SUM(...), 0)."
+    try:
+        return float(raw), None
     except (TypeError, ValueError):
-        return {"status": "error", "message": "metric query must return a single numeric value", "value": None}
+        return None, f"The query returned text ('{str(raw)[:40]}'), not a number."
+
+
+def _failed(alert: dict[str, Any], msg: str) -> dict[str, Any]:
+    run = store.insert("alert_runs", {"alert_id": alert["id"], "value": None, "previous_value": alert.get("last_value"),
+                                      "status": "error", "message": msg})
+    store.update("alerts", alert["id"], {"last_run_at": datetime.now(timezone.utc), "last_status": "error"})
+    return run
+
+
+def evaluate_alert(alert: dict[str, Any]) -> dict[str, Any]:
+    """Run the metric query once and evaluate the rule. A query that fails is recorded as an error run."""
+    value, error = measure(alert["metric_sql"])
+    if error:
+        return _failed(alert, error)
 
     op = OPERATORS.get(alert["operator"])
     if not op:
-        return {"status": "error", "message": f"unknown operator {alert['operator']}", "value": value}
+        return _failed(alert, f"unknown operator {alert['operator']}")
 
     prev = alert.get("last_value")
     triggered = op(value, alert["threshold"], prev) if alert["operator"].startswith("pct_") else op(value, alert["threshold"])
