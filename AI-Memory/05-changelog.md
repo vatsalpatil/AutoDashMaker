@@ -446,3 +446,4 @@ Format: `YYYY-MM-DD · tool · files · what + why`
 - 2026-11-24 · services/rel_suggest, test_rel_suggest, test_errors · Relationship suggestions skip many-to-many pairs (neither side unique) and copies of the same file.
 - 2026-11-24 · connectors/paging(new), stream(new), rest, base, web, registry, routers/datasources, sourceSchemas.ts, requirements, test_connectors_paging(new), Plan/connectors-control.md(new) · REST pagination (page-1 record path locked: 194 not 237 rows), WebSocket stream source, 400 for unknown types, unique URL downloads, httpx noise trimmed from errors.
 - 2026-11-24 · services/sql_errors, queries, monitor/alerts, test_sql_errors · Unknown column suggestions come from the query's own tables (was: any dataset's column).
+- 2026-11-24 · charts/render/TimeBreakdownTable · Time breakdown table: plain <table> so the box owns both scrolls — horizontal scrollbar, header and Total row stay pinned to the box; header + Total tinted (bg-muted).

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, Minus, Plus, Search } from 'lucide-react';
 import { SelectField } from '@/components/common/SelectField';
-import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import type { ChartSpec, QueryResult } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { AVERAGED, CALCS, aggregate, type Agg } from '../chartData';
@@ -92,9 +92,10 @@ export function TimeBreakdownCore({ spec, result, o }: { spec: ChartSpec; result
           <input value={q} onChange={(e) => { setQ(e.target.value); setPage(0); }} placeholder={`Search ${item}`} aria-label="Search rows" className="h-8 w-44 rounded-md border bg-transparent pl-7 pr-2 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring/50" />
         </label>
       </div>
-      <div className="min-h-0 flex-1 overflow-auto rounded-md border">
-        <Table className={cn('tabular-nums', o.tableFontSize === 'xs' ? 'text-xs' : 'text-sm')}>
-          <TableHeader className="sticky top-0 z-10 bg-card">
+      <div className="min-h-0 flex-1 overflow-auto overscroll-contain rounded-md border">
+        {/* plain table (not ui/Table): its own overflow wrapper would own the scroll, so the scrollbar and sticky header/total would not stick to this box */}
+        <table className={cn('w-full caption-bottom tabular-nums', o.tableFontSize === 'xs' ? 'text-xs' : 'text-sm')}>
+          <TableHeader className="sticky top-0 z-20 bg-muted shadow-[0_1px_0_var(--border)] [&_th]:bg-muted">
             {(open.size > 0 || split) && (
               <TableRow>
                 <TableHead colSpan={lead} />
@@ -107,7 +108,7 @@ export function TimeBreakdownCore({ spec, result, o }: { spec: ChartSpec; result
               </TableRow>
             )}
             <TableRow>
-              <TableHead className={cn(pad, 'sticky left-0 bg-card font-semibold')}>{sortBtn('', item.replace(/_/g, ' '), false)}</TableHead>
+              <TableHead className={cn(pad, 'sticky left-0 z-10 bg-muted font-semibold')}>{sortBtn('', item.replace(/_/g, ' '), false)}</TableHead>
               {shownAttrs.map((a) => <TableHead key={a} className={cn(pad, 'font-semibold')}>{sortBtn(a, a.replace(/_/g, ' '), false)}</TableHead>)}
               {vcols.map((c) => (
                 <TableHead key={c.key} className={cn(pad, 'whitespace-nowrap text-right font-semibold', c.level !== 'day' && 'border-l', c.total && 'bg-muted/50')}>
@@ -133,14 +134,14 @@ export function TimeBreakdownCore({ spec, result, o }: { spec: ChartSpec; result
               </TableRow>
             ))}
           </TableBody>
-          <TableFooter className="sticky bottom-0 bg-muted">
+          <TableFooter className="sticky bottom-0 z-20 border-t-0 bg-muted shadow-[0_-1px_0_var(--border)] [&_td]:bg-muted">
             <TableRow>
-              <TableCell colSpan={lead} className={cn(pad, 'sticky left-0 bg-muted font-semibold')}>Total</TableCell>
+              <TableCell colSpan={lead} className={cn(pad, 'sticky left-0 z-10 bg-muted font-semibold')}>Total</TableCell>
               {vcols.map((c) => <TableCell key={c.key} className={cn(pad, 'text-right font-semibold', c.level !== 'day' && 'border-l')}>{fmtV(footerValue(rows, c.key, fn))}</TableCell>)}
               <TableCell className={cn(pad, 'border-l text-right font-semibold')}>{fmtV(footerValue(rows, '__total', fn))}</TableCell>
             </TableRow>
           </TableFooter>
-        </Table>
+        </table>
       </div>
       <div className="flex shrink-0 flex-wrap items-center gap-2 text-xs text-muted-foreground">
         <span>{rows.length.toLocaleString()} rows</span>
