@@ -38,6 +38,11 @@ USER-ONLY: purge `backend/data/*.duckdb` from git history (holds the OpenRouter 
 Dashboard filters, sharing · model routing (cheap vs strong) · MCP/agent API · query cost estimate · UI for audit log + source health ·
 persist refresh backoff across restarts · eval benchmark for NL→SQL · semantic-model versioning · scheduled reports · per-user quotas/admin role (auth + per-user isolation DONE 2026-10-07) · background jobs/embeddings.
 
+## 2026-11-24 multi-project QA campaign (see sessions/2026-11-24-ten-project-campaign.md)
+- Live account at the 20-dataset limit: 7 of 10 test projects not uploaded until the owner raises it (Admin → user limits).
+- Next: developer-experience plan in `Plan/developer-experience.md` (pytest fixtures → OpenAPI client → typed repos → domain packages).
+- Open: AI generator can put many KPIs on one page (18 → review 86/100); combined datasets are still snapshots.
+
 ## Known bugs / risks
 - (fixed 2026-10-01) `services/alerts.py::evaluate_alert` crashed with "cannot access local variable 'value'" — see changelog.
 - OPEN (needs user decision): `backend/data/*.duckdb` are tracked in git history (baseline + M1-M5b commits) and `metadata.duckdb` holds an AI provider API key. No remote exists, so nothing has leaked; purge history before ever pushing (a history rewrite was declined by the permission system, so it was left for the user).
