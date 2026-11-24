@@ -41,7 +41,11 @@ async def upload(file: UploadFile, name: str | None = Form(None), folder: str | 
         quota.check_dataset_count()
         quota.ensure_fits(file.size or 0)
     except ConnectorError as e:
-        raise HTTPException(507, str(e))
+        from ..core.errors import AppError
+        from ..services.quota import QuotaExceeded
+        if isinstance(e, QuotaExceeded):   # the account's limit, not a broken server: 409 + a code the UI can act on
+            raise AppError(409, str(e), code="quota.limit", hint="Delete datasets you no longer need, or ask an admin to raise your limit.")
+        raise AppError(507, str(e), code="storage.full")
     dest = tenant.upload_dir() / filename
     try:
         _save_capped(file, dest)

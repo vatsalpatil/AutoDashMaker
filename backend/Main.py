@@ -41,6 +41,8 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title=settings.app_name, version="2.0.0", lifespan=lifespan)
+from app.core import errors as _errors  # noqa: E402
+_errors.install(app)   # every error: {detail, code, hint?}
 
 app.add_middleware(ApiGZipMiddleware, minimum_size=1024)
 app.add_middleware(MaintenanceMiddleware)  # backoffice maintenance switch: 503 for everyone but admins

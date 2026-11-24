@@ -21,18 +21,31 @@ async function request<T>(method: string, path: string, body?: unknown, isForm =
   const res = await authFetch(`${BASE}${path}`, init);
   if (!res.ok) {
     let detail = statusMessage(res.status, res.statusText);
+    let code: string | undefined;
+    let hint: string | undefined;
     try {
       const data = await res.json();
       if (typeof data?.detail === 'string') detail = data.detail;
       else if (Array.isArray(data?.detail)) detail = data.detail.map((d: { msg?: string }) => d.msg ?? JSON.stringify(d)).join('; ');
+      code = data?.code;
+      hint = data?.hint;
     } catch {
       /* keep default */
     }
-    throw new Error(detail);
+    throw new ApiError(hint ? `${detail} ${hint}` : detail, res.status, code);
   }
   if (!isRead(method, path)) writeListeners.forEach((fn) => fn());
   if (res.status === 204) return undefined as T;
   return (await res.json()) as T;
+}
+
+/** Every failed call: the plain message plus the HTTP status and the backend's stable `code` (e.g. 'quota.limit'),
+ *  so screens can react to `err.code` instead of matching English text. */
+export class ApiError extends Error {
+  constructor(message: string, readonly status: number, readonly code?: string) {
+    super(message);
+    this.name = 'ApiError';
+  }
 }
 
 /** Plain-language text for HTTP failures that carry no message of their own (gateway errors during a deploy, etc.). */

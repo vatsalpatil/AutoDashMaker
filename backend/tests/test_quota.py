@@ -73,6 +73,6 @@ refused(lambda: up("big.csv", "x\n" + "1234567890\n" * 120_000), 413)          #
 assert not os.path.exists(os.path.join(tmp, "uploads", "big.csv"))
 refused(lambda: up("rows.csv", csv), 400)                                          # 2000 rows > 1500 cap
 up("second.csv", "a\n1\n")
-refused(lambda: up("third.csv", "a\n1\n"), 507)                                    # dataset count cap (2)
+refused(lambda: up("third.csv", "a\n1\n"), 409)                                    # dataset count cap (2)
 assert len(store.list("datasets", order=None)) == 2
 print("quota + parquet storage tests OK")

@@ -65,6 +65,9 @@ class ActivityMiddleware:
         async def _send(msg):
             if msg["type"] == "http.response.start":
                 status[0] = msg["status"]
+                # time to first byte, visible in the browser's network panel (Timing tab)
+                dur = round((time.perf_counter() - t0) * 1000, 1)
+                msg = {**msg, "headers": [*msg.get("headers", []), (b"server-timing", f"app;dur={dur}".encode())]}
             await send(msg)
 
         try:
