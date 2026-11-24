@@ -22,7 +22,12 @@ def _unique(col: dict, rows: int | None) -> bool:
     return bool(rows) and d >= 0.98 * rows and d > 1
 
 
+_NUMBER = re.compile(r"INT|NUMERIC", re.I)
+
+
 def _keyish(col: dict, rows: int | None) -> bool:
+    if _NUMBER.search(col.get("dtype") or "") and not _KEYNAME.search(col["name"]):
+        return False   # a unique price or amount is not a key: numbers need an id-like name
     # in a tiny table every column looks unique (2 regions in 2 rows): uniqueness alone needs some size to mean "key"
     return bool(_KEYNAME.search(col["name"])) or (_unique(col, rows) and (col.get("distinct_count") or 0) >= 20)
 

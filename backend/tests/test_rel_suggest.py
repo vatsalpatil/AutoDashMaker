@@ -27,6 +27,11 @@ def ds(name, table, rows, folder, cols):
 
 ds("dept", "ds_dept", 2, "HR", [("dept_id", "VARCHAR", 2), ("region", "VARCHAR", 2)])
 ds("emp", "ds_emp", 3, "HR", [("emp_id", "VARCHAR", 3), ("dept_id", "VARCHAR", 2), ("region", "VARCHAR", 2), ("hours", "DOUBLE", 2)])
+with engine.writer() as con:   # a unique price shared by two tables is not a key
+    con.execute("CREATE TABLE ds_p1 AS SELECT range AS unit_cost FROM range(30)")
+    con.execute("CREATE TABLE ds_p2 AS SELECT range AS unit_cost FROM range(30)")
+ds("p1", "ds_p1", 30, "A", [("unit_cost", "BIGINT", 30)])
+ds("p2", "ds_p2", 30, "B", [("unit_cost", "BIGINT", 30)])
 ds("other", "ds_other", 1, "Sales", [("dept_id", "VARCHAR", 1), ("region", "VARCHAR", 1), ("hours", "DOUBLE", 1)])
 store.insert("datasets", {"name": "blend", "physical_name": "ds_emp", "row_count": 3, "kind": "blend"})
 

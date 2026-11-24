@@ -74,7 +74,8 @@ def resolve(sql: str) -> str:
             return sql
         import sqlglot
         from sqlglot import exp
-        tree = sqlglot.parse_one(sql, read="duckdb")
+        from ..core.security import wrap_pivot
+        tree = sqlglot.parse_one(wrap_pivot(sql), read="duckdb")   # a PIVOT statement too
         ctes = {c.alias.lower() for c in tree.find_all(exp.CTE) if c.alias}
 
         def swap(node):

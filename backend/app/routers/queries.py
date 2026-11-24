@@ -126,7 +126,7 @@ def run_query(body: QueryIn):
         audit.record("query.run", detail=f"{body.sql} -- {e}", status="error")
         raise HTTPException(400, sql_errors.friendly(str(e))[:500])
     audit.record("query.run", detail=result["sql"], duration_ms=result["duration_ms"])
-    if not result.get("row_count"):
+    if not result.get("row_count") or result.get("row_count") == 1:   # 0 rows, or a total like count(*) = 0
         hint = _case_hint(result["sql"])
         if hint:
             result = {**result, "warnings": [*(w for w in result.get("warnings") or [] if not w.startswith("empty_result")), hint]}
@@ -151,7 +151,7 @@ def _case_hint(sql: str) -> str | None:
     pairs = [(a, b) for a, b in zip(lits(sql), lits(fixed)) if a != b]
     if not pairs:
         return None
-    return "No rows: text matches are case-sensitive. " + "; ".join(f"did you mean '{b}' instead of '{a}'?" for a, b in pairs[:3])
+    return "Text matches are case-sensitive, so this filter matches nothing. " + "; ".join(f"did you mean '{b}' instead of '{a}'?" for a, b in pairs[:3])
 
 
 class CellIn(BaseModel):

@@ -53,6 +53,11 @@ from app.routers.queries import QueryIn, run_query
 r = run_query(QueryIn(sql="SELECT * FROM orders WHERE status = 'completed'", save=False))
 assert r["row_count"] == 0 and any("did you mean 'Completed'" in w for w in r["warnings"]), r["warnings"]
 assert not any(w.startswith("empty_result") for w in r["warnings"])
+r = run_query(QueryIn(sql="SELECT count(*) AS n FROM orders WHERE status = 'completed'", save=False))   # a total of 0
+assert r["rows"][0]["n"] == 0 and any("did you mean 'Completed'" in w for w in r["warnings"]), r["warnings"]
+# a PIVOT statement can use dataset names like any query
+r = run_query(QueryIn(sql="PIVOT orders ON status USING sum(amount) ORDER BY 1", save=False))
+assert sum(float(x["Completed"] or 0) for x in r["rows"]) == 150.0, r["rows"]
 # Ask shows dataset names as sources, not ds_ tables
 assert analyst._shown_tables(["ds_orders"]) == ["orders"]
 # a key number defined on one dataset applies to another with the same columns (e.g. a fresh combine)
