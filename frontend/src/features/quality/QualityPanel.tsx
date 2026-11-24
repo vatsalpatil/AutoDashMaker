@@ -6,6 +6,7 @@ import { useAsyncAction } from '@/hooks/useAsyncAction';
 import { api } from '@/lib/api';
 import type { QualityRun } from '@/lib/types';
 import { QualityBadge } from '@/pages/QualityBadge';
+import { QualityIssues, type QualityIssue } from './QualityIssues';
 
 type ColumnStat = { name: string; null_pct: number; distinct: number };
 const SCORES = ['completeness', 'uniqueness', 'validity'] as const;
@@ -16,7 +17,8 @@ export function QualityPanel({ datasetId }: { datasetId: string }) {
   const [run, { busy, error: runError }] = useAsyncAction(async () => { await api.post(`/quality/run/${datasetId}`); reload(); });
 
   const [latest, previous] = runs ?? [];
-  const columns = ((latest?.details as { columns?: ColumnStat[] } | undefined)?.columns ?? [])
+  const details = latest?.details as { columns?: ColumnStat[]; issues?: QualityIssue[] } | undefined;
+  const columns = (details?.columns ?? [])
     .slice().sort((a, b) => b.null_pct - a.null_pct);
   const delta = (k: (typeof SCORES)[number]) => {
     const d = latest && previous ? Number(latest[k]) - Number(previous[k]) : NaN;
@@ -48,6 +50,7 @@ export function QualityPanel({ datasetId }: { datasetId: string }) {
             <Stat label="Freshness" value={String(latest.freshness ?? '—')} />
             <Stat label="Rows" value={latest.row_count?.toLocaleString() ?? '—'} />
           </div>
+          {details?.issues && <QualityIssues issues={details.issues} />}
           {columns.length > 0 && (
             <div className="mt-4 overflow-hidden rounded-lg border">
               <div className="grid grid-cols-[1fr_6rem_6rem] border-b bg-muted/40 px-3 py-1.5 text-xs font-medium uppercase text-muted-foreground">

@@ -234,29 +234,9 @@ def delete_relationship(rel_id: str):
 
 @router.get("/relationships/suggest")
 def suggest_relationships():
-    """Auto-suggest join keys: same column name + compatible dtype across datasets."""
-    # a blend already contains the tables it was joined from: linking it back to them would double-count
-    datasets = [d for d in store.list("datasets", order=None) if d.get("kind") != "blend"]
-    suggestions = []
-    for i, a in enumerate(datasets):
-        cols_a = store.list("columns_meta", where="dataset_id = ?", params=[a["id"]], order=None)
-        for b in datasets[i + 1:]:
-            cols_b = store.list("columns_meta", where="dataset_id = ?", params=[b["id"]], order=None)
-            b_by_name = {c["name"]: c for c in cols_b}
-            for ca in cols_a:
-                cb = b_by_name.get(ca["name"])
-                if cb and ca["dtype"] == cb["dtype"]:
-                    suggestions.append({
-                        "left_dataset_id": a["id"], "left_dataset": a["name"],
-                        "left_column": ca["name"],
-                        "right_dataset_id": b["id"], "right_dataset": b["name"],
-                        "right_column": cb["name"], "dtype": ca["dtype"],
-                    })
-    # exclude already-declared relationships
-    existing = {(r["left_dataset_id"], r["left_column"], r["right_dataset_id"], r["right_column"])
-                for r in store.list("relationships", order=None)}
-    return [s for s in suggestions
-            if (s["left_dataset_id"], s["left_column"], s["right_dataset_id"], s["right_column"]) not in existing]
+    """Likely join keys (key-like columns whose values overlap), same-folder pairs first: services/rel_suggest.py."""
+    from ..services import rel_suggest
+    return rel_suggest.suggest()
 
 
 @router.get("/snippets")

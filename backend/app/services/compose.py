@@ -24,10 +24,11 @@ def _clean(sql: str) -> str:
 
 
 def _parse(sql: str, what: str) -> exp.Query:
+    from ..core.security import plain_error, wrap_pivot
     try:
-        tree = sqlglot.parse_one(sql, read=DIALECT)
+        tree = sqlglot.parse_one(wrap_pivot(sql), read=DIALECT)
     except Exception as e:
-        raise ValueError(f"{what} does not parse: {str(e)[:200]}") from e
+        raise ValueError(f"{what} does not parse: {plain_error(e)[:200]}") from e
     if not isinstance(tree, exp.Query):
         raise ValueError(f"{what} must be a SELECT query")
     return tree

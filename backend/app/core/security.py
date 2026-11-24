@@ -74,15 +74,50 @@ def _forbid_external_access(tree: exp.Expression) -> None:
 _WRITE_VERB = re.compile(r"\s*(drop|delete|insert|update|alter|create|truncate|merge|copy|attach|detach|grant|revoke)\b", re.I)
 
 
+_ANSI = re.compile(r"\x1b\[[0-9;]*m")
+
+
+def plain_error(e: Exception) -> str:
+    """A parser error without terminal colour codes, first line only."""
+    return _ANSI.sub("", str(e)).splitlines()[0] if str(e) else type(e).__name__
+
+
+def _top_level_tail(sql: str) -> int:
+    """Index where a trailing top-level ORDER BY / LIMIT starts (outside brackets and quotes), else len(sql)."""
+    depth, quote, cut = 0, "", len(sql)
+    for i, ch in enumerate(sql):
+        if quote:
+            quote = "" if ch == quote else quote
+        elif ch in "'\"":
+            quote = ch
+        elif ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+        elif depth == 0 and cut == len(sql) and re.match(r"\s(ORDER\s+BY|LIMIT)\b", sql[i:], re.I):
+            cut = i
+    return cut
+
+
+def wrap_pivot(sql: str) -> str:
+    """DuckDB's statement form `PIVOT t ON c USING agg(...) [GROUP BY ..] [ORDER BY ..] [LIMIT ..]` as an ordinary SELECT
+    (`SELECT * FROM (PIVOT ...) ORDER BY ...`): same result, and sqlglot can parse and check it. Anything else is unchanged."""
+    s = sql.strip().rstrip(";").strip()
+    if not re.match(r"(?i)(UN)?PIVOT\b", s):
+        return sql
+    cut = _top_level_tail(s)
+    return f"SELECT * FROM ({s[:cut].strip()}){(' ' + s[cut:].strip()) if cut < len(s) else ''}"
+
+
 def validate_readonly(sql: str, row_limit: int) -> str:
     """Return a safe, limited SQL string or raise UnsafeQueryError."""
-    sql = sql.strip().rstrip(";")
+    sql = wrap_pivot(sql.strip().rstrip(";"))
     try:
-        statements = [s for s in sqlglot.parse(sql) if s is not None]
+        statements = [s for s in sqlglot.parse(sql, read="duckdb") if s is not None]
     except Exception as e:
         if _WRITE_VERB.match(sql):
             raise UnsafeQueryError("Only read-only queries (SELECT / WITH) are allowed") from e
-        msg = re.sub(r"\x1b\[[0-9;]*m", "", str(e)).splitlines()[0]
+        msg = plain_error(e)
         raise UnsafeQueryError(f"SQL does not parse: {msg}") from e
 
     if len(statements) != 1:

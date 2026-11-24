@@ -1,4 +1,4 @@
-"""Data-quality scoring: completeness, uniqueness, duplicate rate, freshness."""
+"""Data-quality scoring: completeness, uniqueness, duplicate rate, validity (quality_rules), freshness."""
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -21,6 +21,9 @@ def run_quality_check(dataset: dict[str, Any]) -> dict[str, Any]:
             f"(SELECT COUNT(*) FROM (SELECT DISTINCT * FROM s) d)"
         ).fetchone() if n else (0, 0)
         dup_rows = total - distinct_n
+        from . import quality_rules
+        sample = f"(SELECT * FROM {remote.table_ref(table)} LIMIT 100000) s"
+        issues = quality_rules.check(con, sample, schema["columns"]) if n else []
 
     # completeness: fraction of non-null cells (weighted over first 50 cols)
     cols = schema["columns"]
@@ -29,7 +32,7 @@ def run_quality_check(dataset: dict[str, Any]) -> dict[str, Any]:
     )
     duplicate_pct = round(dup_rows / total * 100, 2) if total else 0
     uniqueness = round(100 - duplicate_pct, 1)
-    validity = _validity_heuristic(cols)
+    validity = quality_rules.score(issues, total, len(cols))
 
     created = dataset.get("created_at")
     freshness = _freshness(created)
@@ -46,18 +49,11 @@ def run_quality_check(dataset: dict[str, Any]) -> dict[str, Any]:
             "columns": [
                 {"name": c["name"], "null_pct": c["null_pct"], "distinct": c["distinct_count"]}
                 for c in cols
-            ]
+            ],
+            "issues": issues,
         },
     })
     return run
-
-
-def _validity_heuristic(cols: list[dict]) -> float:
-    """Crude validity proxy: numeric/date columns with at least one distinct value."""
-    if not cols:
-        return 100.0
-    ok = sum(1 for c in cols if c["distinct_count"] > 0)
-    return round(ok / len(cols) * 100, 1)
 
 
 def _freshness(created_at) -> str:
