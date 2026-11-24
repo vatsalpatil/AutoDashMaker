@@ -199,7 +199,7 @@ def blend_many(body: BlendManyIn):
         raise HTTPException(400, str(e))
     except Exception as e:  # noqa: BLE001
         raise HTTPException(400, str(e)[:400])
-    return {**ds, "used": p["used"], "skipped": p["skipped"]}
+    return {**ds, "used": p["used"], "skipped": p["skipped"], "auto_links": p.get("auto_links", [])}
 
 
 # ------------------------------------------------------------- relationships

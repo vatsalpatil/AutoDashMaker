@@ -1,4 +1,6 @@
 """Join several datasets into one analysis table along the saved relationships (for the dashboard generator & co).
+Tables with no saved relationship are linked by their obvious keys (rel_suggest: same key name, overlapping values) and
+those links are reported as `auto_links`.
 
 Start from the biggest selected table (usually the facts, e.g. order_items) and walk the relationship graph outward,
 LEFT JOINing each neighbour **only if its join key is unique** on that side (many-to-one). A one-to-many neighbour
@@ -34,6 +36,14 @@ def plan(dataset_ids: list[str]) -> dict[str, Any]:
     by_id = {d["id"]: d for d in ds}
     edges = [r for r in store.list("relationships", order=None)
              if r["left_dataset_id"] in by_id and r["right_dataset_id"] in by_id]
+    linked = {i for r in edges for i in (r["left_dataset_id"], r["right_dataset_id"])}
+    auto: list[str] = []
+    if len(linked) < len(ds):   # tables nobody linked yet: use the obvious keys (same key name, values that match)
+        from .rel_suggest import suggest
+        for s in suggest(set(by_id)):
+            if s["left_dataset_id"] not in linked or s["right_dataset_id"] not in linked:
+                edges.append(s)
+                auto.append(f"{s['left_dataset']}.{s['left_column']} = {s['right_dataset']}.{s['right_column']}")
     links = {d["id"]: sum(d["id"] in (r["left_dataset_id"], r["right_dataset_id"]) for r in edges) for d in ds}
     base = max(ds, key=lambda d: (links[d["id"]] > 0, d.get("row_count") or 0, links[d["id"]]))   # a linked facts table
     alias = {base["id"]: "t0"}
@@ -67,9 +77,9 @@ def plan(dataset_ids: list[str]) -> dict[str, Any]:
                 frontier.append(there)
     for d in ds:
         if d["id"] not in alias and d["name"] not in skipped:
-            skipped[d["name"]] = "no saved relationship links it to the others (add one in Data Sources → Relationships)"
+            skipped[d["name"]] = "no shared key links it to the others (add a relationship in Data Sources → Relationships)"
     used = [by_id[i]["name"] for i in alias]
     if len(used) < 2:
         raise BlendError("these datasets can't be combined row by row: " + "; ".join(f"{k}: {v}" for k, v in skipped.items()))
     sql = f"SELECT {', '.join(selects)} FROM {base['physical_name']} AS t0 " + " ".join(joins)
-    return {"sql": sql, "used": used, "skipped": [{"name": k, "reason": v} for k, v in skipped.items()]}
+    return {"sql": sql, "used": used, "skipped": [{"name": k, "reason": v} for k, v in skipped.items()], "auto_links": auto}

@@ -39,7 +39,7 @@ out = blend_many(BlendManyIn(name="sales_combined", dataset_ids=[d["id"] for d i
 assert out["row_count"] == 3, out          # one row per order line: nothing multiplied
 assert sorted(out["used"]) == ["customers", "order_items", "orders", "products"], out["used"]
 skipped = {s["name"]: s["reason"] for s in out["skipped"]}
-assert "inflate" in skipped["sales_targets"] and "no saved relationship" in skipped["unrelated"], skipped
+assert "inflate" in skipped["sales_targets"] and "no shared key" in skipped["unrelated"], skipped
 rows = engine.execute(f"SELECT * FROM {out['physical_name']} ORDER BY order_id, product_id", 10)
 cols = rows["columns"]
 assert {"status", "unit_price", "region", "name", "customers_name"} <= set(cols), cols   # clashing 'name' prefixed
@@ -56,4 +56,21 @@ class Bare:
     def __init__(self, c): self.c, self.description = c, c.description
     def fetchall(self): return self.c.fetchall()
 assert frame(Bare(duckdb.connect().execute("SELECT 2 AS a, 'y' AS b"))).to_dicts() == [{"a": 2, "b": "y"}]
+# tables nobody linked are joined by their obvious keys (emp_id, dept_id), reported as auto links, no double counting
+from app.services import blend_many as _bm
+with engine.writer() as con:
+    con.execute("CREATE TABLE ds_hdept AS SELECT * FROM (VALUES ('D1','Sales'),('D2','IT')) t(dept_id, dept_name)")
+    con.execute("CREATE TABLE ds_hemp AS SELECT * FROM (VALUES ('E1','D1'),('E2','D2'),('E3','D1')) t(emp_id, dept_id)")
+    con.execute("CREATE TABLE ds_hatt AS SELECT 'E' || (i % 3 + 1) AS emp_id, 8.0 AS hours FROM range(30) r(i)")
+_ids = []
+for _n, _t, _rows, _cols in [("hdept", "ds_hdept", 2, [("dept_id", 2), ("dept_name", 2)]), ("hemp", "ds_hemp", 3, [("emp_id", 3), ("dept_id", 2)]),
+                             ("hatt", "ds_hatt", 30, [("emp_id", 3), ("hours", 1)])]:
+    _d = store.insert("datasets", {"name": _n, "physical_name": _t, "row_count": _rows})
+    _ids.append(_d["id"])
+    for _c, _dc in _cols:
+        store.insert("columns_meta", {"dataset_id": _d["id"], "name": _c, "dtype": "DOUBLE" if _c == "hours" else "VARCHAR", "distinct_count": _dc})
+_p = _bm.plan(_ids)
+assert sorted(_p["used"]) == ["hatt", "hdept", "hemp"] and len(_p["auto_links"]) >= 2, _p
+_r = engine.execute(f"SELECT count(*) AS n, sum(hours) AS h, count(dept_name) AS named FROM ({_p['sql']})", 1)["rows"][0]
+assert (_r["n"], _r["h"], _r["named"]) == (30, 240.0, 30), _r
 print("test_blend_many OK")
