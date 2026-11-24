@@ -20,13 +20,14 @@ from app.core.config import settings
 from app.core.store import store  # noqa: F401  (initializes metadata schema)
 from app.routers import (
     datasources, dataset_meta, datasets, dataset_versions, data_tests, queries, charts, dash_ai, dashboards, quality, ai, studio, semantic,
-    alerts, why, transforms, audit, attention, reports, qb, auth, system, metrics, verify, account, shares, voice, admin, mcp, oauth, memory,
+    why, transforms, audit, attention, qb, auth, system, metrics, verify, account, shares, voice, admin, mcp, oauth, memory,
 )
 from app.services.admin.activity import ActivityMiddleware
 from app.services.admin.controls import MaintenanceMiddleware
-from app.services.alerts import scheduler_loop
+from app.domains.monitor import alerts_api as alerts, reports_api as reports
+from app.domains.monitor.alerts import scheduler_loop
 from app.services.refresh import refresh_loop
-from app.services.reports import reports_loop
+from app.domains.monitor.reports import reports_loop
 
 import asyncio
 

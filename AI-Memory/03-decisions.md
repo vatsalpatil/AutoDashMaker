@@ -65,3 +65,4 @@ TODO from the reference: dashboard-wide Day/Week/Month switch, 2-3 tables side b
 - **Landing screenshots follow the theme by CSS hue-rotate, not per-theme captures** (2026-11-03): one set of violet media, tinted live by useThemedShots in motion.ts. If media is re-recorded in another theme, update SHOT_HUE.
 
 - 2026-11-03 MCP without the SDK: hand-written stateless JSON-RPC (one POST, JSON response) — no new dependency, works behind Caddy /api/*. Tools call the REST API in-process with the user's token instead of services directly, so every guard (read-only SQL, workspace, quotas, audit) applies once. Token in URL path exists because claude.ai/ChatGPT connectors take only a URL (OAuth not built).
+- 2026-11-24 Code moves into app/domains/<name>/ one domain per change; the old module path becomes a sys.modules alias (same module object, so tests that patch old paths keep working). Catalog reads use TypedDict (zero runtime cost, dict-compatible) rather than Pydantic.

@@ -55,7 +55,8 @@ def _frontend_and_sizes() -> list[tuple[str, bool, str]]:
             ok, tail = run(cmd, FRONTEND)
             out.append((label, ok, tail))
             print(f"  {'PASS' if ok else 'FAIL'}  {label}", flush=True)
-    for label, script in (("file sizes", "check_file_sizes.py"), ("api types up to date", "gen_api_types.py")):
+    for label, script in (("file sizes", "check_file_sizes.py"), ("api types up to date", "gen_api_types.py"),
+                          ("import boundaries", "check_imports.py")):
         if (ROOT / "Scripts" / script).exists():
             ok, tail = run([sys.executable, str(ROOT / "Scripts" / script), *(["--check"] if script == "gen_api_types.py" else [])], ROOT)
             out.append((label, ok, tail))

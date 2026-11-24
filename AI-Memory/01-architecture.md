@@ -20,6 +20,12 @@ alerts scheduler (`services/alerts.py::scheduler_loop`, started in `Main.py` lif
 - `tenant.py` — per-user workspace (ContextVar), `use/run_as/all_workspaces/bind`, per-user DuckDB + upload paths. `netguard.py` — public-host check, `safe_client`, `confine_path`. `auth.py` — Supabase JWT check (async dep, pins the workspace); `routers/auth.py` `/api/auth/config|me`. `disk.py`(services) — refuse uploads above DISK_USAGE_LIMIT_PCT.
 ### connectors/ (each: test / discover / ingest; `registry.py` maps type → class, `base.py` interface)
 - `files.py` CSV/Excel/Parquet/JSON · `postgres.py` · `mysql.py` · `sqlite.py` (DuckDB read-only attach) · `rest.py` (record_path + flatten) · `web.py` (Google Sheets share link, direct URL).
+### domains/ (modular monolith, migrating from services/+routers/ one domain at a time — Plan/developer-experience.md)
+- `domains/monitor/`: `alerts.py` (measure, evaluate_alert, scheduler_loop), `reports.py` (run_report, reports_loop),
+  `alerts_api.py` / `reports_api.py` (routers). Old paths `services/alerts.py` etc. are sys.modules aliases (same module).
+- Boundaries checked by `Scripts/check_imports.py` (in verify): core imports nothing above it; no private cross-domain imports.
+- `services/catalog.py`: typed (TypedDict) batched reads — `catalog.columns_of(ids)` = one query. Use instead of store.list loops.
+
 ### services/ (business logic)
 - `data_tests.py` — dbt-style tests (`dataset_tests` table; `compile_sql/run_all/check_after_refresh`, called at the end of `ingest.refresh_dataset`, rolls back via `versions.restore`); routes `routers/data_tests.py` `/api/datasets/{id}/tests[/run|/{tid}]`, UI `features/datasets/TestsPanel`.
 - `versions.py` — dataset version history (`parquet/versions/<table>/`, KEEP=3, `snapshot/list_versions/restore_file`); routes in `routers/dataset_versions.py` (`/api/datasets/{id}/versions[/{v}/preview|/{v}/restore]`), UI `features/datasets/VersionsPanel`.
