@@ -51,6 +51,19 @@ assert len(rows) == 20 and info["truncated"], info
 
 assert paging.fetch_all(lambda u, e: ({"items": DATA[:5]}, None), ext, {})[1]["mode"] == "none"   # complete reply
 
+# through the real connector: an empty last page ({"products": [], "total": 194}) must end paging, not add wrapper rows
+from app.connectors.rest import RestConnector
+
+
+class FakeRest(RestConnector):
+    def _get(self, url=None, extra=None):
+        skip = (extra or {}).get("skip", 0)
+        return {"products": [{"id": i, "tags": ["a"]} for i in range(skip, min(skip + 30, 194))], "total": 194, "skip": skip, "limit": 30}, None
+
+
+rows, info = FakeRest({"url": "https://x"})._records()
+assert len(rows) == 194 and len({r["id"] for r in rows}) == 194, (len(rows), info)
+
 assert "For more information" not in str(ConnectorError("Client error '404'\nFor more information check: https://x"))
 
 # WebSocket: a local echo-ish server pushing JSON ticks

@@ -80,7 +80,20 @@ class RestConnector(DataConnector):
 
     def _records(self) -> tuple[list[dict], dict]:
         """Every record, following pages (connectors/paging.py)."""
-        extract = lambda d: self._extract(d, self.config.get("record_path", ""))  # noqa: E731
+        path, pages = [self.config.get("record_path", "")], [0]
+
+        def extract(d: Any) -> list[dict]:
+            # page 1 decides where the records live; later pages use that same path, so an empty last page
+            # ({"products": [], "total": 194}) ends paging instead of being auto-detected as one wrapper row
+            pages[0] += 1
+            if pages[0] == 1:
+                if not path[0].strip(".") and (found := find_records(d)) and found[0]:
+                    path[0] = found[0]
+                return self._extract(d, path[0])
+            try:
+                return self._extract(d, path[0])
+            except ConnectorError:   # the key is missing on a later page: that's the end
+                return []
         if not self.paginates or (self.config.get("pagination") or {}).get("mode") == "none" or self.config.get("method", "GET").upper() != "GET":
             return extract(self._fetch()), {"mode": "none", "pages": 1, "truncated": False}
         return paging.fetch_all(self._get, extract, self.config.get("pagination"))
