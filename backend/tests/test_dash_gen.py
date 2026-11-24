@@ -130,6 +130,7 @@ assert "100.123456" not in summ
 short = dash_gen._summary({"title": "Top", "chart": {"type": "bar"}, "columns": ["r"], "all_rows": [{"r": "N"}]})
 assert "[{'r': 'N'}]" in short
 assert dash_plan.clean_title("Total Total Profit") == "Total Profit"
+assert [dash_plan.clean_title(x) for x in ("hr_attendance_combined", "Hr Attendance", "saas kpis", "It works", "iPhone Sales")] == ["HR Attendance Combined", "HR Attendance", "SaaS KPIs", "It works", "iPhone Sales"]
 # ask_json copes with what real (free / reasoning) models do
 import time as _time
 _time.sleep = lambda *_: None

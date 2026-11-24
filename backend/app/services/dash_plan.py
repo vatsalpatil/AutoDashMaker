@@ -22,6 +22,10 @@ from ..core.store import store
 MAX_GENERATED = 40
 SEP = chr(10) * 2
 _SMALL = {"a", "an", "and", "by", "for", "in", "of", "on", "or", "per", "the", "to", "vs"}
+# exact spelling of business acronyms ("hr_attendance" -> "HR Attendance"); ambiguous words (it, us) are left alone
+_ACRONYMS = {w: w.upper() for w in ("hr", "kpi", "id", "sku", "api", "mrr", "arr", "roi", "ytd", "mtd", "qtd", "aov", "ltv", "cac",
+                                     "crm", "erp", "usd", "inr", "eur", "gbp", "uk", "eu", "b2b", "b2c", "sla", "nps", "csat", "ai")}
+_ACRONYMS.update({"kpis": "KPIs", "saas": "SaaS", "iot": "IoT", "r&d": "R&D"})
 
 UNDERSTAND_SYSTEM = (
     "You are a senior data analyst. You are shown ONE table: column roles, DESCRIBE-style statistics (min, quartiles, mean, std), "
@@ -48,7 +52,9 @@ def clean_title(title: Any) -> str:
     """Readable widget/page name: no snake_case, Title Case when the model returned all lowercase, max 60 chars."""
     t = re.sub(r"\s+", " ", str(title or "").replace("_", " ")).strip(" -:")
     if t and (t == t.lower() or t == t.upper()):
-        t = " ".join(w if (i and w.lower() in _SMALL) else w.capitalize() for i, w in enumerate(t.lower().split()))
+        t = " ".join(w if (i and w in _SMALL) else w.capitalize() for i, w in enumerate(t.lower().split()))
+    # "Hr" / "hr" / "Saas" -> "HR" / "SaaS"; a word the model already wrote in its own mixed case ("iPhone") is kept
+    t = " ".join(_ACRONYMS.get(w.lower(), w) if w in (w.lower(), w.capitalize()) else w for w in t.split(" "))
     t = re.sub(r"\b(\w+)(?: \1\b)+", r"\1", t, flags=re.I)   # "Total Total Profit" -> "Total Profit"
     return t[:60] or "Untitled"
 

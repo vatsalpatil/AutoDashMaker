@@ -87,7 +87,8 @@ def _suggestions(name: str, built: list[dict[str, Any]], insights: str | None, p
               'e.g. "Add profit margin by region". Each must be doable by adding, changing or removing ONE chart, KPI or table using ONLY the '
               'columns listed (no filters, drill-downs, targets or data that is not there). Do not repeat widgets that already exist. '
               'Reply with ONLY JSON: {"suggestions": [strings]}.')
-    columns = ", ".join(f"{c['name']} ({c['role']})" for c in prof["columns"])
+    # a column with one value (currency = INR everywhere) can't be broken down by: don't offer it
+    columns = ", ".join(f"{c['name']} ({c['role']})" for c in prof["columns"] if (c.get("distinct_count") or 0) > 1)
     user = f"Dashboard: {name}\nColumns: {columns}\nExisting widgets: {', '.join(w['title'] for w in built)}\nInsights:\n{insights or '(none)'}"
     try:
         raw = ask_json(system, user, provider_id, "suggestions").get("suggestions")
