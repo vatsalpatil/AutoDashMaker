@@ -1,24 +1,15 @@
 """Alerts: a broken query is an error run (never a crash), each unusable result says why, the query is test-run when
 saved, and wrong-case text is matched to the data. Run: backend/.venv/Scripts/python.exe tests/test_alerts.py"""
-import os
-import sys
-import tempfile
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-tmp = tempfile.mkdtemp()
-os.environ.update(METADATA_DB=tmp + "/m.duckdb", ANALYTICS_DB=tmp + "/a.duckdb", UPLOAD_DIR=tmp + "/up", DUCKDB_TEMP_DIR=tmp + "/s")
+from helpers import isolated, make_dataset
+isolated()
 
 from fastapi import HTTPException
 
 from app.core.store import store
 from app.routers.alerts import AlertIn, create_alert
 from app.services.alerts import evaluate_alert, measure
-from app.services.engine import engine
 
-with engine.writer() as con:
-    con.execute("CREATE TABLE ds_att AS SELECT * FROM (VALUES ('E1','Present',8.0),('E2','Present',7.0),('E3','Leave',0.0)) t(emp, status, hours)")
-d = store.insert("datasets", {"name": "att", "physical_name": "ds_att", "row_count": 3})
-store.insert("columns_meta", {"dataset_id": d["id"], "name": "status", "dtype": "VARCHAR", "distinct_count": 2, "sample_values": '["Present","Leave"]'})
+make_dataset("att", "SELECT * FROM (VALUES ('E1','Present',8.0),('E2','Present',7.0),('E3','Leave',0.0)) t(emp, status, hours)")
 
 assert measure("SELECT count(*) FROM ds_att") == (3.0, None)
 assert "several rows" in measure("SELECT emp FROM ds_att")[1]
