@@ -39,8 +39,8 @@ Dashboard filters, sharing · model routing (cheap vs strong) · MCP/agent API �
 persist refresh backoff across restarts · eval benchmark for NL→SQL · semantic-model versioning · scheduled reports · per-user quotas/admin role (auth + per-user isolation DONE 2026-10-07) · background jobs/embeddings.
 
 ## 2026-11-24 multi-project QA campaign (see sessions/2026-11-24-ten-project-campaign.md)
-- Live account at the 20-dataset limit: 7 of 10 test projects not uploaded until the owner raises it (Admin → user limits).
-- Next: developer-experience plan in `Plan/developer-experience.md` (pytest fixtures → OpenAPI client → typed repos → domain packages).
+- All 10 projects tested on live (limit was raised to 60 for testing, restored to 20). DX plan done.
+- Connectors tested live: REST (paged), GraphQL, URL file, WebSocket (Binance trades), SSRF blocked. Next for connectors: run history, incremental append/upsert, per-source rate floor, admin allowed types (Plan/connectors-control.md §3).
 - Open: AI generator can put many KPIs on one page (18 → review 86/100); combined datasets are still snapshots.
 
 ## Known bugs / risks

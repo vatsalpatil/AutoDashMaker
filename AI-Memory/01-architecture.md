@@ -19,7 +19,7 @@ alerts scheduler (`services/alerts.py::scheduler_loop`, started in `Main.py` lif
   With AUTH_ENABLED it also rejects file/network/introspection functions and non-identifier table names.
 - `tenant.py` — per-user workspace (ContextVar), `use/run_as/all_workspaces/bind`, per-user DuckDB + upload paths. `netguard.py` — public-host check, `safe_client`, `confine_path`. `auth.py` — Supabase JWT check (async dep, pins the workspace); `routers/auth.py` `/api/auth/config|me`. `disk.py`(services) — refuse uploads above DISK_USAGE_LIMIT_PCT.
 ### connectors/ (each: test / discover / ingest; `registry.py` maps type → class, `base.py` interface)
-- `files.py` CSV/Excel/Parquet/JSON · `postgres.py` · `mysql.py` · `sqlite.py` (DuckDB read-only attach) · `rest.py` (record_path + flatten) · `web.py` (Google Sheets share link, direct URL).
+- `files.py` CSV/Excel/Parquet/JSON · `postgres.py` · `mysql.py` · `sqlite.py` (DuckDB read-only attach) · `rest.py` (record_path + flatten; GraphQL) · `paging.py` (REST pagination: auto next-link/cursor/skip-limit, capped) · `stream.py` (WebSocket: bounded capture of N msgs / S s per import/refresh) · `web.py` (Google Sheets share link, direct URL; one file per URL). Router allows exactly the registry's types. Control/management design: `Plan/connectors-control.md`.
 ### domains/ (modular monolith, migrating from services/+routers/ one domain at a time — Plan/developer-experience.md)
 - `domains/monitor/`: `alerts.py` (measure, evaluate_alert, scheduler_loop), `reports.py` (run_report, reports_loop),
   `alerts_api.py` / `reports_api.py` (routers). Old paths `services/alerts.py` etc. are sys.modules aliases (same module).
