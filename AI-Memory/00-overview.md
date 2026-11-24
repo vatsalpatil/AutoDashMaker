@@ -13,7 +13,7 @@ Spec: `Plan/smart-data-platform-requirements.md` (huge; `§N` refs). Feature che
 - Frontend: Vite + React 19 + TypeScript, react-router v6, three.js (landing page 3D only, lazy), **Tailwind v4**, **shadcn/ui (Base UI flavour, preset `base-nova`) + ReUI registry** (`@reui`), Recharts, react-grid-layout, lucide-react. (Astryx was removed 2026-10-02.)
 - AI providers: Gemini (default), OpenAI, Anthropic, Groq, OpenRouter — keys stored in DB table `ai_providers`, set via Settings page.
 
-## Run (Windows) - NO bat launchers; the user runs these two commands in the IDE (Antigravity) terminals
+## Run (Windows) - NO bat/ps1 launchers; demo data: `backend/.venv/Scripts/python.exe Scripts/seed_demo.py [--load] [--scale 0.1]`; the user runs these two commands in the IDE (Antigravity) terminals
 ```
 # terminal 1 - backend (port 8000, the proxy default; reload on)
 cd backend
@@ -36,7 +36,7 @@ API docs: http://127.0.0.1:8000/docs (or your uvicorn port)/docs · UI: http://l
 - Explanations/confidence/"why" are deterministic (rule-based), not LLM-generated — keeps answers auditable.
 
 ## Git workflow + release (standing instruction from the user, updated 2026-10-13)
-- Work ONLY on `Dashtor_First`. After each task: run `python Scripts/verify.py` (with `DISK_USAGE_LIMIT_PCT=95` on this PC) and only if green commit + push to `origin Dashtor_First` WITHOUT asking.
+- Work ONLY on `Dashtor_First`. After each task: run `backend/.venv/Scripts/python.exe Scripts/verify.py` (parallel, ~40 s: tests, build, lint, file sizes, generated API types, import boundaries; `--only test_x` for one) and only if green commit + push to `origin Dashtor_First` WITHOUT asking.
 - The user wants every push to deploy automatically: Dokploy auto-deploy should track `Dashtor_First` (the user switches the branch in Dokploy). Pushing `production` from the assistant is blocked by Claude Code's safety classifier, so do not rely on it.
 - Never commit keys/secrets (`.env`, `backend/OrcaleFiles/`), never open a PR unless asked. A red verify = do not push; fix first.
 

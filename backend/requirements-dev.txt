@@ -1,0 +1,2 @@
+# Developer tools (not needed on the server): backend/.venv/Scripts/python.exe -m pip install -r backend/requirements-dev.txt
+ruff>=0.17

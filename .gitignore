@@ -46,3 +46,4 @@ backend/data/secret.key
 # installed agent skills (18 MB; reinstall from skills-lock.json: npx skills add tt-a1i/archify@archify)
 .agents/
 .claude/skills/
+demo-data/

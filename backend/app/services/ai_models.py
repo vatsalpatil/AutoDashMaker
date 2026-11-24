@@ -5,7 +5,7 @@ from typing import Any
 
 import httpx
 
-from .ai import AIError
+from .ai import OPENAI_COMPATIBLE_DEFAULTS, AIError
 
 # ------------------------------------------------------------ live model lists
 

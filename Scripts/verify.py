@@ -55,6 +55,11 @@ def _frontend_and_sizes() -> list[tuple[str, bool, str]]:
             ok, tail = run(cmd, FRONTEND)
             out.append((label, ok, tail))
             print(f"  {'PASS' if ok else 'FAIL'}  {label}", flush=True)
+    ruff = [sys.executable, "-m", "ruff", "check", "app", "Main.py", "tests"]
+    if run([sys.executable, "-m", "ruff", "--version"], BACKEND)[0]:   # dev tool: skipped (not failed) when not installed
+        ok, tail = run(ruff, BACKEND)
+        out.append(("lint (undefined names, syntax)", ok, tail))
+        print(f"  {'PASS' if ok else 'FAIL'}  lint", flush=True)
     for label, script in (("file sizes", "check_file_sizes.py"), ("api types up to date", "gen_api_types.py"),
                           ("import boundaries", "check_imports.py")):
         if (ROOT / "Scripts" / script).exists():

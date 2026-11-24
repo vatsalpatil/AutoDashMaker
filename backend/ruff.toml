@@ -1,0 +1,7 @@
+# Lint for real bugs only (run by Scripts/verify.py): undefined names, syntax errors, broken comparisons.
+# Style rules are not enforced; add them here deliberately, one at a time.
+target-version = "py311"
+extend-exclude = [".venv", "data", "uploads"]
+
+[lint]
+select = ["E9", "F63", "F7", "F82"]
