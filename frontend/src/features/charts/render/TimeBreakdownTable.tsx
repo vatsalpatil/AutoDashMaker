@@ -11,6 +11,8 @@ import { buildBreakdown, cellValue, footerValue, splitKey, timeColumns, type TBR
 
 type VCol = TimeCol & { base: string; group: string; total?: boolean };
 
+// pinned first column: its right edge is a shadow, since a sticky cell's border scrolls away with border-collapse
+const PIN = 'sticky left-0 shadow-[inset_-1px_0_0_var(--border)]';
 const PAGE_SIZES = [20, 50, 100, 200];
 const isNum = (result: QueryResult, c: string) => result.rows.slice(0, 30).some((r) => r[c] !== null && r[c] !== '' && Number.isFinite(Number(r[c])));
 
@@ -108,8 +110,8 @@ export function TimeBreakdownCore({ spec, result, o }: { spec: ChartSpec; result
               </TableRow>
             )}
             <TableRow>
-              <TableHead className={cn(pad, 'sticky left-0 z-10 bg-muted font-semibold')}>{sortBtn('', item.replace(/_/g, ' '), false)}</TableHead>
-              {shownAttrs.map((a) => <TableHead key={a} className={cn(pad, 'font-semibold')}>{sortBtn(a, a.replace(/_/g, ' '), false)}</TableHead>)}
+              <TableHead className={cn(pad, PIN, 'z-10 bg-muted font-semibold')}>{sortBtn('', item.replace(/_/g, ' '), false)}</TableHead>
+              {shownAttrs.map((a) => <TableHead key={a} className={cn(pad, 'border-l font-semibold')}>{sortBtn(a, a.replace(/_/g, ' '), false)}</TableHead>)}
               {vcols.map((c) => (
                 <TableHead key={c.key} className={cn(pad, 'whitespace-nowrap text-right font-semibold', c.level !== 'day' && 'border-l', c.total && 'bg-muted/50')}>
                   <span className="inline-flex items-center gap-1">
@@ -127,8 +129,8 @@ export function TimeBreakdownCore({ spec, result, o }: { spec: ChartSpec; result
           <TableBody>
             {shown.map((r) => (
               <TableRow key={r.id}>
-                <TableCell className={cn(pad, 'sticky left-0 bg-card font-medium')}>{r.id}</TableCell>
-                {shownAttrs.map((a) => <TableCell key={a} className={pad}>{String(r.attrs[a] ?? '—')}</TableCell>)}
+                <TableCell className={cn(pad, PIN, 'bg-card font-medium')}>{r.id}</TableCell>
+                {shownAttrs.map((a) => <TableCell key={a} className={cn(pad, 'border-l')}>{String(r.attrs[a] ?? '—')}</TableCell>)}
                 {vcols.map((c) => { const v = cellValue(r, c.key, fn); return <TableCell key={c.key} style={ruleStyle(rules, metric, v, o.ruleFill === 'fill') ?? (c.total ? undefined : heat(v))} className={cn(pad, 'text-right', c.level !== 'day' && 'border-l', c.total && 'bg-muted/50 font-medium')}>{fmtV(v)}</TableCell>; })}
                 <TableCell className={cn(pad, 'border-l text-right font-semibold')}>{fmtV(cellValue(r, '__total', fn))}</TableCell>
               </TableRow>
@@ -136,7 +138,8 @@ export function TimeBreakdownCore({ spec, result, o }: { spec: ChartSpec; result
           </TableBody>
           <TableFooter className="sticky bottom-0 z-20 border-t-0 bg-muted shadow-[0_-1px_0_var(--border)] [&_td]:bg-muted">
             <TableRow>
-              <TableCell colSpan={lead} className={cn(pad, 'sticky left-0 z-10 bg-muted font-semibold')}>Total</TableCell>
+              <TableCell className={cn(pad, PIN, 'z-10 bg-muted font-semibold')}>Total</TableCell>
+              {shownAttrs.map((a) => <TableCell key={a} className={cn(pad, 'border-l')} />)}{/* detail columns: blank, so the pinned Total cell stays one column wide */}
               {vcols.map((c) => <TableCell key={c.key} className={cn(pad, 'text-right font-semibold', c.level !== 'day' && 'border-l')}>{fmtV(footerValue(rows, c.key, fn))}</TableCell>)}
               <TableCell className={cn(pad, 'border-l text-right font-semibold')}>{fmtV(footerValue(rows, '__total', fn))}</TableCell>
             </TableRow>
