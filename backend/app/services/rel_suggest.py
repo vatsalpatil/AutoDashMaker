@@ -54,12 +54,17 @@ def suggest(only: set[str] | None = None) -> list[dict[str, Any]]:
     out = []
     for i, a in enumerate(datasets):
         for b in datasets[i + 1:]:
+            if a["name"] == b["name"]:
+                continue   # the same file uploaded twice is a copy, not a related table
             b_by_name = {c["name"]: c for c in cols[b["id"]]}
             for ca in cols[a["id"]]:
                 cb = b_by_name.get(ca["name"])
                 if not cb or ca["dtype"] != cb["dtype"] or _SKIP_TYPE.search(ca["dtype"] or ""):
                     continue
                 if not (_keyish(ca, a.get("row_count")) or _keyish(cb, b.get("row_count"))):
+                    continue
+                # many-to-many (neither side unique, e.g. subscriptions.customer_id vs usage.customer_id) multiplies rows
+                if not (_unique(ca, a.get("row_count")) or _unique(cb, b.get("row_count"))):
                     continue
                 if (a["id"], ca["name"], b["id"], cb["name"]) in existing or (b["id"], cb["name"], a["id"], ca["name"]) in existing:
                     continue

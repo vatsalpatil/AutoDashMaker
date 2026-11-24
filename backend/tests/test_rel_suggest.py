@@ -33,8 +33,14 @@ with engine.writer() as con:   # a unique price shared by two tables is not a ke
 ds("p1", "ds_p1", 30, "A", [("unit_cost", "BIGINT", 30)])
 ds("p2", "ds_p2", 30, "B", [("unit_cost", "BIGINT", 30)])
 ds("other", "ds_other", 1, "Sales", [("dept_id", "VARCHAR", 1), ("region", "VARCHAR", 1), ("hours", "DOUBLE", 1)])
+ds("dept", "ds_dept", 2, "HR", [("dept_id", "VARCHAR", 2), ("region", "VARCHAR", 2)])   # same file uploaded twice
+with engine.writer() as con:   # two fact tables sharing a non-unique customer_id: many-to-many, not a join key
+    con.execute("CREATE TABLE ds_subs AS SELECT * FROM (VALUES ('C1'),('C1'),('C2')) t(customer_id)")
+    con.execute("CREATE TABLE ds_use AS SELECT * FROM (VALUES ('C1'),('C2'),('C2')) t(customer_id)")
+ds("subs", "ds_subs", 3, "S", [("customer_id", "VARCHAR", 2)])
+ds("use", "ds_use", 3, "S", [("customer_id", "VARCHAR", 2)])
 store.insert("datasets", {"name": "blend", "physical_name": "ds_emp", "row_count": 3, "kind": "blend"})
 
 pairs = [(s["left_dataset"], s["left_column"], s["right_dataset"], s["right_column"]) for s in rel_suggest.suggest()]
-assert pairs == [("dept", "dept_id", "emp", "dept_id")], pairs   # not region/hours (not keys), not other.dept_id (no shared values), not the blend
+assert pairs == [("dept", "dept_id", "emp", "dept_id")] * 2, pairs   # each dept copy -> emp; never dept<->dept or subs<->use   # not region/hours (not keys), not other.dept_id (no shared values), not the blend
 print("test_rel_suggest OK")
