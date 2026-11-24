@@ -27,7 +27,8 @@ assert r.status_code == 409 and r.json()["code"] == "quota.limit" and r.json().g
 
 # combining tables creates a dataset too, so it respects the same limit
 from helpers import make_dataset
-x, y = make_dataset("kx", "SELECT 'a' AS k_id, 1 AS v"), make_dataset("ky", "SELECT 'a' AS k_id, 'z' AS w")
+x = make_dataset("kx", "SELECT * FROM (VALUES ('a', 1), ('b', 2)) t(k_id, v)")
+y = make_dataset("ky", "SELECT * FROM (VALUES ('a', 'z'), ('b', 'q')) t(k_id, w)")
 r = c.post("/api/transforms/blend-many", json={"dataset_ids": [x["id"], y["id"]]})
 assert r.status_code == 409 and r.json()["code"] == "quota.limit", (r.status_code, r.json())
 
