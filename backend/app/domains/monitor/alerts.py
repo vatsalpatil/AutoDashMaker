@@ -35,7 +35,7 @@ def measure(sql: str) -> tuple[float | None, str | None]:
     try:
         result = engine.execute(sql, row_limit=2)
     except Exception as e:  # noqa: BLE001 - a broken query is a failed check, not a crash
-        return None, sql_errors.friendly(str(e))[:300]
+        return None, sql_errors.friendly(str(e), sql)[:300]
     if result["row_count"] == 0:
         return None, "The query returned no rows. Use an aggregate such as COUNT(*) or SUM(...) so it always returns one number."
     if result["row_count"] > 1:

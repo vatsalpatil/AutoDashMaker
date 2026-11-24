@@ -10,7 +10,19 @@ def _suggest(word: str, names: set[str]) -> str:
     return f". Did you mean '{near[0]}'?" if near else ""
 
 
-def friendly(err: str) -> str:
+def _columns_for(sql: str | None) -> set[str]:
+    """Column names of the tables the query uses (all columns when the query is unknown), so a typo is matched
+    against what the user could have meant, not a column of some other dataset."""
+    words = set(re.findall(r"[A-Za-z_][A-Za-z0-9_]*", (sql or "").lower()))
+    used = [d["id"] for d in store.list("datasets", order=None)
+            if sql and ((d.get("name") or "").lower() in words or (d.get("physical_name") or "").lower() in words)]
+    if not used:
+        return {c["name"] for c in store.list("columns_meta", order=None)}
+    rows = store.list("columns_meta", where=f"dataset_id IN ({','.join('?' * len(used))})", params=used, order=None)
+    return {c["name"] for c in rows}
+
+
+def friendly(err: str, sql: str | None = None) -> str:
     m = re.search(r'column "([^"]+)" must appear in the GROUP BY clause', err)
     if m:
         return (f"'{m.group(1)}' is shown next to a total, so it must be grouped: add it to GROUP BY (or write GROUP BY ALL), "
@@ -18,7 +30,7 @@ def friendly(err: str) -> str:
     if "Binder Error" in err:
         m = re.search(r'[Cc]olumn "([^"]+)"', err)
         if m:
-            names = {c["name"] for c in store.list("columns_meta", order=None)}
+            names = _columns_for(sql)
             if m.group(1) not in names:
                 return f"column '{m.group(1)}' does not exist" + _suggest(m.group(1), names)
     m = re.search(r"Table with name (\S+) does not exist", err)

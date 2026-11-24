@@ -124,7 +124,7 @@ def run_query(body: QueryIn):
         raise HTTPException(400, sql_errors.unsafe(e))
     except Exception as e:
         audit.record("query.run", detail=f"{body.sql} -- {e}", status="error")
-        raise HTTPException(400, sql_errors.friendly(str(e))[:500])
+        raise HTTPException(400, sql_errors.friendly(str(e), body.sql)[:500])
     audit.record("query.run", detail=result["sql"], duration_ms=result["duration_ms"])
     if not result.get("row_count") or result.get("row_count") == 1:   # 0 rows, or a total like count(*) = 0
         hint = _case_hint(result["sql"])

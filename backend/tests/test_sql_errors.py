@@ -20,4 +20,10 @@ assert "ds_orders_a0d720" not in se.friendly("Catalog Error: problem in ds_order
 assert "Did you mean 'region'" in se.friendly('Binder Error: Referenced column "regoin" not found')
 assert "DELETE is not allowed" in se.unsafe(Exception("Statement type not allowed: Delete"))
 assert se.unsafe(Exception("SQL does not parse: Expecting ). Line 1, Col: 27.")).startswith("SQL syntax error")
+# a wrong column is matched against the columns of the tables the query uses, not every dataset
+t2 = store.insert("datasets", {"name": "targets", "physical_name": "ds_targets_1"})
+store.insert("columns_meta", {"dataset_id": t2["id"], "name": "revenue_target", "dtype": "BIGINT"})
+err = 'Binder Error: Referenced column "revenue" not found in FROM clause!'
+assert "revenue_target" not in se.friendly(err, "SELECT revenue FROM orders"), se.friendly(err, "SELECT revenue FROM orders")
+assert "revenue_target" in se.friendly(err)   # query unknown: every column is a candidate
 print("test_sql_errors OK")
