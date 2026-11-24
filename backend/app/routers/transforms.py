@@ -49,6 +49,12 @@ def _materialize_sql(sql: str, name: str, kind: str, parents: list[str], notes: 
     """Run a (validated, read-only) SELECT straight into a new table inside DuckDB and register it as a dataset.
     Nothing passes through Python, so it is fast and independent of DuckDB's Python result API."""
     from ..core.security import validate_readonly
+    from ..core.errors import AppError
+    from ..services import quota
+    try:
+        quota.check_dataset_count()   # a combined/derived dataset counts like an upload
+    except quota.QuotaExceeded as e:
+        raise AppError(409, str(e), code="quota.limit", hint="Delete datasets you no longer need, or ask an admin to raise your limit.")
     table = _safe_name(name)
     select = validate_readonly(sql, 5_000_000)
     with engine.writer() as con:
@@ -196,6 +202,8 @@ def blend_many(body: BlendManyIn):
         p = bm.plan(body.dataset_ids)
         ds = _materialize_sql(p["sql"], body.name or _free_name(f"{p['used'][0]}_combined"), "blend", p["used"],
                               p.get("repeats"))   # so the AI never sums a per-employee salary over attendance rows
+    except HTTPException:
+        raise   # e.g. the dataset limit (409 quota.limit): keep its status and code
     except bm.BlendError as e:
         raise HTTPException(400, str(e))
     except Exception as e:  # noqa: BLE001
