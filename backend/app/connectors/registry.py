@@ -4,6 +4,7 @@ from .postgres import PostgresConnector
 from .rest import GraphQLConnector, RestConnector
 from .mysql import MySQLConnector
 from .sqlite import SQLiteConnector
+from .stream import WebSocketConnector
 from .web import UrlConnector
 
 CONNECTOR_TYPES = {
@@ -15,6 +16,7 @@ CONNECTOR_TYPES = {
     "graphql": GraphQLConnector,
     "url": UrlConnector,
     "gsheets": UrlConnector,   # same downloader; auto-detects the sheet link
+    "websocket": WebSocketConnector,
 }
 
 

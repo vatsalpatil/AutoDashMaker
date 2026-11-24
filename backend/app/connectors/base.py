@@ -17,7 +17,8 @@ def redact(text: str) -> str:
 
 class ConnectorError(Exception):
     def __init__(self, message: object = "", *args: object):
-        super().__init__(redact(str(message)), *args)  # every connector error is scrubbed once, here
+        text = str(message).split("\nFor more information check:")[0]   # httpx appends a docs link to every status error
+        super().__init__(redact(text), *args)  # every connector error is scrubbed once, here
 
 
 class DataConnector(ABC):

@@ -8,6 +8,9 @@ from typing import Any
 
 import httpx
 
+from urllib.parse import urljoin
+
+from . import paging
 from .base import DataConnector, ConnectorError, http_retry, redact
 from ..core.netguard import safe_client
 
@@ -52,17 +55,35 @@ class RestConnector(DataConnector):
                 kwargs["content"] = str(body).encode()
         return c.get("method", "GET").upper(), kwargs
 
-    def _fetch(self) -> Any:
+    paginates = True   # GraphQL: one request
+
+    def _get(self, url: str | None = None, extra: dict | None = None) -> tuple[Any, str | None]:
+        """One request -> (json, next-page URL from a Link header). `url` = a next-page link (relative is fine)."""
         method, kwargs = self._request()
+        if url:
+            kwargs["params"] = None   # a next link already carries its own query
+        elif extra:
+            kwargs["params"] = {**(kwargs.get("params") or {}), **extra}
+        target = urljoin(self.config["url"], url) if url else self.config["url"]
         try:
             def call():
                 with safe_client(timeout=30, follow_redirects=True) as client:
-                    return client.request(method, self.config["url"], **kwargs)
+                    return client.request(method, target, **kwargs)
             resp = http_retry(call, attempts=3 if method in ("GET", "HEAD") else 1)  # never replay a POST/PUT
             resp.raise_for_status()
-            return resp.json()
+            return resp.json(), (resp.links.get("next") or {}).get("url")
         except Exception as e:
             raise ConnectorError(str(e)) from e
+
+    def _fetch(self) -> Any:
+        return self._get()[0]
+
+    def _records(self) -> tuple[list[dict], dict]:
+        """Every record, following pages (connectors/paging.py)."""
+        extract = lambda d: self._extract(d, self.config.get("record_path", ""))  # noqa: E731
+        if not self.paginates or (self.config.get("pagination") or {}).get("mode") == "none" or self.config.get("method", "GET").upper() != "GET":
+            return extract(self._fetch()), {"mode": "none", "pages": 1, "truncated": False}
+        return paging.fetch_all(self._get, extract, self.config.get("pagination"))
 
     def _extract(self, data: Any, path: str) -> list[dict]:
         sep = self.config.get("flatten_sep", ".")
@@ -87,10 +108,13 @@ class RestConnector(DataConnector):
 
     def test_connection(self) -> dict[str, Any]:
         try:
-            data = self._fetch()
+            data, link_next = self._get() if self.paginates else (self._fetch(), None)
             found = find_records(data)
             detail = f"request succeeded; found {len(found[1])} records" + (f" at '{found[0]}'" if found and found[0] else "") if found else "request succeeded"
-            return {"ok": True, "detail": detail}
+            pg = paging.detect(data, link_next) if self.paginates else {"mode": "none"}
+            if pg["mode"] != "none":
+                detail += f"; more pages detected ({pg['mode']}), all are imported (max {(self.config.get('pagination') or {}).get('max_pages', 50)} pages)"
+            return {"ok": True, "detail": detail, "pagination": pg["mode"]}
         except ConnectorError as e:
             return {"ok": False, "detail": redact(str(e))}
 
@@ -98,7 +122,7 @@ class RestConnector(DataConnector):
         return [{"name": self.config.get("name", "api"), "kind": "api"}]
 
     def ingest(self, name: str, target_table: str, analytics_con) -> dict[str, Any]:
-        rows = self._extract(self._fetch(), self.config.get("record_path", ""))
+        rows, info = self._records()
         if not rows:
             raise ConnectorError("API returned no rows for the given record_path")
         with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as f:
@@ -110,13 +134,14 @@ class RestConnector(DataConnector):
             )
         finally:
             os.unlink(tmp)
-        info = analytics_con.execute(f"PRAGMA table_info('{target_table}')").fetchall()
+        cols = analytics_con.execute(f"PRAGMA table_info('{target_table}')").fetchall()
         count = analytics_con.execute(f"SELECT COUNT(*) FROM {target_table}").fetchone()[0]
-        return {"row_count": count, "columns": [{"name": r[1], "dtype": r[2]} for r in info]}
+        return {"row_count": count, "columns": [{"name": r[1], "dtype": r[2]} for r in cols], "pages": info}
 
 
 class GraphQLConnector(RestConnector):
     """POST {query, variables} to a GraphQL endpoint; the records are found in `data` like any JSON reply."""
+    paginates = False
 
     def _request(self) -> tuple[str, dict[str, Any]]:
         _, kwargs = super()._request()

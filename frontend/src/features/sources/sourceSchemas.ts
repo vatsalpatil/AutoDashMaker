@@ -97,13 +97,30 @@ export const SOURCE_SCHEMAS: SourceSchema[] = [
       { key: 'headers', label: 'Headers (JSON)', kind: 'textarea', default: '{}' },
       { key: 'body', label: 'Body (optional, for POST)', kind: 'textarea' },
       { key: 'record_path', label: 'Record path (blank = detect automatically)' },
+      { key: 'pagination', label: 'Pages', kind: 'select', options: ['auto', 'none', 'offset', 'page', 'cursor', 'next_link'], default: 'auto', advanced: true },
+      { key: 'max_pages', label: 'Max pages', default: '50', advanced: true },
     ],
-    hint: 'Tip: build and test the request in the API Studio first, then use “Save as refreshable source”.',
+    hint: 'Multi-page APIs are followed automatically (next links, cursors, skip/limit). Tip: build and test the request in the API Studio first.',
     toConfig: (v) => {
       let headers: Record<string, string> = {};
       try { headers = JSON.parse(v.headers || '{}'); } catch { throw new Error('Headers must be valid JSON'); }
-      return { url: v.url, method: v.method, headers, body: v.body || undefined, record_path: v.record_path || undefined, flatten_sep: '_' };
+      return { url: v.url, method: v.method, headers, body: v.body || undefined, record_path: v.record_path || undefined, flatten_sep: '_',
+        pagination: { mode: v.pagination || 'auto', max_pages: Number(v.max_pages) || 50 } };
     },
+  },
+  {
+    id: 'websocket', label: 'WebSocket stream', badge: 'warning',
+    fields: [
+      nameField,
+      { key: 'url', label: 'Stream URL', placeholder: 'wss://stream.example.com/feed' },
+      { key: 'subscribe', label: 'Subscribe message (optional, sent after connecting)', kind: 'textarea', placeholder: '{"op":"subscribe","channel":"trades"}' },
+      { key: 'seconds', label: 'Capture seconds (max 60)', default: '10' },
+      { key: 'max_messages', label: 'Max messages (max 50,000)', default: '1000' },
+      { key: 'record_path', label: 'Record path (blank = detect automatically)', advanced: true },
+    ],
+    hint: 'Each import or refresh captures a snapshot of the feed. Set a refresh interval on the dataset to keep it current.',
+    toConfig: (v) => ({ url: v.url, subscribe: v.subscribe || undefined, seconds: Number(v.seconds) || 10,
+      max_messages: Number(v.max_messages) || 1000, record_path: v.record_path || undefined, name: v.name }),
   },
   { id: 'file', label: 'File', badge: 'success', fields: [], note: 'Files are added directly via the drag & drop file uploader box above.' },
   {
@@ -138,7 +155,8 @@ export function valuesFromSource(schema: SourceSchema, source: Source): Record<s
   const cfg = source.config ?? {};
   const values = defaultValues(schema);
   for (const f of schema.fields) {
-    const raw = cfg[f.key];
+    const paging = (cfg.pagination ?? {}) as Record<string, unknown>;   // REST: {mode, max_pages} is two form fields
+    const raw = f.key === 'pagination' ? paging.mode : f.key === 'max_pages' ? paging.max_pages : cfg[f.key];
     if (f.key === 'name') values.name = source.name;
     else if (f.kind === 'password') values[f.key] = '';
     else if (raw !== undefined && raw !== null) values[f.key] = typeof raw === 'object' ? JSON.stringify(raw, null, 2) : String(raw);

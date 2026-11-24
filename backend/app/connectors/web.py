@@ -59,8 +59,10 @@ class UrlConnector(DataConnector):
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": ".xlsx",
             }.get(ctype.split(";")[0], ".csv")
 
-        name = re.sub(r"[^a-zA-Z0-9_-]", "_", self.config.get("name", "download"))[:40]
-        dest = tenant.upload_dir() / f"{name}{ext}"
+        # one file per URL: two unnamed sources must not overwrite each other's download
+        import hashlib
+        name = re.sub(r"[^a-zA-Z0-9_-]", "_", self.config.get("name") or Path(url.split("?")[0]).stem or "download")[:40]
+        dest = tenant.upload_dir() / f"{name}_{hashlib.sha1(url.encode()).hexdigest()[:8]}{ext}"
         dest.write_bytes(resp.content)
         return dest
 

@@ -26,6 +26,12 @@ class SourceIn(BaseModel):
     source_id: str | None = None   # set when testing an edited source: masked secrets come from the stored config
 
 
+def _known_type(t: str) -> None:
+    from ..connectors.registry import CONNECTOR_TYPES
+    if t not in CONNECTOR_TYPES:
+        raise HTTPException(400, f"unsupported source type '{t}'; one of: {', '.join(CONNECTOR_TYPES)}")
+
+
 @router.get("")
 def list_sources():
     return [public_source(s) for s in store.list("datasources")]
@@ -33,8 +39,7 @@ def list_sources():
 
 @router.post("")
 def create_source(body: SourceIn):
-    if body.type not in ("file", "postgres", "mysql", "sqlite", "rest", "graphql", "url", "gsheets"):
-        raise HTTPException(400, f"unsupported type {body.type}")
+    _known_type(body.type)
     src = store.insert("datasources", body.model_dump(exclude={"source_id"}))
     audit.record("source.create", entity_type="source", entity_id=src["id"], detail=f"{body.name} ({body.type})")
     return public_source(src)
@@ -116,6 +121,7 @@ def sources_health(check: bool = True):
 
 @router.post("/test")
 def test_connection(body: SourceIn):
+    _known_type(body.type)
     stored = store.get("datasources", body.source_id) if body.source_id else None
     return get_connector(body.type, restore(body.config, (stored or {}).get("config"))).test_connection()
 
