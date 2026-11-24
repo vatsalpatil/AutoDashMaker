@@ -9,6 +9,7 @@ reported instead. Clashing column names get the dataset name as prefix.
 """
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from ..core.security import quote_ident
@@ -51,6 +52,7 @@ def plan(dataset_ids: list[str]) -> dict[str, Any]:
     selects = [f"t0.{quote_ident(c['name'])}" for c in store.list("columns_meta", where="dataset_id = ?", params=[base["id"]], order=None)]
     joins: list[str] = []
     skipped: dict[str, str] = {}
+    repeats: dict[str, str] = {}   # output column -> why it must not be summed (a "one" side value on every "many" row)
     frontier = [base["id"]]
     while frontier:
         cur = frontier.pop(0)
@@ -73,6 +75,9 @@ def plan(dataset_ids: list[str]) -> dict[str, Any]:
                         continue   # the join key is already there
                     out = n if n.lower() not in cols_seen else f"{other['name']}_{n}"
                     cols_seen.add(out.lower())
+                    if re.search(r"INT|DOUBLE|DECIMAL|FLOAT|REAL|NUMERIC", c.get("dtype") or "", re.I):
+                        repeats[out] = (f"repeats: one value per {there_col} (from {other['name']}), repeated on every row. "
+                                        f"Never SUM it; use AVG, MAX, or sum it once per {there_col}.")
                     selects.append(f"{a}.{quote_ident(n)} AS {quote_ident(out)}")
                 frontier.append(there)
     for d in ds:
@@ -82,4 +87,4 @@ def plan(dataset_ids: list[str]) -> dict[str, Any]:
     if len(used) < 2:
         raise BlendError("these datasets can't be combined row by row: " + "; ".join(f"{k}: {v}" for k, v in skipped.items()))
     sql = f"SELECT {', '.join(selects)} FROM {base['physical_name']} AS t0 " + " ".join(joins)
-    return {"sql": sql, "used": used, "skipped": [{"name": k, "reason": v} for k, v in skipped.items()], "auto_links": auto}
+    return {"sql": sql, "used": used, "skipped": [{"name": k, "reason": v} for k, v in skipped.items()], "auto_links": auto, "repeats": repeats}

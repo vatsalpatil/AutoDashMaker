@@ -73,4 +73,19 @@ _p = _bm.plan(_ids)
 assert sorted(_p["used"]) == ["hatt", "hdept", "hemp"] and len(_p["auto_links"]) >= 2, _p
 _r = engine.execute(f"SELECT count(*) AS n, sum(hours) AS h, count(dept_name) AS named FROM ({_p['sql']})", 1)["rows"][0]
 assert (_r["n"], _r["h"], _r["named"]) == (30, 240.0, 30), _r
+# a number from the "one" side (a per-employee salary on every attendance row) is flagged: never summed
+with engine.writer() as con:
+    con.execute("CREATE TABLE ds_hsal AS SELECT * FROM (VALUES ('E1', 100.0),('E2', 200.0),('E3', 300.0)) t(emp_id, salary)")
+_s = store.insert("datasets", {"name": "hsal", "physical_name": "ds_hsal", "row_count": 3})
+for _c, _t, _dc in (("emp_id", "VARCHAR", 3), ("salary", "DOUBLE", 3)):
+    store.insert("columns_meta", {"dataset_id": _s["id"], "name": _c, "dtype": _t, "distinct_count": _dc})
+_p = _bm.plan([_ids[2], _s["id"]])
+assert "salary" in _p["repeats"] and "Never SUM" in _p["repeats"]["salary"] and "hours" not in _p["repeats"], _p["repeats"]
+from app.routers.transforms import BlendManyIn, blend_many as _blend_route
+_out = _blend_route(BlendManyIn(dataset_ids=[_ids[2], _s["id"]]))
+from app.services.dash_profile import profile as _profile
+_prof = _profile(store.get("datasets", _out["id"]))
+_roles = {c["name"]: c["role"] for c in _prof["columns"]}
+assert _roles["salary"] == "attribute" and _roles["hours"] == "measure", _roles
+assert "Never SUM" in _prof["text"], _prof["text"]
 print("test_blend_many OK")

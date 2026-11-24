@@ -11,6 +11,7 @@ from datetime import date, datetime, timedelta
 from typing import Any
 
 from ..core.security import quote_ident
+from ..core.store import store
 from .engine import engine
 
 _DECIMAL = ("DOUBLE", "FLOAT", "DECIMAL", "REAL")
@@ -125,8 +126,12 @@ def _build_profile(dataset: dict[str, Any]) -> dict[str, Any]:
     table = dataset["physical_name"]
     schema = engine.describe_table(table)
     rows, cols = schema["row_count"], schema["columns"]
+    meta = store.list("columns_meta", where="dataset_id = ?", params=[dataset["id"]], order=None) if dataset.get("id") else []
+    notes = {c["name"]: c.get("description") or "" for c in meta}
     for c in cols:
         c["role"] = _role(c, rows)
+        if c["role"] == "measure" and notes.get(c["name"], "").startswith("repeats"):
+            c["role"] = "attribute"   # from a joined lookup table: one value per key, repeated on every row
     stats = _describe(table, cols) if rows else {}
     tops = _top_values(table, cols) if rows else {}
     corr = _correlations(table, [c["name"] for c in cols if c["role"] == "measure"]) if rows else []
@@ -146,6 +151,8 @@ def _build_profile(dataset: dict[str, Any]) -> dict[str, Any]:
             bits.append(f"min {st['min']}, p25 {st['p25']}, median {st['median']}, p75 {st['p75']}, max {st['max']}, mean {st['mean']}, std {st['std']}")
         elif st:
             bits.append(f"range {st['min']} to {st['max']}")
+        if notes.get(c["name"]):
+            bits.append(notes[c["name"]])
         if c["name"] in tops:
             bits.append("top: " + ", ".join(tops[c["name"]]))
         elif c["sample_values"] and c["role"] in ("dimension", "text", "id"):

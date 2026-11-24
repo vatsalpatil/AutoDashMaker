@@ -45,7 +45,7 @@ def _materialize(df, name: str, kind: str, source_id: str | None,
     return ds
 
 
-def _materialize_sql(sql: str, name: str, kind: str, parents: list[str]) -> dict:
+def _materialize_sql(sql: str, name: str, kind: str, parents: list[str], notes: dict[str, str] | None = None) -> dict:
     """Run a (validated, read-only) SELECT straight into a new table inside DuckDB and register it as a dataset.
     Nothing passes through Python, so it is fast and independent of DuckDB's Python result API."""
     from ..core.security import validate_readonly
@@ -61,7 +61,7 @@ def _materialize_sql(sql: str, name: str, kind: str, parents: list[str]) -> dict
         "row_count": schema["row_count"], "column_count": len(schema["columns"]), "layers": [],
     })
     for c in schema["columns"]:   # with distinct counts + samples, so the AI sees exact values here too
-        store.insert("columns_meta", {"dataset_id": ds["id"], **c})
+        store.insert("columns_meta", {"dataset_id": ds["id"], **c, "description": (notes or {}).get(c["name"], "")})
     return ds
 
 
@@ -194,7 +194,8 @@ def blend_many(body: BlendManyIn):
     from ..services import blend_many as bm
     try:
         p = bm.plan(body.dataset_ids)
-        ds = _materialize_sql(p["sql"], body.name or _free_name(f"{p['used'][0]}_combined"), "blend", p["used"])
+        ds = _materialize_sql(p["sql"], body.name or _free_name(f"{p['used'][0]}_combined"), "blend", p["used"],
+                              p.get("repeats"))   # so the AI never sums a per-employee salary over attendance rows
     except bm.BlendError as e:
         raise HTTPException(400, str(e))
     except Exception as e:  # noqa: BLE001
