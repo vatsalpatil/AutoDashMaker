@@ -4,6 +4,7 @@ import { SelectField } from '@/components/common/SelectField';
 import { Button, Card, TextArea, TextInput } from '@/components/ui/kit';
 import { useAsyncAction } from '@/hooks/useAsyncAction';
 import { api } from '@/lib/api';
+import type { AlertIn } from '@/lib/api-schema';
 import type { Dataset } from '@/lib/types';
 import { OPERATORS } from './alertOps';
 
@@ -17,7 +18,9 @@ export function AlertForm({ datasets, onCreated }: { datasets: Dataset[]; onCrea
 
   const [note, setNote] = useState<string | null>(null);
   const [create, { busy, error }] = useAsyncAction(async () => {
-    const saved = await api.post<{ note?: string }>('/alerts', { ...form, threshold: Number(form.threshold), schedule_minutes: Number(form.schedule_minutes) });
+    // typed from the backend model (lib/api-schema.ts is generated): a renamed field fails the build, not production
+    const body: AlertIn = { ...form, threshold: Number(form.threshold), schedule_minutes: Number(form.schedule_minutes) };
+    const saved = await api.post<{ note?: string }>('/alerts', body);
     setNote(saved.note ?? null);   // e.g. the text value's spelling was matched to the data
     set({ name: '', metric_sql: '', threshold: '' });
     onCreated();

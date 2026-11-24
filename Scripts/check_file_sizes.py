@@ -13,7 +13,8 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 SCAN = [ROOT / "frontend" / "src", ROOT / "backend" / "app", ROOT / "backend" / "tests"]
 SUFFIXES = {".ts", ".tsx", ".py", ".css"}
 SKIP_PARTS = {"node_modules", ".venv", "__pycache__", "dist"}
-GENERATED = [("frontend", "src", "components", "ui"), ("frontend", "src", "components", "reui")]
+GENERATED = [("frontend", "src", "components", "ui"), ("frontend", "src", "components", "reui"),
+             ("frontend", "src", "lib", "api-schema.ts")]   # written by Scripts/gen_api_types.py
 WARN, HARD = 250, 400
 
 
