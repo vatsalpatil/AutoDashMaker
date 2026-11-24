@@ -11,6 +11,7 @@ from typing import Any
 
 from ..core.security import quote_ident
 from ..core.store import store
+from .catalog import catalog
 from .engine import engine
 
 _KEYNAME = re.compile(r"(^|_)(id|uuid|key|code|sku|no|number)$", re.I)
@@ -47,7 +48,7 @@ def suggest(only: set[str] | None = None) -> list[dict[str, Any]]:
     """All suggestions, or only between the datasets in `only` (ids)."""
     datasets = [d for d in store.list("datasets", order=None) if d.get("kind") != "blend" and d.get("physical_name")
                 and (only is None or d["id"] in only)]
-    cols = {d["id"]: store.list("columns_meta", where="dataset_id = ?", params=[d["id"]], order=None) for d in datasets}
+    cols = catalog.columns_of(d["id"] for d in datasets)   # one query, not one per dataset
     existing = {(r["left_dataset_id"], r["left_column"], r["right_dataset_id"], r["right_column"])
                 for r in store.list("relationships", order=None)}
     out = []

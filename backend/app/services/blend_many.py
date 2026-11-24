@@ -14,6 +14,7 @@ from typing import Any
 
 from ..core.security import quote_ident
 from ..core.store import store
+from .catalog import catalog
 from .engine import engine
 
 
@@ -48,8 +49,9 @@ def plan(dataset_ids: list[str]) -> dict[str, Any]:
     links = {d["id"]: sum(d["id"] in (r["left_dataset_id"], r["right_dataset_id"]) for r in edges) for d in ds}
     base = max(ds, key=lambda d: (links[d["id"]] > 0, d.get("row_count") or 0, links[d["id"]]))   # a linked facts table
     alias = {base["id"]: "t0"}
-    cols_seen = {c["name"].lower() for c in store.list("columns_meta", where="dataset_id = ?", params=[base["id"]], order=None)}
-    selects = [f"t0.{quote_ident(c['name'])}" for c in store.list("columns_meta", where="dataset_id = ?", params=[base["id"]], order=None)]
+    cols_of = catalog.columns_of(by_id)   # every selected table's columns in one query
+    cols_seen = {c["name"].lower() for c in cols_of[base["id"]]}
+    selects = [f"t0.{quote_ident(c['name'])}" for c in cols_of[base["id"]]]
     joins: list[str] = []
     skipped: dict[str, str] = {}
     repeats: dict[str, str] = {}   # output column -> why it must not be summed (a "one" side value on every "many" row)
@@ -69,7 +71,7 @@ def plan(dataset_ids: list[str]) -> dict[str, Any]:
                 alias[there] = a
                 skipped.pop(other["name"], None)
                 joins.append(f"LEFT JOIN {other['physical_name']} AS {a} ON {alias[cur]}.{quote_ident(here_col)} = {a}.{quote_ident(there_col)}")
-                for c in store.list("columns_meta", where="dataset_id = ?", params=[there], order=None):
+                for c in cols_of[there]:
                     n = c["name"]
                     if n.lower() == there_col.lower() and n.lower() in cols_seen:
                         continue   # the join key is already there

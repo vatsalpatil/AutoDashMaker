@@ -88,8 +88,10 @@ def suggestions(max_per_dataset: int = 6) -> dict[str, list[dict[str, Any]]]:
     from . import column_stats
     datasets = store.list("datasets", order=None)[:12]
     column_stats.ensure([d for d in datasets if d.get("physical_name")])
+    from .catalog import catalog
+    cols_by_ds = catalog.columns_of(d["id"] for d in datasets)   # one query for all datasets
     for ds in datasets:
-        cols = _columns(ds["id"])
+        cols = cols_by_ds[ds["id"]]
         base = {"dataset_id": ds["id"], "dataset_name": ds["name"]}
         noun = ds["name"].replace("_", " ")
         cand = [{"name": "row_count", "label": f"Number of {noun}", "expression": "COUNT(*)", "description": f"Number of rows in {ds['name']}."}]

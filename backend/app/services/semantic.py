@@ -53,11 +53,15 @@ def _table_of(metric: dict) -> str | None:
 def applicable_metric_lines(dataset_id: str, table: str) -> list[str]:
     """Defined key numbers that also fit this dataset (every column they use exists here), e.g. one defined on
     sales_combined applies to a fresh combine of the same tables. Rewritten against `table`."""
+    from .catalog import catalog
+    metrics = store.list("metrics", order=None)
+    by_ds = catalog.columns_of([dataset_id, *(m["dataset_id"] for m in metrics if m.get("dataset_id"))])   # one query
+
     def cols_of(ds_id: str | None) -> set[str]:
-        return {c["name"].lower() for c in store.list("columns_meta", where="dataset_id = ?", params=[ds_id], order=None)}
+        return {c["name"].lower() for c in by_ds.get(ds_id or "", [])}
     cols = cols_of(dataset_id)
     out = []
-    for m in store.list("metrics", order=None):
+    for m in metrics:
         if m.get("dataset_id") != dataset_id:
             text = " ".join([m.get("expression") or ""] + filters_of(m))
             idents = {w.lower() for w in re.findall(r"[A-Za-z_]\w*", re.sub(r"'[^']*'", "", text))}
